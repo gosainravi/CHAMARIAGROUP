@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chamaria Group — Business Portal</title>
+<style>
+  :root{
+    --ink:#F2F3F8;
+    --ink-soft:#9C9DB3;
+    --paper:#202027;
+    --surface:#17171D;
+    --line:rgba(255,255,255,0.08);
+    --line-soft:rgba(255,255,255,0.05);
+
+    --accent:#4C7FFF;
+    --accent-2:#8B5CF6;
+    --accent-dark:#3A63D9;
+    --accent-soft:#1B2340;
+
+    --radius:14px;
+    --canvas:radial-gradient(circle at 12% 8%,#E9E4FF 0%,transparent 55%),radial-gradient(circle at 90% 15%,#E3EBFF 0%,transparent 50%),radial-gradient(circle at 50% 100%,#FCE7F3 0%,transparent 60%),linear-gradient(135deg,#EFEBFC 0%,#EAF0FE 45%,#FCEBF4 100%);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:var(--canvas);
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 16px;
+  }
+  .canvas-wrap{width:100%;max-width:1040px;}
+  .portal-card{
+    background:var(--surface);
+    border-radius:28px;
+    box-shadow:0 30px 80px -20px rgba(30,20,60,0.35);
+    padding:48px 44px 44px;
+    color:var(--ink);
+  }
+  .portal-head{
+    display:flex;
+    align-items:center;
+    gap:20px;
+    margin-bottom:38px;
+    flex-wrap:wrap;
+  }
+  .brand-logo{
+    width:64px;height:64px;border-radius:16px;
+    overflow:hidden;flex-shrink:0;
+    background:var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);
+  }
+  .brand-logo img{width:100%;height:100%;object-fit:contain;}
+  .portal-titles h1{
+    margin:0;font-size:28px;font-weight:800;letter-spacing:-0.02em;
+  }
+  .portal-titles .sub{
+    margin-top:4px;font-size:14px;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:0.08em;font-weight:600;
+  }
+  .apps-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:20px;
+  }
+  .app-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:26px 24px;
+    text-decoration:none;
+    color:var(--ink);
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .app-card:hover{
+    transform:translateY(-4px);
+    border-color:var(--accent);
+    background:#23232b;
+  }
+  .app-card .app-icon{
+    width:48px;height:48px;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#fff;
+    flex-shrink:0;
+  }
+  .app-card h3{margin:0;font-size:18px;font-weight:700;letter-spacing:-0.01em;}
+  .app-card p{margin:0;font-size:13px;color:var(--ink-soft);line-height:1.5;}
+  .app-card .go{
+    margin-top:auto;
+    font-size:12.5px;font-weight:700;color:var(--accent);
+    display:flex;align-items:center;gap:6px;
+  }
+  .app-card.coming-soon{
+    opacity:0.55;cursor:not-allowed;
+    border-style:dashed;
+  }
+  .app-card.coming-soon:hover{transform:none;border-color:var(--line);background:var(--paper);}
+  .badge{
+    position:absolute;top:16px;right:16px;
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
+    padding:3px 9px;border-radius:20px;
+    background:var(--accent-soft);color:var(--accent);
+  }
+  .app-card.coming-soon .badge{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
+  .lock-badge{
+    position:absolute;top:16px;right:16px;font-size:13px;
+    width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--accent-soft);
+  }
+
+  .otp-overlay{
+    position:fixed;inset:0;background:rgba(10,10,16,0.72);
+    display:none;align-items:center;justify-content:center;z-index:100;padding:20px;
+  }
+  .otp-overlay.open{display:flex;}
+  .otp-modal{
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:32px;max-width:360px;width:100%;position:relative;color:var(--ink);text-align:center;
+  }
+  .otp-close{
+    position:absolute;top:12px;right:14px;background:none;border:none;
+    color:var(--ink-soft);font-size:22px;cursor:pointer;line-height:1;
+  }
+  .otp-icon{font-size:30px;margin-bottom:6px;}
+  .otp-modal h2{margin:0 0 8px;font-size:17px;}
+  .otp-modal p{margin:0 0 20px;font-size:13px;color:var(--ink-soft);line-height:1.5;}
+  .otp-btn{
+    width:100%;padding:11px;border-radius:12px;border:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
+    font-weight:700;font-size:14px;cursor:pointer;margin-bottom:8px;
+  }
+  .otp-btn:disabled{opacity:0.6;cursor:not-allowed;}
+  .otp-input{
+    width:100%;padding:11px;border-radius:12px;border:1px solid var(--line);
+    background:var(--paper);color:var(--ink);font-size:18px;text-align:center;
+    letter-spacing:4px;margin-bottom:10px;box-sizing:border-box;
+  }
+  .otp-sent-to{font-size:12px;color:var(--ink-soft);margin:0 0 10px;}
+  .otp-link{background:none;border:none;color:var(--accent);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:4px;}
+  .otp-msg{margin-top:12px;font-size:12.5px;min-height:16px;}
+  .otp-msg.error{color:#F0475A;}
+  .otp-msg.ok{color:#34D399;}
+
+  .more-tile{
+    border:1.5px dashed var(--line);
+    border-radius:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:26px 24px;
+    color:var(--ink-soft);
+    font-size:13px;
+    min-height:150px;
+  }
+
+  .portal-footer{
+    margin-top:36px;
+    text-align:center;
+    font-size:11.5px;
+    color:var(--ink-soft);
+  }
+
+  @media (max-width:560px){
+    .portal-card{padding:32px 22px;}
+    .portal-head{gap:14px;}
+    .brand-logo{width:52px;height:52px;}
+    .portal-titles h1{font-size:22px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="canvas-wrap">
+  <div class="portal-card">
+    <div class="portal-head">
+      <div class="brand-logo"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wAARCADwAPADASIAAhEBAxEB/8QAHQABAAICAwEBAAAAAAAAAAAAAAcIBgkDBAUCAf/EAEcQAAEDAwIEAwQGBAsIAwAAAAEAAgMEBQYHEQgSITETQVEUImFxCRUyQoGRGFJioRYjM1dygpKlwdLTJCVTVHOVorJDseH/xAAcAQEAAgIDAQAAAAAAAAAAAAAAAQUEBgMHCAL/xAA4EQACAQMBBQYEBAQHAAAAAAAAAQIDBBEFByExQVEGEmFxgaETMpGxFSJy0SNSssEWNEKCotLh/9oADAMBAAIRAxEAPwC/yIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiibULX/ABDCZpbbQk3y7s3a6mpXgRxO9JJOoB+A3PwC46taFKPem8IsNN0q71OsqFnTc5eHLxb4JeLJZXDUVdLSReLVVEUDP1pXhg/MqkWT6/alZJI9kV4FmpXdqe1t8MgfGQ7vP5j5KN6ytrbjOZrhWVFXI7qX1ErpCfxcSqqprMFuhHPsdn6fsiu6kVK8rxh4RTk/vFfTJsRfmOIxu5ZMpsrHejq6IH/2XZpL/Y694bQ3m31JPYQ1LH7/AJFa3ORn6jPyC/Q1rXczWtafUDYrhWtS5w9y2lseoY/LdvP6V/2Nme6LXnYdQ84xmRrrJlNzpmtO/gmYyRH5sfu39yzK+8UWsjcSFNjlFirro3fmqq2nlPiDy2a14aHfE9PgFl0dWpTeJbjVtX2W6pZxdS1kqyXJbpfR7vo2/Au1uB5r83HqFqXyfi54no7rJRXLNZbPK3/4KW200Q29QSwkj47rwIuLHiKhlEjNVLsT6Php3j8jHsrRNNZR1tUpzpTdOompLinuaNxCLVPYOO7iCs8zHXC7WS/Rt7x3C2MYXD+lCWFT1gP0iuNV8sVHqPhVZZnHo6vtEvtcI+JidyvaPkXlMHHku8ixjCNRcI1IsAvWD5Nb73R9Od1LJu6InykYdnMPwcAVk6EhERAEREAREQBERAEREAREQBERAF8veyON0kjg1rRuXE7AD1X0q2cSWqclMHad2GpLJJGB10mjOxDSN2wA/EdXfAgeZXBc3EaEHORd9n9Dr63ews6G7O9vkkuL/bq8I8HWXX6qvNRU4vg1Y+ntjd46m5QnlfVeRbGfux/tDq7y2HevyLM9OtNMg1Jv5orSwQUcJBq7hK0mOAHy/aefJo+Z2HVarUqVbqpv3tnp+w0/TezVg1DEKcVmUnxb6t82+S9EuRhzGPklbFGxz3vPK1jQSXH0AHcqQ7BoXqfkMLZ4MbfQwO2IluUgp9x68p97/wAVbXA9J8O0+o2fVNvbPcOXaS5VQD53nz2P3B8G7fis47K1oaOsZqv0R1frO1uffdPS6Sx/NPO/yimserfkindTwxZbbrNPdLvlOM2+lp4nTTzTzShkTGjdznOLAAABuSquVmq2E01/qrfFcZ6qnhlMbLhDTO8GcA/bYD7/ACny3aD8FIXG1xH1GXZVVaRYdXluO2yXku1RC7pX1LT1i3HeKMjYjs54Pk0KuWkmkmX6zaiQYniVKHPIEtXWzAiCih32MkhH5Bo6uPQeZGV+E27XP6msx2pa5GWXKL8O7u9mn7k2WrI7Fe4+a1XWlqfMtY/Zw+bT1H5L1FdHR3hr000cxd1DbLRBdrrUReHXXi4wtkmqQftNAO4jj/Yb07blx6rENVeG6lmpZ79p3D4FQwF8tn39yX18En7Lv2T0Plsq+50mUF3qTyunM37s5tStr2at9SgqUnwkvl9c74+66tFSrzj1lyGmjpr1QNqomPDh7xY8deoDx1bv26Kd8A4TuGXU3DxcrRR5JRVUe0dXS/XDnS0zz5HdpBae4dtsfmCBDskckMz4Zo3xyMcWvY8FrmkHYgg9iD5KR9DpM1g1Zo58MopKsjZlfG53JCacn3vEd2b6t7ncDYHquHT7ydKahxT5Ft287KWmqWk7xNQqwWVJ7k0uUnw8nyfgc2W/Rx47NBJLguodzoZR1ZT3mnZUsd8C+PkcPnsVVnVDhc1k0nimrr7jRuVni3LrvZnGqgaPV4AD4x8XNA+K3Er8LQ4EOAIPQ7racnmbBotxPMcowbJ4Miw+/VtmucP2Kqjk5SR+q4dntPm1wIPotifDnxtWXPp6TDdUfZLHkshbFTXJnuUdwd2DTv8AyMp9D7rj2IOzV6mv/BThuo1NVZJp9DS4vlRBkMcbeSirnd9pGNH8W4/8Rg/pA91ruOlOoY1dGlzsTrxljp/Z/qss94nvz832fD297xN+Xl677IDd6ij/AEUw3LcC0TsuL5tlcmSXiki5ZKt43EY+7C1x957WD3Q53vH4DYCQFBIREQBERAEREAREQBERAEREB4uXZFTYlg10yOrAMVDTum5f13Ae638XED8Vrxudxrbxeau63GYzVlXM6eaQ/ee47lWy4p72+h0vt9ljeWuuVcOfY944ml5H9osVQ1rmr1XKoqfJHoXZRpUaGnTvmvzVJYX6Y7vvnPkj2sSxm45jmdvxu1NHtFZJy85G7YmDq57vg0An93mr+YjilowvEaTHrLAI6anb1cR70rz9qR583E9T+XYKBeFLFoxS3rM6iIGRzxb6Zx+60APkI+ZLB/VKsss3SrZQp/FfF/Y0zah2gqXd/wDh1N/w6XHxk1vfonhdHnqFC3FNqy/SHhzu16t1QIr5cCLZajv1bPIDvIP6DA9/zaPVTStb30iWZyXLWDGsHhmJprRbjXSsHbxqh5A3+IZE3+2VbHVpT63W+43y+0tqttPNW3CunZTwQt9580r3BrWj1JcR+a3GcPmi1o0Q0eo8bpmRTXioDam717R1qagjqAe/Iz7LR6Dfu4qinAPp5DlfETVZdXwCWjxej9oj5huPapiY4t/k0SuHxAK2gqWQgiIoJIY1K4f7XnWc0eQUNc20mV210EcfMZ2gdHsHYSfdJPQjY9SOsmYtiVgwzHorNj1vjpKZnV23V8rvN73Hq5x9SvbRcMLenCbnFb2W93r1/d2tOyr1W6dPgv3644LPBbkERFzFQF0TZrQchF+NrozdRT+yCu8FvjiHm5vD59ubk5uvLvtuu8iAIiIAiIgCIiAIiIAiIgCIiAIiICrfFrUvN8xak39xsFTLt8S6Mf4KuPmrIcWtK8XjFqzb3XQ1MW/xDoz/AIqt/mtT1H/Myz4fY9T7Pe7/AIftu70l/XIvFw90MdHw92N7AA6pM1Q8+pdM7/ABSgoz4f6plVw848GEEwtmhcPQtmf/AIbKTFstrj4MMdF9jzp2mcnq933+PxJ/1MHoCtQ/GTcZLlxrZqXu3bTvpaVg9Ayli/xJP4rbwexWoXjGt8lu41s2a9pAnkpqlh9Q+liP/wBg/kshFEy1n0ctqjh0Sy29BoElXfBTuPq2KnYR++VyucqY/Ry3WOfRPLbIHAy0l8FS4ejZadgH74nK5yhkhERAEREA3Hqm49QtcvE3xOa3af8AFPlOI4lmn1fZ6E0wp6b2Gnk5Oemie73nsJO7nOPU+aiT9M7iR/nE/uyl/wBNTgjJt13HqE3HqFqK/TO4kf5xP7spf9NP0zuJH+cT+7KX/TTAybddx6hFqMZxl8SckrI26iHme4NH+7KXuTt/w1tsozM63QGoO8pjaXnbbd2w3/eoJOdERAEREAREQBERAEREAREQEFcU1kdXaWUF5jYXOttc3nIHZkjSwn+1yKoS2L5hjtPluCXXHKogR11M6EOP3HEbtd+DgD+C143CgrLXdqq2XCEw1dLK6CaM92vadiPzC1zV6Xdqqpyf9j0Lsn1SNfTp2Tf5qcs/7Zb/AL59i0HCnk0c+MXjEpZB41JOK2Fp7mOQBrtvk5v/AJhWJWvLAcxrsDz+gySiaZBA7kngB28aF3R7Py6j0ICv3YL7a8lxykvlmqm1NFVRiSORvp5gjyIO4I8iCs/SrhVKXw3xX2NG2m6BUstSd9Bfw6u/PSXNevHxy+h6S1sfSIYbJa9bMezWKJwpbzbPZJH7dPHp3nv82Ss/slbJ1B/FdpLLq5w53O2Wym8a+2twulraB70ksYPNEP6bC9oH63L6K0Osyl3ANqHDinETVYjXziKkyij9ni5nbD2qEmSLf5tMrR8SAtoK0O2y5XGx36ju9rqZaO4UM7KinnZ0fDKxwc1w+IIC3IaAay2jW3RyhyikfFDdYgKa7UDXdaWpA97p35HfaafMHbuDtLIRKSIigkIsDzXV7DcCyO3Wa+VcntFWd5PAZz+yx+UkgHUNJ6dNz3O2wWa0VbR3K3w11BUxVNLM0PimheHMe09iCOhC+I1Iyk4p70ZlfT7mhRhcVabUJ/K2tz8mQbqFwhaQam6kXLOMngvjrrcTGZzTXAxR+5G2NuzeU7e6wLGP0BtAf+WyX/urv8qtAi+zDKv/AKA2gP8Ay2S/91d/lUO8TnC5opo5w7XLLbDDe23p1TT0dB7TcTJH4j5Bzbt5fe2jbIdvgtgS1t/SAat0+S6kWzS+zVIlo8e5qm4uYd2urJG7CP5xxnr6GQjyQgrDphj0mWa2YljUTC83C8UtO4ejTK3mP4NDj+C3gjstYHANp3LlHEVNmlTTl1uxeldKHkbtNVMDHG35hniu/ALaApYQREUEhERAEREAREQBERAEREAVYOJbTGSOrOotlpy6J4bHdI2D7JHRs3y22a75NPqrPrjqKeCrpJaWphZNDKwxyRyNDmvaRsQQe4IWPc28a9NwZe9nNeraHfQvKO9LdJdYviv7ro0jWipG0p1dvOml2dFyvrrHUP5qmgLti09vEjJ+y/1HZ3n5EZFrJobX4XVz5DjNPLV448l7427ukoN/J3mY/R3l2PqYXWqyjVtanRo9PUa+m9ptPysVKU+KfFPo+akv/Vu3mxHEs2xnN7M25Y5dIqpmw8SLfllhP6r2Hq0/u9N1kPcLWxbbpcrNcmXC0XCpoKuP7E9NIY3j8R5fBSxYuJfUi0xNhr3269RtG3NWQ8kn9qMjf8QrmhrEGsVVh+B1HrGya6pzc9NqKcekt0l68H57iJ+NfhuqMPyir1cw2gLscuU3iXWmhb0t9S89Zdh2ikJ337NeSOzgq9aOax5bonqNFlOLzCRjwIq+3TOIhrod9+R+3Yju146tPqCQdgVRxTOudnqLbetPaCtpqmJ0M8D6wujlY4bOa5rozuCCQQVTzINIsNueZV1yssdfZrTPJ4kNqZOJvZge7GyubuW777bjcDpue6yvxS3x83szW47Ne0Dlh0UvHvR/fJsh0d11wHWzFG3TFLm1ldEwGutFS4NqqN37TfvN37Pbu0/A7gY/qnxBWPFKeez4pLBd75sWGRh5qelPq5w+24fqj8SOyo3jmHWHFaj2qzUskVXyFhqnSuMnKRsRvv0BHcDuveAAGwGw+Cr7nV3Jd2iseJvfZ3ZVCjNV9Wmp4/0Rzj1e5vySXm0du53O4Xm8VF1ulXLV1tS8yTTyndz3Hz//ADsB0CkvRDO85sWcUWOY5C660VdNtJa5XkRtH3pWu6+GQNyT2O3UE7KHrjdLbZ6I1l1roaOnBDTLKSBufkCT+AJVhdJdaOFrTPHnTyaq2ytvdUwe11goqroO/hxgxbhgP4uPU+QGLp9vVq1O/F4S5my9utd03TdPlZ14RnOSxGHTo3jglyxh8l1VuPJFV7JePbQay08hs9VfcimH2GUFvdE1x+L5iwAfHYqr+q/Hhqbm9JPaMJpIsJtcoLHTU0vjVz2/9YgCP+o3f9pbSeZMlo+KHivsmkljq8Rw+sp7jnU8ZYGMIfHagR/KzeXiebY+/Yu2HfWFSUl9y3LoqOkiq7verrVcrGAmSaqnkd6nqXOcdyT6kr6stjyHMcrgs1it1debzXynw6enY6WaZ5O5cfP1Jceg7krZrwscJ1Ho7AzNM0FPX5tPEWsbGQ+G1scPeZGfvSEdHSDy3a3puXTwI4kmcOujtJonodb8WJilu859tu1VH2lqXgcwB82sAaxvwbv5lSwiKCQiIgCIiAIiIAiIgCIiAIiIAiIgPxzWvYWvaHNI2II3BCg/UDhsxrJJpbnis7bBcHkudC1nNSyO/oDqz5t6fBTii4q1CFZd2ayWmk61e6TV+NZVHF8+j809z9ShWTaM6j4tI81uNVNXTt3/ANqtw9pjI9fd94fiAsDla6CUxztMTx3ZIOUj8CtmOy6NdZbPdBtcrVRVg9KmBkn/ALAqpqaNF/JLHmdo2G1+vCKjeWyk+sX3fZp/dGtvceoX4XNB6uaPmVsLk020+lfzyYRjznept8X+VdqkwnDqBwdRYpZKdw7OioYmkfjyriWjT/mRay2v2iX5baWf1L9mUCsuK5Lkc4isNguVxcfOnp3OaPm7blH4lZ1cOGzWZ2JOuFmt9g+sifdoK6vLHAbdyWtLd/2eYfNXfYxjGBjGhrR0DQNgF9LKo6RSg8zefY1jVdq2o3UXCzpqknz+aX1aS/4mpDMeGbihqbq6pvun1yuLm9GGgqIKiNg9GNY/p+SxEcOGvZk8MaSZbv8AGiIH577Lc5sPQJsPQK1ilFYisI6xr16lxUdWtJyk+Lby36moay8HfEVe5mtZp3PQRnvLcqyCnA/AvLv3KccC+jovdRPFValZzSUUHd9DYozNI4ehmkAa35hjlsJ2A7BFOThwYBphotpxpBZnUODY5BQyStDaiukJlqqn/qSu94jfryjZo8gFn6IhIREQBERAEREAREQBEXHPPBS0slTUzRwwxNL5JJHBrWNA3JJPQADrugORFUvLvpA9IMfySW12O03/ACSKFxY+vomRxQP2OxMZkcHPHx2APkduqzqz8XGlmQaD5FqfZvrWpp8dbC652gwtZWQ+K8MZ0LuRwJJIcHbe6fMbICekWBaS6rWPWDS2HO7BQXCjoZZpoRDXNY2UGJxaSQ1zhsSOnVYvohxI4hrtdr9b8Zs17oJLM2J07riyNofzue0cvI93nGe+3cICZUUE62cVmn2huYUWM5Db7zc7jU0ntjo7WyJ/gRlxa3n53t2LuV2wHkPiFLtBlFpuuA0+Y2yY1VrqaEXGCSPbeSIx+ICPiR+9AeyihvQ3iTwPXp11p8Yp7lbq+2hkktFc2xskfE/oJGcjnAtDvdPodvULt648QmEaC2a2VeVRV9bU3KV7KegtzWOmc1g3fIQ9zQGDdo337uG3nsBLKLxbXlFsuOnlFmb3uo7ZU25lzLqnYGGF0Ql3ftuBs09fkoa0e4utN9Z9SZMKsFvvdur/AGaSqp33KONjKlrCOZrOV7jzcp5tiB0B9EBP6KJNdOILFdA7fZKvKLTeLgy7yyxQi2sjcWGNrXHm53t/WG226iqw/SC6J3W9w0Fyt2UWWKVwaayrpI5Io/i/w5HOA+IaUBbBFCesnE5g2jDsZdeLfdrxBkUMlRRVFoEUkZjaY/eJc9u4IlaQRv0Uo5Tldnw7AbpmF8mMFsttG+tncNubka3m2A83HsB5kgID20UI6HcUGBa7326WXG6C72y4W+nZVOp7myNrpo3O5S5nI92/KeUHfb7QU3IAijnL9YrLjeX/AMDbLYb9mGUNibPNaMfp2yvpI3fZfUSPcyKEO8udwJ7gbL6xPVdt+zCPE8gwXLcQvM0T56eG8UjHw1LWbF/h1ED5IiWgjdpcD17FASIiii8a1VNJqdkGE49phl+UVdh9mFdU2s0bYmGeISsA8adjj7p9PJexherNmy7KarFK2yX7F8lpqf2t1mv9KIJpIOblM0TmOdHLGHe6Sxx2O24G4QGfoozyTWi1WvNanDcWxfI83yCjDTXUdggjdHQcw3aKieV7Io3EdQzmLtuu2y5cS1js2QZkzDL9j9/w3J5YnTU9qyCnZG6sY37bqeWN74pg3puGu5h3I26oCR0WLU2dWyq1iuGnLKWrFxobVBd5JyG+C6OaWSNrQd9+YGJxPTbYjqvrNs4tuC0NnqrnS1U7bpeKSzRCnDSWS1EnIxztyPdB77dfQFAZOijjOtWhh2f2nDLdg+R5Td7lRT3COCz+zjkihexjy4zSxjvI3tv3XXsutVBU5jbsXy7C8rwm43R5itzr9TRez1soBd4Uc8MkjPE2BIY4gnbpugJPREQBQjxeTXiDgwzp9lMgmNJGyUx78wgdPGJu3l4Zdv8ADdTcuvX0NHdLXU2240sVVR1MToZ4JmhzJWOBDmuB6EEEghAVR4CbPgkvDTJXW+kt1RkMtfURXl7o2vnb7/8AFMdv1Efh8pA7El3nuva4ibPp7aOA3U2PTqjsNNRSTB1YLN4fh+1e2QiQP5OgeD0LfLoNgFiWQ/R84vLk9TccD1Iv+JUdSSH0LIvaAxp7sbIHscW+gdzfMrOrDwd4VjXDplOl1pyG8CbJhD9YXifle4mKRr28kIIY0e6R+sd+rjsNgKw8P1Zxhw6FUrNHLTY6jEhU1Jikq/ZPE8TnPi7+I8O25t9ui9/6PS401pu+qd1u1RHTU9JRUtRVTPOzY2sfUOe4/AAEq5Gi+ktHo3o/T4FRXqousMM88wqp4WxOJlcXEcrSR03UN4vwV0GJad5zilr1KuzG5fFT09VVewxB8UMcjnvY0B2x5w/lJPlv6oRgplV5/ptqtq/qfnWrV4qaCW7W+aLGom00k/gTbgUzncn2RHHG0HfuZHHyVnuCXVP+EvDVk+m1yqA64Y3SzTUjXO3L6KVjyAPXkk5m/AOYp40u4bdM9NtNKTFp8etGSVEUkks10utsgknne95PXdp2AGzQAdtmrGLPwm2DGOIu66oYplNXZqa5xVEFRYKajjFN4c0XI9jSCCG8+0gAGwLQOyA166L3TM9LX0OveOs9otVlu0VoutMwnd8M0QcWv8uR4BaD917WHzC9bXnIct1qffNfK+KWkxZl2jxyy00/2gwRSS8oHbcBvM89Rzy7DstgGkvCtiOmulOVafXW6T5VZslcw1cVZA2DZrWcoALDuD2IcCCCAR1G65tS+FvC850DsWktirZ8VslmrRWU/skQqHOPJI1wcZHbkuMrnFxO5KkYId4ltVP4E8AWD4fb6nkuuV2OipCGu2cykZTROnd8Obdkfye70VTn5fp7pzeNKc20ovc1bk1lgbJkML6aSBstQH87tnO6Pa5kkkB2+6xp81fi98IlkyjVDDMoyfMa66W7FaCht1NZJqKPwJo6Zg6PO/UPeOZw26g8vYBZzqNw76Y6gaaXPFI8XslhmrGt8K52y2QRz0z2vDg5pDR6bEb9QSFAKtfSA3+2ZZpHpRktlqBPbrmaqrppR96OSCFzd/jseo9VF+suvFv1t06xHSvGtJqmgv7KqlbBV1XhieVwYYmxxANB2kc4bknboOnmLQ37gposi0SxbTe46m3eSjxuqq5qKpNBEXiOflJiI5ttmua4g/t7eQWaazcLmLaxY7jNPWXuts95x+JlNT3mkia6WSFrR7jgSPvAPB39077dygKecW2I3XAtMNBcPvk7Jbla7NUU1SWO5mtkD6bdoPmGk8oPoFL30gOqX1TpvYdKLbVhlVeeS4XHZ32aWM7Rtd8Hyjf5RH1Up6vcK41ms2GQZTqLcvrDG6WSmfcI6CIvr3PMZMj282zXfxQ326Eknp2Xar+FfHsg4ozrJl+Qz38N6Q2GroozSRsbF4UbDuTzBu5dsR1d1KAovZtR9MdIuJ/Bc20kvVTX2Olt9NR39ktLJA6R3L4VU/lf9rnG0o8g4fJbYqepgrKGKrpZmTQTMbJHIw7te0jcOB8wQd1DmrfDHprqhp4cbpbLa8WqW1MdTFc7RbII5WFu4LTsG8zXNcQQTt2Pks900w2p0+0psuF1V/qL79VU4pYq6piEcj4mk+G0gEj3W8rd/MNCEmAcNrYJMVzStrOU5HNmN2benO/lBMyoLYmHz5RAIeUduUjbus9yHOYcf1Tw3C3W2SeTJjWhlU2UNbT+zQCU7t23dzb7dNtlj2UaPurc6qc5wPMrtg+S1rGRV9RQRRVNLcWsGzDUU0oLHvaOgkHK4DpuRsvnHNJbvDqJbc5z7US65heLTHNFbGGkgoKSjEzeSRzYYhu97m9OZ7jsOwCAj21Z/QYTxdaxx1uPZTdTVSWVzTY7NPcBHy0AGzzE08hO/QHuvSxS+VGtPEhaM8stiuNnx3B4Lja5prrGKeqrK6oETXwGn3L42RtaHEvDSXObsOm6lLHcDgx7VPM81juU08uTvonyUzow1tP7NB4I5XDq7mHU79lxwae01v1pqNQrNc5qB1yoxS3m3MjDobi+PpBO7zbKwczOYb8zSAfsgoDCeFhsD+HGhq5g03yquNwmvrnfyrriauQTeL58wIaBv90N8tl88TDII9PcZrqMAZHT5baPqJzf5Q1LqpjXtb57GEzcw7Fu+/RevfdHKtma1+XabZ3dcFul0eJbpDS00NZQ18gG3jSU0o2EuwAMjC0nbrv3XLjWkEtNnNJm+f5pdc4yGga9lulrYYqWkt3MOVzoKaIBrZHDoZHFztugIQHjWsiLj+yRj/dM2D298YP32trakOI+Rc0fiFycRJBsen8AO8kue2RrG+biKguIH9Vrj8gVkuf6XxZhfbXlNlyO5Yrllpjkho71bmxyEwyEF8E0UgLJoiWh3K7sQCCCvKsWkV3fnlty/UjUK45pX2cvfaqZ9FDQUdHI9pY6YQxD35eUloe9x5Q47Ab7oDDNTcrpMO4z8Ku9Zab5c4zit0hEFmt0ldNuammO5jjBPL0O7uw3HquXK7vetcLviuN43gWV2e2W6/0V8uN9yK3OtscMdLJ4ojgZIRJJK9wDNw3laCSSpTrsCp63W2z6jG4zMnttpqrU2jDByPbPJFIXl2+4I8IDb4rL9kAHZERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAf/Z" alt="Chamaria Group logo"></div>
+      <div class="portal-titles">
+        <h1>Chamaria Group</h1>
+        <div class="sub">Business Portal</div>
+      </div>
+    </div>
+
+    <div class="apps-grid">
+      <a class="app-card gated" href="IT ASSET MGMT/index.html">
+        <span class="lock-badge">🔒</span>
+        <div class="app-icon">🖥️</div>
+        <h3>IT Asset Management and Helpdesk Portal</h3>
+        <p>IT Asset Management — assets, companies, employees, tickets, IT projects, office network &amp; live security status.</p>
+        <div class="go">Open →</div>
+      </a>
+
+      <a class="app-card" href="MBAI/index.html">
+        <div class="app-icon">🎓</div>
+        <h3>MBAI-CEOIT BOX<br>Learning Progress and Implementation Update</h3>
+        <p>CEO IT Business Learning Progress Training — meetings, attendance and learning tracker for the coaching programme.</p>
+        <div class="go">Open →</div>
+      </a>
+
+      <a class="app-card gated" href="https://evolvepack-enterprise-dashboard.streamlit.app/" target="_blank" rel="noopener noreferrer">
+        <span class="lock-badge">🔒</span>
+        <div class="app-icon">📊</div>
+        <h3>Evolvepack Finance Dashboard</h3>
+        <p>Evolvepack Pvt. Ltd. finance dashboard.</p>
+        <div class="go">Open →</div>
+      </a>
+
+      <div class="more-tile">+ More apps coming soon</div>
+    </div>
+
+    <div class="portal-footer">Chamaria Group — Business Portal · Maintained by Ravi Gosain (IT Administrator)</div>
+  </div>
+</div>
+
+<div class="otp-overlay" id="otpOverlay">
+  <div class="otp-modal">
+    <button class="otp-close" id="otpClose">&times;</button>
+    <div class="otp-icon">🔒</div>
+    <h2>Verification required</h2>
+    <p>This app is protected. Choose where to receive your one-time code.</p>
+
+    <div id="otpStepSend">
+      <button class="otp-btn otp-email-btn" data-email="gosain.ravi@gmail.com">Send code to gosain.ravi@gmail.com</button>
+      <button class="otp-btn otp-email-btn" data-email="ravigosain@chamariagroup.com">Send code to ravigosain@chamariagroup.com</button>
+    </div>
+
+    <div id="otpStepVerify" style="display:none;">
+      <p class="otp-sent-to" id="otpSentTo"></p>
+      <input type="text" id="otpCodeInput" inputmode="numeric" maxlength="6" placeholder="6-digit code" class="otp-input">
+      <button class="otp-btn" id="otpVerifyBtn">Verify &amp; Open</button>
+      <button class="otp-link" id="otpResendBtn">Resend code</button>
+    </div>
+
+    <div class="otp-msg" id="otpMsg"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const ALLOWED_EMAILS = ['gosain.ravi@gmail.com', 'ravigosain@chamariagroup.com'];
+const supa = window.supabase.createClient(
+  'https://bnaoylezumflyvfdmsnm.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuYW95bGV6dW1mbHl2ZmRtc25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0OTk3NTIsImV4cCI6MjEwMTA3NTc1Mn0.MG8UmI7d7TrqWnwgAPp5dv3sEdTrNv5vuyV3lZDwYEI'
+);
+
+let pendingHref = null;
+let pendingTarget = null;
+let selectedEmail = null;
+
+function otpShow(){ document.getElementById('otpOverlay').classList.add('open'); }
+function otpHide(){
+  document.getElementById('otpOverlay').classList.remove('open');
+  document.getElementById('otpStepSend').style.display = '';
+  document.getElementById('otpStepVerify').style.display = 'none';
+  document.getElementById('otpCodeInput').value = '';
+  document.querySelectorAll('.otp-email-btn').forEach(b => b.disabled = false);
+  selectedEmail = null;
+  setMsg('', '');
+}
+function setMsg(text, cls){
+  const el = document.getElementById('otpMsg');
+  el.textContent = text;
+  el.className = 'otp-msg ' + (cls || '');
+}
+function proceed(){
+  otpHide();
+  if(pendingTarget === '_blank') window.open(pendingHref, '_blank');
+  else window.location.href = pendingHref;
+}
+
+document.querySelectorAll('.app-card.gated').forEach(card => {
+  card.addEventListener('click', e => {
+    if(sessionStorage.getItem('hubGatePassed') === '1') return; // already verified this session
+    e.preventDefault();
+    pendingHref = card.getAttribute('href');
+    pendingTarget = card.getAttribute('target');
+    otpShow();
+  });
+});
+
+document.getElementById('otpClose').addEventListener('click', otpHide);
+document.getElementById('otpOverlay').addEventListener('click', e => { if(e.target.id === 'otpOverlay') otpHide(); });
+
+async function sendCodeTo(email){
+  document.querySelectorAll('.otp-email-btn').forEach(b => b.disabled = true);
+  setMsg('Sending…', '');
+  try{
+    const { error } = await supa.auth.signInWithOtp({ email });
+    if(error) throw error;
+    selectedEmail = email;
+    document.getElementById('otpStepSend').style.display = 'none';
+    document.getElementById('otpStepVerify').style.display = '';
+    document.getElementById('otpSentTo').textContent = 'Code sent to ' + email;
+    setMsg('', '');
+    document.getElementById('otpCodeInput').focus();
+  }catch(err){
+    setMsg('Could not send code — ' + (err.message || 'try again'), 'error');
+  }
+  document.querySelectorAll('.otp-email-btn').forEach(b => b.disabled = false);
+}
+
+document.querySelectorAll('.otp-email-btn').forEach(btn => {
+  btn.addEventListener('click', () => sendCodeTo(btn.dataset.email));
+});
+
+document.getElementById('otpResendBtn').addEventListener('click', async () => {
+  if(!selectedEmail) return;
+  setMsg('Resending…', '');
+  try{
+    const { error } = await supa.auth.signInWithOtp({ email: selectedEmail });
+    if(error) throw error;
+    setMsg('Code resent to ' + selectedEmail, 'ok');
+  }catch(err){
+    setMsg('Could not resend — ' + (err.message || 'try again'), 'error');
+  }
+});
+
+document.getElementById('otpVerifyBtn').addEventListener('click', async () => {
+  const code = document.getElementById('otpCodeInput').value.trim();
+  if(!code){ setMsg('Enter the code from your email', 'error'); return; }
+  if(!selectedEmail){ setMsg('Send a code first', 'error'); return; }
+  const btn = document.getElementById('otpVerifyBtn');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try{
+    const { error } = await supa.auth.verifyOtp({ email: selectedEmail, token: code, type: 'email' });
+    if(error) throw error;
+    await supa.auth.signOut(); // one-time verification only — don't keep a lingering session
+    sessionStorage.setItem('hubGatePassed', '1');
+    setMsg('Verified — opening…', 'ok');
+    setTimeout(proceed, 500);
+  }catch(err){
+    setMsg('Incorrect or expired code — try again', 'error');
+    btn.disabled = false; btn.textContent = 'Verify & Open';
+    return;
+  }
+  btn.disabled = false; btn.textContent = 'Verify & Open';
+});
+
+document.getElementById('otpCodeInput').addEventListener('keydown', e => { if(e.key === 'Enter') document.getElementById('otpVerifyBtn').click(); });
+</script>
+
+</body>
+</html>
