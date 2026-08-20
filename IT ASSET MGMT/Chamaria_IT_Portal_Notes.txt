@@ -1,0 +1,557 @@
+================================================================================
+CHAMARIA GROUP IT ASSET MANAGEMENT PORTAL
+COMPLETE PROJECT NOTES & CHAT EXPORT
+Exported: 2026-08-08
+================================================================================
+
+================================================================================
+PROJECT OVERVIEW
+================================================================================
+
+Project   : Chamaria Group IT Asset Management Portal
+Type      : Single-file HTML web app (index.html)
+Hosting   : GitHub Pages → gosainravi.github.io/IT-Asset-Management/
+Database  : Supabase (project: IT-ASSET-LIST)
+URL       : https://bnaoylezumflyvfdmsnm.supabase.co
+Anon Key  : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuYW95bGV6dW1mbHl2ZmRtc25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0OTk3NTIsImV4cCI6MjEwMTA3NTc1Mn0.MG8UmI7d7TrqWnwgAPp5dv3sEdTrNv5vuyV3lZDwYEI
+Delete PW : Delhi@2026
+Hash      : 8baf299d8d56fa54e03adc21cca7973e6b6b17c984e495ae437be32b995605e9
+Auth      : @chamariagroup.com domain only
+Created by: Ravi Gosain (IT Administrator), Chamaria Group, Delhi
+
+================================================================================
+8 GROUP COMPANIES
+================================================================================
+
+1. Star Cement Limited (Fundcap LLP)
+2. Star Cement Meghalaya Limited (Fundcap LLP)
+3. Fundcap LLP
+4. Growealth Capital LLP
+5. EVOLVEPACK Pvt. Ltd.
+6. Robust Iron and Metallics Pvt. Ltd
+7. Rajendra Udyog HUF
+8. SRDA Advisory Service LLP
+
+================================================================================
+PORTAL FEATURES & NAVIGATION
+================================================================================
+
+SIDEBAR NAVIGATION:
+  MAIN:
+  - Dashboard
+  - Assets
+  - Companies
+  - User (employees)
+  - IT Projects
+  - Raise Ticket
+  - Asset Discovery  (NEW)
+
+  IT SERVICES:
+  - Domain
+  - Email Solution
+  - Backup Software
+  - Endpoint Solution
+  - Software Licenses
+  - Office Network
+
+TOP HEADER QUICK ACCESS:
+  - 🔔 Warranty bell alerts
+  - 📋 IT Projects (with active count badge)
+  - 🌐 Office Network ▾ (dropdown with Link 1/Link 2 firewall buttons per site)
+  - 🎫 Raise Issue (red button)
+  - User email + Sign out
+
+DASHBOARD:
+  - Stat cards: Total Assets, Total Value, Companies, Employees,
+                Warranty Expiring ≤30d, Warranty Expired
+  - Bar charts: Asset Value — Company Wise, Asset Value — Type Wise
+  - Warranty Expiring Soon/Expired table
+
+ASSETS TAB:
+  - Full CRUD, invoice/PDF upload, bulk import CSV/XLSX, export CSV
+  - Filters: Company, Category, Assigned User, Warranty Status
+  - Sortable columns, pagination (10 per page)
+  - PO fields: PO Number, PO Date, PO Qty, PO Amount
+  - Asset Health tracking
+  - View panel with full details
+
+COMPANIES TAB:
+  - CRUD, GST number, CST certificate upload/download
+  - Asset count + value stats per company
+  - Export CSV
+
+USER TAB (Employees):
+  - CRUD, Employee Code, Department, Type, Joining Date, Email, Phone
+  - Import/Export CSV
+  - View panel showing assigned assets
+
+IT PROJECTS:
+  - Active Projects / Completed Projects tabs
+  - Per-project: Name, Company, Start Date, Order/Delivery/Installation Status
+  - Equipment checklist: 23 predefined items (tick to select)
+  - Custom equipment add option
+  - Inline detail panel below table (auto-shows, click row to switch)
+  - Overall Progress bars (Order/Delivery/Installation %)
+  - Item-wise status table with Edit/Delete per item
+  - + Add Item button in detail panel
+  - Export CSV
+
+IT SERVICES — 6 TYPES:
+  1. Domain: Name, Registrar, Dates, Amount, Invoice+PO
+  2. Email Solution: Provider, Basic/Standard/Enterprise license tiers,
+                    auto-calc total cost, expiry, Invoice+PO
+  3. Backup Software: Company, Users, Per User Cost, auto-calc total
+  4. Endpoint Solution: Name, Licenses, Per User Fee, auto-calc total
+  5. Software Licenses: Software, Version, Dates, Value, Assigned Employee
+  6. Office Network: Site management with Firewall (primary/secondary URL as
+                    Link 1/Link 2 buttons), VPN (software, IP, port,
+                    credentials, notes), WiFi (IP, credentials),
+                    Network Switch (IP, credentials)
+                    Password fields have show/hide toggle
+
+RAISE TICKET (IT Ticketing System):
+  - Quick access red button in header
+  - Ticket form: Subject, Asset Type, Brand, Model, Serial Number,
+                 Specifications, Priority (Low/Medium/High/Urgent),
+                 Description, Image attachment
+  - Auto ticket number: TKT-YYYYMMDD-XXX
+  - Auto-assigned to: IT Admin
+  - Email notification to: ravigosain@chamariagroup.com + skjain@chamariagroup.com
+  - Ticket list: Open/In Progress/Resolved/Closed filters
+  - IT Admin: Update status, add resolution notes, delete
+
+ASSET DISCOVERY (Agent-based):
+  - Python agent (Chamaria_IT_Agent.py) runs on any Windows PC
+  - Collects: Serial No, Model, CPU, RAM, Storage, IP, MAC, OS,
+              Username, Graphics, Battery, Installed Software list
+  - Pushes to Supabase asset_discovery table (anon insert allowed)
+  - Portal shows pending scans for IT Admin review
+  - "Add to Assets" pre-fills asset form from scan data
+  - "Dismiss" option for rejected scans
+
+================================================================================
+SUPABASE DATABASE TABLES
+================================================================================
+
+TABLES:
+1. companies          - id, name, address, gst_number, cst_certificate_*
+2. employees          - id, name, employee_code, department, employee_type,
+                        joining_date, email, phone, company_id
+3. assets             - id, asset_code (auto), company_id, category, brand,
+                        model, serial_no, assigned_employee_id, assigned_user_name,
+                        date_assigned, department, authorised_by, location,
+                        purchase_date, purchase_amount, vendor, qty,
+                        po_number, po_date, po_qty, po_amount,
+                        invoice_number, invoice_date, invoice_value,
+                        has_invoice, invoice_file_name, invoice_storage_path,
+                        warranty_start, warranty_end, insurance_date,
+                        asset_health, system_type, processor, ram, hdd, ssd,
+                        remarks, created_at
+4. it_services        - id, service_type, company_id, domain_name, registered_with,
+                        purchase_date, expiry_date, registration_amount,
+                        provider, purchased_from, per_user_fee, tenure,
+                        num_users, total_cost, mail_storage_limit,
+                        drive_storage_limit,
+                        basic_license_users/rate, standard_license_users/rate,
+                        enterprise_license_users/rate,
+                        software_company, supplier, per_user_cost,
+                        software_name, total_license, per_user_license_fee,
+                        sw_license_type, sw_version, sw_value_per_license,
+                        sw_num_licenses, sw_assigned_employee_id,
+                        fw_site_name, fw_primary_url, fw_secondary_url,
+                        fw_access_type, fw_status,
+                        fw_username, fw_password,
+                        vpn_software, vpn_ip, vpn_port, vpn_username,
+                        vpn_password, vpn_notes,
+                        wifi_ip, wifi_username, wifi_password,
+                        switch_ip, switch_username, switch_password,
+                        has_invoice, invoice_file_name, invoice_storage_path,
+                        has_po, po_file_name, po_storage_path,
+                        remarks
+5. it_projects        - id, name, company_id, start_date, completion_date,
+                        order_status, delivery_status, install_status,
+                        status (active/on_hold/completed),
+                        items_json (JSON array of equipment items),
+                        remarks, created_at
+6. tickets            - id, ticket_number, subject, description, asset_type,
+                        priority, status, submitted_by_email,
+                        submitted_by_name, assigned_to, device_brand,
+                        device_model, serial_number, specifications,
+                        image_path, image_filename, resolution_notes,
+                        created_at, updated_at, resolved_at
+7. asset_discovery    - id, computer_name, username, manufacturer, model,
+                        serial_number, bios_version, system_type,
+                        processor, processor_cores, processor_speed,
+                        ram_gb, storage, free_space, graphics, monitor,
+                        battery, os_name, os_version, os_build, os_arch,
+                        ip_address, mac_address, gateway,
+                        installed_software (JSONB), last_boot,
+                        agent_version, scan_timestamp, status
+8. app_settings       - id=1, org_name, logo_url
+
+STORAGE BUCKETS:
+  - invoices           (asset invoices + IT service invoices)
+  - company-docs       (CST certificates)
+  - po-documents       (Purchase Orders)
+  - branding           (Company logo)
+  - ticket-attachments (Ticket screenshots/images)
+
+RLS: Enabled on all tables
+  - authenticated users: full CRUD
+  - anon: BLOCKED (restrictive policy) except asset_discovery INSERT
+
+TRIGGERS (database-level protection):
+  - protect_it_services_attachments → invoice/PO never auto-deleted on update
+  - protect_asset_invoice            → asset invoice never auto-deleted on update
+  - protect_company_cert             → CST certificate never auto-deleted on update
+
+================================================================================
+COMPLETE SQL MIGRATION (Run in Supabase SQL Editor)
+================================================================================
+
+-- ① IT SERVICES columns
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS po_file_name TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS po_storage_path TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS invoice_file_name TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS invoice_storage_path TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS has_invoice BOOLEAN DEFAULT false;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS has_po BOOLEAN DEFAULT false;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS fw_site_name TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS fw_primary_url TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS fw_secondary_url TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS fw_access_type TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS fw_status TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS fw_username TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS fw_password TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS vpn_software TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS vpn_ip TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS vpn_port TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS vpn_username TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS vpn_password TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS vpn_notes TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS wifi_ip TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS wifi_username TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS wifi_password TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS switch_ip TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS switch_username TEXT;
+ALTER TABLE it_services ADD COLUMN IF NOT EXISTS switch_password TEXT;
+
+-- ② IT PROJECTS table
+CREATE TABLE IF NOT EXISTS it_projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  start_date DATE, completion_date DATE,
+  order_status TEXT, delivery_status TEXT, install_status TEXT,
+  status TEXT DEFAULT 'active',
+  items_json TEXT DEFAULT '[]',
+  remarks TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE it_projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "select" ON it_projects FOR SELECT TO authenticated USING (true);
+CREATE POLICY "insert" ON it_projects FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "update" ON it_projects FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "delete" ON it_projects FOR DELETE TO authenticated USING (true);
+CREATE POLICY "block_anon" ON it_projects AS RESTRICTIVE FOR ALL TO anon USING (false) WITH CHECK (false);
+
+-- ③ TICKETS table columns (table already exists)
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ticket_number TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS asset_type TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'Medium';
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Open';
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS submitted_by_email TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS submitted_by_name TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT 'IT Admin';
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS image_path TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS image_filename TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolution_notes TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS device_brand TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS device_model TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS serial_number TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS specifications TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "select" ON tickets;
+DROP POLICY IF EXISTS "insert" ON tickets;
+DROP POLICY IF EXISTS "update" ON tickets;
+DROP POLICY IF EXISTS "delete" ON tickets;
+DROP POLICY IF EXISTS "block_anon" ON tickets;
+CREATE POLICY "select" ON tickets FOR SELECT TO authenticated USING (true);
+CREATE POLICY "insert" ON tickets FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "update" ON tickets FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "delete" ON tickets FOR DELETE TO authenticated USING (true);
+CREATE POLICY "block_anon" ON tickets AS RESTRICTIVE FOR ALL TO anon USING (false) WITH CHECK (false);
+
+-- ④ ASSET DISCOVERY table
+CREATE TABLE IF NOT EXISTS asset_discovery (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  computer_name TEXT, username TEXT, manufacturer TEXT, model TEXT,
+  serial_number TEXT, bios_version TEXT, system_type TEXT,
+  processor TEXT, processor_cores TEXT, processor_speed TEXT,
+  ram_gb TEXT, storage TEXT, free_space TEXT, graphics TEXT,
+  monitor TEXT, battery TEXT, os_name TEXT, os_version TEXT,
+  os_build TEXT, os_arch TEXT, ip_address TEXT, mac_address TEXT,
+  gateway TEXT, installed_software JSONB DEFAULT '[]',
+  installed_software_raw TEXT, last_boot TEXT,
+  agent_version TEXT, scan_timestamp TIMESTAMPTZ DEFAULT now(),
+  status TEXT DEFAULT 'pending'
+);
+ALTER TABLE asset_discovery ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_insert" ON asset_discovery FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "auth_all" ON asset_discovery FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ⑤ PROTECTION TRIGGERS
+CREATE OR REPLACE FUNCTION protect_it_services_attachments()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.has_invoice = true AND NEW.has_invoice = false
+     AND (NEW.invoice_file_name IS NULL OR NEW.invoice_file_name = '') THEN
+    NEW.has_invoice := OLD.has_invoice;
+    NEW.invoice_file_name := OLD.invoice_file_name;
+    NEW.invoice_storage_path := OLD.invoice_storage_path;
+  END IF;
+  IF OLD.has_po = true AND NEW.has_po = false
+     AND (NEW.po_file_name IS NULL OR NEW.po_file_name = '') THEN
+    NEW.has_po := OLD.has_po;
+    NEW.po_file_name := OLD.po_file_name;
+    NEW.po_storage_path := OLD.po_storage_path;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS protect_it_services_attachments ON it_services;
+CREATE TRIGGER protect_it_services_attachments
+  BEFORE UPDATE ON it_services
+  FOR EACH ROW EXECUTE FUNCTION protect_it_services_attachments();
+
+CREATE OR REPLACE FUNCTION protect_asset_invoice()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.has_invoice = true AND NEW.has_invoice = false
+     AND (NEW.invoice_file_name IS NULL OR NEW.invoice_file_name = '') THEN
+    NEW.has_invoice := OLD.has_invoice;
+    NEW.invoice_file_name := OLD.invoice_file_name;
+    NEW.invoice_storage_path := OLD.invoice_storage_path;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS protect_asset_invoice ON assets;
+CREATE TRIGGER protect_asset_invoice
+  BEFORE UPDATE ON assets
+  FOR EACH ROW EXECUTE FUNCTION protect_asset_invoice();
+
+CREATE OR REPLACE FUNCTION protect_company_cert()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.cst_certificate_filename IS NOT NULL
+     AND (NEW.cst_certificate_filename IS NULL OR NEW.cst_certificate_filename = '') THEN
+    NEW.cst_certificate_filename := OLD.cst_certificate_filename;
+    NEW.cst_certificate_path := OLD.cst_certificate_path;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS protect_company_cert ON companies;
+CREATE TRIGGER protect_company_cert
+  BEFORE UPDATE ON companies
+  FOR EACH ROW EXECUTE FUNCTION protect_company_cert();
+
+-- ⑥ STORAGE BUCKETS
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('ticket-attachments', 'ticket-attachments', false)
+ON CONFLICT (id) DO NOTHING;
+DROP POLICY IF EXISTS "auth_upload_tickets" ON storage.objects;
+DROP POLICY IF EXISTS "auth_read_tickets" ON storage.objects;
+CREATE POLICY "auth_upload_tickets" ON storage.objects
+  FOR INSERT TO authenticated WITH CHECK (bucket_id = 'ticket-attachments');
+CREATE POLICY "auth_read_tickets" ON storage.objects
+  FOR SELECT TO authenticated USING (bucket_id = 'ticket-attachments');
+
+================================================================================
+OFFICE NETWORK SITES (Add manually via portal)
+================================================================================
+
+1. Chamaria Home Office
+   Primary IP  : 59.144.171.122
+   Secondary IP: 223.239.130.166
+   Access Type : Management Access
+
+2. Head Office
+   Primary IP  : 122.160.233.250
+   Secondary IP: (none)
+   Access Type : Management Access
+
+3. Evolvepack Pvt. Ltd. (Kosi Mathura)
+   Primary IP  : (URL to be provided later)
+
+4. Evolvepack Pvt. Ltd. (Kundali, Haryana)
+   Primary IP  : (URL to be provided later)
+
+================================================================================
+IT PROJECT EQUIPMENT LIST (23 predefined items)
+================================================================================
+
+1.  CCTV — NVR
+2.  CCTV — Camera
+3.  Server
+4.  UPS
+5.  UPS Batteries
+6.  Networking Cable
+7.  Networking Job Work
+8.  EPBAX
+9.  Internet Lines
+10. Firewall
+11. LAN / Phone Jack I/O
+12. Face Plate for I/O
+13. Patch Cord
+14. TV
+15. Attendance Machine
+16. Subscription
+17. Software
+18. Network Rack
+19. Network Switch
+20. POE Network Switch
+21. HDD for NVR
+22. Laptop
+23. Desktop
++ Custom (add any new item)
+
+================================================================================
+ASSET DISCOVERY AGENT
+================================================================================
+
+File      : Chamaria_IT_Agent.py
+Compile   : pip install pyinstaller
+            pyinstaller --onefile --windowed --name "Chamaria_IT_Agent" Chamaria_IT_Agent.py
+Output    : dist/Chamaria_IT_Agent.exe
+
+What it collects:
+  - Computer Name, Username
+  - Manufacturer, Model, Serial Number
+  - OS Name, Version, Build, Architecture
+  - Processor, Cores, Speed
+  - RAM (GB)
+  - Storage drives (model + size)
+  - Free disk space
+  - Graphics card
+  - Battery (laptop detection)
+  - Monitor
+  - IP Address, MAC Address, Gateway
+  - Up to 100 installed software (name, version, publisher)
+  - Last boot time
+
+How to use:
+  1. Run Chamaria_IT_Agent.exe on employee PC
+  2. GUI shows all collected info
+  3. Data auto-sent to Supabase asset_discovery table
+  4. IT Admin opens portal → Asset Discovery tab
+  5. Review → "Add to Assets" → asset form pre-filled
+  6. Select Company → Save → Done!
+
+================================================================================
+KEY BUG FIXES APPLIED
+================================================================================
+
+1. closeServicePanel missing → JS ReferenceError → initAuth() never ran →
+   Supabase never connected. FIXED: function added.
+
+2. PDF/Invoice auto-delete on edit → Supabase UPDATE was sending has_invoice=false.
+   FIXED: _svcOpenInvoiceState + _assetOpenInvoiceState capture state at panel-open
+   time. Database triggers add extra protection.
+
+3. Company dropdown reset on tab switch → Supabase fires SIGNED_OUT+SIGNED_IN
+   during browser tab switch (WebSocket reconnect). FIXED: 3-second delay on
+   SIGNED_OUT so brief reconnects don't trigger loadAll().
+
+4. loadProjects() missing from loadAll() → IT Projects tab always empty on
+   page load. FIXED.
+
+5. Double seeding → isSeedingInProgress lock prevents race condition.
+
+6. Reset Sample Data button removed permanently → too dangerous for production.
+
+7. Auto-seed disabled → production system uses real data.
+
+================================================================================
+PENDING / TODO
+================================================================================
+
+1. EmailJS setup for automatic ticket email notifications
+   - Sign up at emailjs.com
+   - Create Gmail/Outlook service
+   - Create template with variables:
+     {{ticket_number}}, {{subject}}, {{priority}},
+     {{description}}, {{submitted_by}}, {{asset_type}},
+     {{device_brand}}, {{device_model}}, {{serial_number}}
+   - Fill in portal code:
+     EMAILJS_PUBLIC_KEY  = 'your_key'
+     EMAILJS_SERVICE_ID  = 'your_service'
+     EMAILJS_TEMPLATE_ID = 'your_template'
+
+2. Add Office Network sites (4 sites) with actual Firewall URLs
+
+3. Re-enter company GST numbers (lost in earlier data reset)
+
+4. Re-attach CST certificates to companies
+
+5. Compile Chamaria_IT_Agent.py to .exe and distribute to employees
+
+6. Run all pending SQL migrations in Supabase
+
+7. Future modules: Finance, HRMS, Purchase, etc.
+
+================================================================================
+CURRENT DATA (as of last session)
+================================================================================
+
+Total Assets    : 88
+Total Value     : ₹79,39,081
+Companies       : 8
+Employees/Users : 41
+IT Projects     : Active (at least 1 — EVOLVEPACK CHATTA IT PROJECT)
+Domains         : Multiple (chamariagroup.co.in, .com, .in, fundcaplp.co.in,
+                  evolvepacks.com, Evolvepack.in, srdaa.com,
+                  growealthcap.com, robustiron.com, robustiron.in,
+                  fundcaplp.in)
+
+================================================================================
+CHANGES MADE IN THIS SESSION (2026-08-08)
+================================================================================
+
+1.  Fixed closeServicePanel missing → Supabase connection working
+2.  Fixed loadProjects not in loadAll()
+3.  Changed 'Employees' sidebar label → 'User'
+4.  Added 'Firewall Access' → redesigned as 'Office Network' (full network mgmt)
+    Fields: Firewall Primary/Secondary URL (Link 1/Link 2 buttons),
+            VPN (software, IP, port, username, password, notes),
+            WiFi (IP, username, password),
+            Network Switch (IP, username, password)
+            Password fields with show/hide toggle
+5.  Added IT Projects section with:
+    - Equipment checklist (23 items, tick to select)
+    - Custom equipment add
+    - Inline detail panel (permanent below table)
+    - Item-wise edit/delete/add in detail panel
+    - Progress bars (Order/Delivery/Installation)
+    - Export CSV
+6.  Added 📋 IT Projects quick access button in header (with badge count)
+7.  Added 🌐 Office Network quick access dropdown in header
+    (shows all sites with Link 1/Link 2 buttons, no tab switch needed)
+8.  Added 🎫 Raise Issue button and full IT Ticketing System
+    - Ticket form: Subject, Asset Type, Brand, Model, Serial No,
+                   Specifications, Priority, Description, Image
+    - Auto ticket number TKT-YYYYMMDD-XXX
+    - Email to ravigosain@ + skjain@chamariagroup.com
+    - IT Admin ticket management (status update, resolution notes)
+    - Changed 'IT Tickets' sidebar label → 'Raise Ticket'
+9.  Added 🔍 Asset Discovery section
+    - Python agent (Chamaria_IT_Agent.py) for Windows
+    - Auto-collects: serial, model, CPU, RAM, storage, IP, MAC,
+                     OS, username, 100+ installed software
+    - Portal review workflow: Pending → Approve → Add to Assets
+    - Pre-fills asset form from scan data
+10. Firewall IP columns as clickable Link 1 / Link 2 buttons in table
+11. Office Network Import button added
