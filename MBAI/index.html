@@ -2211,8 +2211,11 @@ function reseed(){
   DB=seed(); save(); refreshAll(); toast('Original spreadsheet data reloaded');
 }
 function wipe(){
-  if(!confirm('Delete all meetings, attendance, learning items and members?')) return;
-  DB={members:[],meetings:[],attendance:[],learning:[],settings:DB.settings,seq:{S:0,M:0,A:0,L:0}};
+  const pw=prompt('This deletes ALL data for everyone on this shared board — meetings, attendance, learning items, members and app features. This cannot be undone.\n\nEnter the clear-data password to continue:');
+  if(pw===null) return;
+  if(pw!=='MBAI2026Clear'){ toast('Incorrect password — nothing was deleted'); return }
+  if(!confirm('Are you absolutely sure? This is your last chance to cancel.')) return;
+  DB={members:[],meetings:[],attendance:[],learning:[],appFeatures:[],settings:DB.settings,seq:{S:0,M:0,A:0,L:0,AF:0}};
   save(); refreshAll(); toast('All data cleared');
 }
 
