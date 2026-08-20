@@ -886,20 +886,8 @@ function markReadOnly(){
 }
 async function save(){
   try{
-    let editCode=localStorage.getItem('mbaiEditCode');
-    if(!editCode){
-      editCode=prompt('Enter the edit code to save changes:')||'';
-      if(editCode) localStorage.setItem('mbaiEditCode', editCode);
-    }
-    const { error } = await supa.rpc('update_portal_state', { new_data: DB, edit_code: editCode });
-    if(error){
-      if(/edit.?code/i.test(error.message||'')){
-        localStorage.removeItem('mbaiEditCode');
-        toast('Incorrect edit code — your change was not saved');
-      } else {
-        toast('Could not save your change — it is only visible to you for now');
-      }
-    }
+    const { error } = await supa.rpc('update_portal_state', { new_data: DB });
+    if(error) toast('Could not save your change — it is only visible to you for now');
   }catch(err){
     toast('Could not save your change — it is only visible to you for now');
   }
