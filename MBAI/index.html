@@ -268,6 +268,7 @@ a{color:var(--series-1)}
     <a class="nav-link" data-nav="meetings"><i class="bi bi-camera-video"></i> Meetings</a>
     <a class="nav-link" data-nav="attendance"><i class="bi bi-person-check"></i> Attendance</a>
     <a class="nav-link" data-nav="learning"><i class="bi bi-list-check"></i> Learning Tracker</a>
+    <a class="nav-link" data-nav="appfeatures"><i class="bi bi-app-indicator"></i> App Features</a>
     <a class="nav-link" data-nav="members"><i class="bi bi-people-fill"></i> Members</a>
     <div class="nav-sep">Analysis</div>
     <a class="nav-link" data-nav="reports"><i class="bi bi-bar-chart-line"></i> Reports</a>
@@ -334,7 +335,7 @@ a{color:var(--series-1)}
 
     <div class="row g-3 mb-3">
       <div class="col-12 col-xl-6"><div class="card h-100">
-        <div class="card-header"><i class="bi bi-bar-chart-fill" style="color:var(--muted)"></i> Meetings conducted by month</div>
+        <div class="card-header"><i class="bi bi-bar-chart-fill" style="color:var(--muted)"></i> Meetings by date — participants &amp; duration</div>
         <div class="card-body"><div class="chart-wrap"><canvas id="chMonth"></canvas></div>
           <button class="tbl-toggle mt-2" onclick="toggleTable('tvMonth')">Show table view</button>
           <div class="data-table-view" id="tvMonth"></div></div></div></div>
@@ -358,6 +359,21 @@ a{color:var(--series-1)}
           <div class="hint mt-2">Both measures are percentages on one shared axis.</div>
           <button class="tbl-toggle mt-1" onclick="toggleTable('tvTeam')">Show table view</button>
           <div class="data-table-view" id="tvTeam"></div></div></div></div>
+    </div>
+
+    <div class="row g-3 mt-1">
+      <div class="col-12 col-xl-5"><div class="card h-100">
+        <div class="card-header"><i class="bi bi-app-indicator" style="color:var(--muted)"></i> App Features — Implementation Status</div>
+        <div class="card-body">
+          <div class="chart-wrap" style="height:222px"><canvas id="chAppFeatures"></canvas></div>
+          <button class="tbl-toggle mt-2" onclick="toggleTable('tvAppFeatures')">Show table view</button>
+          <div class="data-table-view" id="tvAppFeatures"></div>
+        </div></div></div>
+      <div class="col-12 col-xl-7"><div class="card h-100">
+        <div class="card-header"><i class="bi bi-list-task" style="color:var(--muted)"></i> App Features detail</div>
+        <div class="card-body p-0"><div class="tbl-scroll"><table class="table" id="tblDashAppFeatures">
+          <thead><tr><th>Feature</th><th>Responsible Person</th><th>Department</th><th>Status</th></tr></thead>
+          <tbody></tbody></table></div></div></div></div>
     </div>
   </section>
 
@@ -476,6 +492,29 @@ a{color:var(--series-1)}
         <th data-sort="owner">Assigned to</th><th data-sort="due">Due</th>
         <th data-sort="priority">Priority</th><th data-sort="status">Status</th>
         <th class="nosort" style="min-width:150px">Implementation</th><th class="nosort">Evidence</th><th class="nosort"></th></tr></thead>
+      <tbody></tbody></table></div></div></div>
+  </section>
+
+  <!-- ============ APP FEATURES ============ -->
+  <section class="section" id="sec-appfeatures">
+    <div class="filter-row">
+      <div class="fitem" style="flex:1 1 200px"><label class="form-label">Search</label>
+        <input class="form-control form-control-sm" id="afSearch" placeholder="Feature, person, department…" oninput="renderAppFeatures()"></div>
+      <div class="fitem"><label class="form-label">Status</label>
+        <select class="form-select form-select-sm" id="afStatus" onchange="renderAppFeatures()">
+          <option value="">All statuses</option><option>Pending</option><option>In Progress</option><option>Done</option></select></div>
+      <div class="fitem"><label class="form-label">Department</label>
+        <select class="form-select form-select-sm" id="afDept" onchange="renderAppFeatures()"><option value="">All</option></select></div>
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV('appFeatures')"><i class="bi bi-download"></i> CSV</button>
+        <button class="btn btn-brand btn-sm" onclick="openAppFeature()"><i class="bi bi-plus-lg"></i> Add feature</button>
+      </div>
+    </div>
+    <div class="row g-3 mb-3" id="afKpis"></div>
+    <div class="card"><div class="card-body p-0"><div class="tbl-scroll"><table class="table" id="tblAppFeatures">
+      <thead><tr>
+        <th>App Name</th><th>Responsible Person</th><th>Department</th><th>Status</th>
+        <th class="nosort">Target Date</th><th class="nosort">Reference</th><th class="nosort">Files</th><th class="nosort"></th></tr></thead>
       <tbody></tbody></table></div></div></div>
   </section>
 
@@ -702,6 +741,45 @@ a{color:var(--series-1)}
     </div></div>
   <div class="modal-footer"><button class="btn btn-ghost btn-sm" data-bs-dismiss="modal">Cancel</button>
     <button class="btn btn-brand btn-sm" onclick="saveLearning()">Save item</button></div>
+</div></div></div>
+
+<div class="modal fade" id="mdAppFeature" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" style="font-size:15px;font-weight:650">App Feature</h5>
+    <button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input type="hidden" id="f_af_id">
+    <div class="row g-3">
+      <div class="col-md-8"><label class="form-label">App Name *</label><input class="form-control" id="f_af_name"></div>
+      <div class="col-md-4"><label class="form-label">Implementation Status</label>
+        <select class="form-select" id="f_af_status"><option>Pending</option><option>In Progress</option><option>Done</option></select></div>
+      <div class="col-12"><label class="form-label">App Features and Options</label><textarea class="form-control" id="f_af_purpose" rows="2"></textarea></div>
+      <div class="col-md-6"><label class="form-label">Responsible Person</label>
+        <select class="form-select" id="f_af_person" multiple size="4"></select>
+        <div class="hint mt-1">Ctrl/Cmd-click (or tap each) to select more than one</div></div>
+      <div class="col-md-6"><label class="form-label">Department</label>
+        <input class="form-control" id="f_af_dept" placeholder="e.g. IT, Finance, Operations"></div>
+      <div class="col-md-6"><label class="form-label">Start Date</label><input type="date" class="form-control" id="f_af_startDate"></div>
+      <div class="col-md-6"><label class="form-label">Target Implementation Date</label><input type="date" class="form-control" id="f_af_targetDate"></div>
+      <div class="col-12"><label class="form-label">Reference Link</label><input class="form-control" id="f_af_link" placeholder="https://…"></div>
+      <div class="col-md-4">
+        <label class="form-label">Feature screenshot</label>
+        <input type="file" class="form-control form-control-sm" accept="image/*" id="f_af_screenshotFile" onchange="afUploadFile(this,'screenshot')">
+        <div class="hint mt-1" id="af_screenshotHint"></div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Data file</label>
+        <input type="file" class="form-control form-control-sm" id="f_af_dataFile" onchange="afUploadFile(this,'dataFile')">
+        <div class="hint mt-1" id="af_dataFileHint"></div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Screenshot of completed job</label>
+        <input type="file" class="form-control form-control-sm" accept="image/*" id="f_af_doneFile" onchange="afUploadFile(this,'doneShot')">
+        <div class="hint mt-1" id="af_doneHint"></div>
+      </div>
+    </div></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost btn-sm text-danger me-auto" id="f_af_delBtn" onclick="deleteAppFeature()" style="display:none">Delete</button>
+    <button class="btn btn-ghost btn-sm" data-bs-dismiss="modal">Cancel</button>
+    <button class="btn btn-brand btn-sm" onclick="saveAppFeature()">Save feature</button></div>
 </div></div></div>
 
 <div class="modal fade" id="mdMember" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -1094,18 +1172,31 @@ function renderDashboard(){
   tableView('tvStatus',['Status','Items','Share'],labels.map(l=>[l,cc[l],
     Math.round(cc[l]/Math.max(1,learn.length)*100)+'%']));
 
-  /* meetings by month */
-  const bym={};
-  ms.forEach(m=>{const k=m.date.slice(0,7); bym[k]=(bym[k]||0)+1});
-  const mk_=Object.keys(bym).sort();
-  mk('chMonth',{type:'bar',data:{labels:mk_.map(k=>MON[+k.slice(5,7)-1]+" '"+k.slice(2,4)),
-    datasets:[{label:'Sessions',data:mk_.map(k=>bym[k]),backgroundColor:css('--series-1'),
-      borderRadius:{topLeft:4,topRight:4},borderSkipped:'bottom',maxBarThickness:34}]},
-    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+' sessions'}}},scales:axes()}});
-  tableView('tvMonth',['Month','Sessions'],mk_.map(k=>[MON[+k.slice(5,7)-1]+' '+k.slice(0,4),bym[k]]));
+  /* meetings by date — participants attended (bar) + duration (line) */
+  const tr=done.filter(m=>meetingAttendance(m.id)).sort((a,b)=>a.date.localeCompare(b.date));
+  mk('chMonth',{data:{labels:tr.map(m=>fmtDate(m.date).slice(0,6)),
+    datasets:[
+      {type:'bar',label:'Participants attended',data:tr.map(m=>meetingAttendance(m.id).present),
+        backgroundColor:css('--series-1'),borderRadius:{topLeft:4,topRight:4},borderSkipped:'bottom',
+        maxBarThickness:34,yAxisID:'y',order:2},
+      {type:'line',label:'Duration (hrs)',data:tr.map(m=>+m.duration||0),
+        borderColor:css('--series-2'),backgroundColor:css('--series-2'),borderWidth:2,
+        pointBackgroundColor:css('--series-2'),pointBorderColor:css('--surface-1'),pointBorderWidth:2,
+        pointRadius:4,pointHoverRadius:7,tension:.3,yAxisID:'y1',order:1}
+    ]},
+    options:{plugins:{legend:{position:'bottom'},tooltip:{callbacks:{
+        title:c=>tr[c[0].dataIndex].title,
+        label:c=>c.dataset.label+': '+c.parsed.y+(c.dataset.yAxisID==='y1'?' hrs':' present of '+meetingAttendance(tr[c.dataIndex].id).total)}}},
+      interaction:{mode:'index',intersect:false},
+      scales:axes({
+        y:{beginAtZero:true,grid:{color:css('--grid')},border:{display:false},ticks:{color:css('--muted'),precision:0}},
+        y1:{beginAtZero:true,position:'right',grid:{display:false},border:{display:false},
+          ticks:{color:css('--muted'),callback:v=>v+'h'}}
+      })}});
+  tableView('tvMonth',['Date','Session','Participants attended','Duration (hrs)'],
+    tr.map(m=>[fmtDate(m.date),m.title,meetingAttendance(m.id).present,m.duration]));
 
   /* attendance trend */
-  const tr=done.filter(m=>meetingAttendance(m.id)).sort((a,b)=>a.date.localeCompare(b.date));
   mk('chTrend',{type:'line',data:{labels:tr.map(m=>fmtDate(m.date).slice(0,6)),
     datasets:[{label:'Attendance %',data:tr.map(m=>meetingAttendance(m.id).pct),
       borderColor:css('--series-1'),backgroundColor:'rgba(42,120,214,.10)',borderWidth:2,
@@ -1162,6 +1253,25 @@ function renderDashboard(){
         ticks:{color:css('--muted'),callback:v=>v+'%'}}})}});
   tableView('tvTeam',['Team','Attendance rate','Implementation completion','Members'],
     teams.map((t,i)=>[t,tAtt[i]+'%',tImp[i]+'%',DB.members.filter(m=>m.team===t).length]));
+
+  /* app features implementation status */
+  const afAll=DB.appFeatures||[];
+  const afDone=afAll.filter(f=>f.status==='Done').length;
+  const afProg=afAll.filter(f=>f.status==='In Progress').length;
+  const afPend=afAll.length-afDone-afProg;
+  mk('chAppFeatures',{type:'doughnut',data:{labels:['Done','In Progress','Pending'],datasets:[{data:[afDone,afProg,afPend],
+      backgroundColor:[css('--good'),css('--warning'),css('--muted')],borderColor:css('--surface-1'),borderWidth:2,hoverOffset:6}]},
+    options:{cutout:'62%',plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{label:c=>c.label+': '+c.parsed+' ('+Math.round(c.parsed/Math.max(1,afAll.length)*100)+'%)'}}}}});
+  tableView('tvAppFeatures',['Status','Features','Share'],[
+    ['Done',afDone,Math.round(afDone/Math.max(1,afAll.length)*100)+'%'],
+    ['In Progress',afProg,Math.round(afProg/Math.max(1,afAll.length)*100)+'%'],
+    ['Pending',afPend,Math.round(afPend/Math.max(1,afAll.length)*100)+'%']]);
+  $('tblDashAppFeatures').tBodies[0].innerHTML = afAll.length? afAll.map(f=>{
+    const persons=afPersonList(f);
+    return `<tr><td>${esc(f.name)}</td><td>${persons.length?esc(persons.join(', ')):'—'}</td><td>${esc(f.dept)||'—'}</td>
+      <td>${afStatusBadge(f.status)}</td></tr>`;
+  }).join('') : '<tr><td colspan="4" class="empty">No app features added yet.</td></tr>';
 }
 function tableView(id,head,rows){
   const el=$(id); if(!el) return;
@@ -1631,6 +1741,10 @@ function refreshSelects(){
     .map(m=>({v:m.name,t:m.name})),'','Unassigned');
   fillSelect($('f_m_attendees'),DB.members.slice().sort((a,b)=>a.name.localeCompare(b.name))
     .map(m=>({v:m.id,t:m.name+' — '+m.team})));
+  fillSelect($('f_af_person'),DB.members.slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .map(m=>({v:m.name,t:m.name})));
+  const afDepts=[...new Set(DB.appFeatures.map(f=>f.dept).filter(Boolean))].sort().map(d=>({v:d,t:d}));
+  fillSelect($('afDept'),afDepts,$('afDept').value,'All');
 }
 function openMeeting(id){
   const m=id?meeting(id):{date:isoLocal(new Date()),mode:'Zoom',status:'Completed',
@@ -1726,6 +1840,115 @@ function saveLearning(){
   if(id){ const i=DB.learning.findIndex(x=>x.id===id); DB.learning[i]=rec } else DB.learning.push(rec);
   save(); bootstrap.Modal.getInstance($('mdLearning')).hide(); refreshAll(); toast('Learning item saved');
 }
+
+/* =======================  APP FEATURES  ======================= */
+let afPending={};
+async function afUploadFile(inputEl,field){
+  const f=inputEl.files[0]; if(!f) return;
+  const MAX=6*1024*1024;
+  if(f.size>MAX){ toast('Please choose a file under 6 MB'); inputEl.value=''; return }
+  const hintId=field==='screenshot'?'af_screenshotHint':field==='dataFile'?'af_dataFileHint':'af_doneHint';
+  try{
+    let dataUrl;
+    if(field==='dataFile'){ dataUrl=await readFileAsDataURL(f) }
+    else{
+      if(!f.type.startsWith('image/')){ toast('Choose an image file (PNG or JPG)'); inputEl.value=''; return }
+      dataUrl=await resizeImageFile(f,1200);
+    }
+    afPending[field]={data:dataUrl,name:f.name};
+    $(hintId).textContent='Attached: '+f.name;
+  }catch(e){ toast(e.message||'Could not read that file') }
+}
+function openAppFeature(id){
+  refreshSelects();
+  afPending={};
+  const f=id?DB.appFeatures.find(x=>x.id===id):{status:'Pending'};
+  $('f_af_id').value=id||'';
+  $('f_af_name').value=f.name||''; $('f_af_purpose').value=f.purpose||'';
+  const personList=Array.isArray(f.person)?f.person:(f.person?[f.person]:[]);
+  [...$('f_af_person').options].forEach(o=>o.selected=personList.indexOf(o.value)>-1);
+  $('f_af_dept').value=f.dept||'';
+  $('f_af_startDate').value=f.startDate||''; $('f_af_targetDate').value=f.targetDate||'';
+  $('f_af_link').value=f.link||''; $('f_af_status').value=f.status||'Pending';
+  $('f_af_screenshotFile').value=''; $('af_screenshotHint').textContent=f.screenshotName?('Current: '+f.screenshotName):'';
+  $('f_af_dataFile').value=''; $('af_dataFileHint').textContent=f.dataFileName?('Current: '+f.dataFileName):'';
+  $('f_af_doneFile').value=''; $('af_doneHint').textContent=f.doneShotName?('Current: '+f.doneShotName):'';
+  $('f_af_delBtn').style.display=id?'':'none';
+  new bootstrap.Modal($('mdAppFeature')).show();
+}
+function saveAppFeature(){
+  const id=$('f_af_id').value;
+  if(!$('f_af_name').value){ toast('Feature name is required'); return }
+  const existing=id?DB.appFeatures.find(x=>x.id===id):null;
+  const rec={
+    id:id||nextId('AF'), name:$('f_af_name').value, purpose:$('f_af_purpose').value,
+    person:[...$('f_af_person').selectedOptions].map(o=>o.value).filter(Boolean),
+    dept:$('f_af_dept').value, link:$('f_af_link').value,
+    startDate:$('f_af_startDate').value, targetDate:$('f_af_targetDate').value,
+    status:$('f_af_status').value,
+    screenshotData: afPending.screenshot ? afPending.screenshot.data : (existing?existing.screenshotData:''),
+    screenshotName: afPending.screenshot ? afPending.screenshot.name : (existing?existing.screenshotName:''),
+    dataFileData: afPending.dataFile ? afPending.dataFile.data : (existing?existing.dataFileData:''),
+    dataFileName: afPending.dataFile ? afPending.dataFile.name : (existing?existing.dataFileName:''),
+    doneShotData: afPending.doneShot ? afPending.doneShot.data : (existing?existing.doneShotData:''),
+    doneShotName: afPending.doneShot ? afPending.doneShot.name : (existing?existing.doneShotName:''),
+    createdAt: existing?existing.createdAt:isoLocal(new Date())
+  };
+  if(id){ const i=DB.appFeatures.findIndex(x=>x.id===id); DB.appFeatures[i]=rec } else DB.appFeatures.push(rec);
+  afPending={};
+  save(); bootstrap.Modal.getInstance($('mdAppFeature')).hide(); refreshAll(); toast('Feature saved');
+}
+function deleteAppFeature(){
+  const id=$('f_af_id').value; if(!id) return;
+  bootstrap.Modal.getInstance($('mdAppFeature')).hide();
+  delRec('appFeatures',id);
+}
+function afFileLink(data,name,label){
+  if(!data) return '';
+  return '<a href="'+data+'" download="'+esc(name||label)+'">'+label+'</a>';
+}
+function afPersonList(f){ return Array.isArray(f.person)?f.person:(f.person?[f.person]:[]) }
+function afStatusColor(s){ return s==='Done'?css('--good'):s==='In Progress'?css('--warning'):css('--muted') }
+function afStatusBg(s){ return s==='Done'?'rgba(27,175,122,.12)':s==='In Progress'?'rgba(230,161,26,.12)':'rgba(120,120,120,.12)' }
+function afStatusBadge(s){ return '<span class="badge-soft" style="background:'+afStatusBg(s)+';color:'+afStatusColor(s)+'">'+esc(s)+'</span>' }
+function renderAppFeatures(){
+  const q=($('afSearch').value||'').toLowerCase(), st=$('afStatus').value, dp=$('afDept').value;
+  const all=DB.appFeatures;
+  let rows=all.filter(f=>{
+    if(st && f.status!==st) return false;
+    if(dp && f.dept!==dp) return false;
+    if(q){ const blob=[f.name,f.purpose,afPersonList(f).join(' '),f.dept].join(' ').toLowerCase(); if(blob.indexOf(q)<0) return false }
+    return true;
+  });
+  const done=all.filter(f=>f.status==='Done').length, inProg=all.filter(f=>f.status==='In Progress').length;
+  $('afKpis').innerHTML=[
+    ['Total features',all.length,'bi-grid-1x2','--series-1'],
+    ['Done',done,'bi-check-circle-fill','--good'],
+    ['In progress / pending',inProg+(all.length-done-inProg),'bi-hourglass-split','--warning'],
+    ['Completion',(all.length?Math.round(done/all.length*100):0)+'%','bi-speedometer','--series-7']
+  ].map(([lab,val,ico,col])=>`<div class="col-6 col-xl-3"><div class="card stat">
+      <div class="ico" style="background:rgba(42,120,214,.08);color:var(${col})"><i class="bi ${ico}"></i></div>
+      <div class="lab">${lab}</div><div class="val">${val}</div></div></div>`).join('');
+  $('tblAppFeatures').tBodies[0].innerHTML = rows.length? rows.map(f=>{
+    const files=[afFileLink(f.screenshotData,f.screenshotName,'Screenshot'),
+      afFileLink(f.dataFileData,f.dataFileName,'Data file'),
+      afFileLink(f.doneShotData,f.doneShotName,'Completion shot')].filter(Boolean).join(' · ');
+    const persons=afPersonList(f);
+    return `<tr>
+      <td><strong>${esc(f.name)}</strong><div class="hint">${esc((f.purpose||'').slice(0,80))}</div></td>
+      <td>${persons.length?esc(persons.join(', ')):'<span class="hint">Unassigned</span>'}</td>
+      <td>${esc(f.dept)||'<span class="hint">—</span>'}</td>
+      <td>${afStatusBadge(f.status)}</td>
+      <td style="white-space:nowrap">${fmtDate(f.targetDate)}</td>
+      <td>${f.link?'<a href="'+esc(f.link)+'" target="_blank">Link</a>':'<span class="hint">—</span>'}</td>
+      <td>${files||'<span class="hint">—</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="openAppFeature('${f.id}')"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="delRec('appFeatures','${f.id}')"><i class="bi bi-trash"></i></button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" class="empty">No app features match these filters.</td></tr>';
+}
+
 function openMember(id){
   refreshSelects();
   const m=id?member(id):{team:DB.settings.teams[0]};
@@ -1779,7 +2002,10 @@ const CSV_DEFS={
       l.assignedTo,l.team,l.due,l.priority,l.status,l.pct,l.evidence,l.remarks]},
   members:{head:['id','name','designation','team','email','phone','sessionsAttended','sessionsMarked','attendancePct','itemsOwned'],
     row:m=>{const s=memberStats(m.id);return [m.id,m.name,m.designation,m.team,m.email,m.phone,
-      s.sessions,s.total,s.pct==null?'':s.pct,DB.learning.filter(l=>l.assignedTo===m.name).length]}}
+      s.sessions,s.total,s.pct==null?'':s.pct,DB.learning.filter(l=>l.assignedTo===m.name).length]}},
+  appFeatures:{head:['id','name','purpose','person','dept','status','startDate','targetDate','link','screenshotName','dataFileName','doneShotName','createdAt'],
+    row:f=>[f.id,f.name,f.purpose,(Array.isArray(f.person)?f.person.join('; '):(f.person||'')),f.dept,f.status,
+      f.startDate,f.targetDate,f.link,f.screenshotName,f.dataFileName,f.doneShotName,f.createdAt]}
 };
 function exportCSV(kind){
   let head,rows,name;
@@ -1906,6 +2132,14 @@ function resizeImageFile(file,maxSize){
     rd.readAsDataURL(file);
   });
 }
+function readFileAsDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const rd=new FileReader();
+    rd.onload=()=>resolve(rd.result);
+    rd.onerror=()=>reject(new Error('Could not read that file'));
+    rd.readAsDataURL(file);
+  });
+}
 async function uploadLogo(org,inputEl){
   const f=inputEl.files[0]; if(!f) return;
   if(!f.type.startsWith('image/')){ toast('Choose an image file (PNG or JPG)'); inputEl.value=''; return }
@@ -1947,6 +2181,7 @@ function toggleTheme(){ setTheme(document.documentElement.dataset.theme==='dark'
 function toggleSidebar(){ $('sidebar').classList.toggle('open'); $('backdrop').classList.toggle('show') }
 const TITLES={dashboard:'Dashboard',weekly:'Weekly Progress',meetings:'Meeting Records',
   attendance:'Attendance Tracker',learning:'Learning & Implementation Tracker',
+  appfeatures:'App Features — Implementation Status',
   members:'Members',reports:'Reports',settings:'Settings'};
 function go(nav){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -1966,6 +2201,7 @@ function refreshAll(){
   if(active==='meetings') renderMeetings();
   if(active==='attendance') renderAttendance();
   if(active==='learning') renderLearning();
+  if(active==='appfeatures') renderAppFeatures();
   if(active==='members') renderMembers();
   if(active==='reports') renderReports();
   if(active==='settings') loadSettings();
@@ -1985,6 +2221,7 @@ function wipe(){
   DB=(await load())||seed();
   DB.settings=Object.assign({program:'MBAI Business Learning Programme',teams:[TEAM_F,TEAM_E],
     duration:8.5,theme:'light',logos:{}},DB.settings||{});
+  DB.appFeatures=DB.appFeatures||[];
   document.documentElement.dataset.theme=DB.settings.theme||'light';
   renderOrgLogos();
   chartDefaults();
