@@ -408,7 +408,6 @@
   .user-chip{display:flex;align-items:center;gap:10px;}
   .user-email{font-size:12px;color:var(--ink-soft);font-family:var(--mono);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-  /* SSO Buttons */
   .pv-stat-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
   .pv-stat-label{font-size:12px;font-weight:600;color:var(--ink-soft);width:110px;flex-shrink:0;}
   .pv-bar-wrap{flex:1;background:var(--paper);border-radius:20px;height:10px;overflow:hidden;position:relative;}
@@ -434,18 +433,6 @@
   .proj-status-pending{background:#f3f4f6;color:#6b7280;}
   .proj-status-progress{background:#ede9fe;color:#5b21b6;}
   .proj-status-done{background:#d1fae5;color:#065f46;}
-  .sso-divider::before,.sso-divider::after{content:'';flex:1;height:1px;background:var(--line);}
-  .sso-btn{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
-    padding:10px 14px;border-radius:var(--radius);font-size:13.5px;font-weight:600;
-    font-family:var(--sans);border:1.5px solid var(--line);background:var(--surface);
-    color:var(--ink);cursor:pointer;transition:background .15s,box-shadow .15s;margin-bottom:9px;
-  }
-  .sso-btn:hover{background:var(--paper);box-shadow:0 2px 8px rgba(0,0,0,.08);}
-  .sso-btn:active{transform:scale(.99);}
-  .sso-btn svg{flex-shrink:0;}
-  .sso-note{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:4px;}
-  .sso-unavailable{opacity:.45;pointer-events:none;}
   .subtab-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
   .subtab-btn{
     background:var(--surface);border:1px solid var(--line);color:var(--ink-soft);
@@ -507,33 +494,11 @@
 
     <!-- View 1: Sign In -->
     <div id="authViewSignin">
-      <div id="ssoSection">
-        <button class="sso-btn" id="ssoGoogleBtn">
-          <svg width="18" height="18" viewBox="0 0 48 48">
-            <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2v6h7.7c4.5-4.2 7.1-10.3 7.1-17.2z"/>
-            <path fill="#34A853" d="M24 47c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9H2.6v6.2C6.5 41.8 14.7 47 24 47z"/>
-            <path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6v-6.2H2.6C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/>
-            <path fill="#EA4335" d="M24 9.5c3.5 0 6.7 1.2 9.2 3.6l6.8-6.8C35.9 2.4 30.5 0 24 0 14.7 0 6.5 5.2 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/>
-          </svg>
-          Continue with Google
-        </button>
-        <button class="sso-btn" id="ssoMicrosoftBtn">
-          <svg width="18" height="18" viewBox="0 0 21 21">
-            <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
-            <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
-            <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
-            <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
-          </svg>
-          Continue with Microsoft
-        </button>
-        <p class="sso-note" id="ssoNote"></p>
-        <div class="sso-divider">OR SIGN IN WITH EMAIL</div>
-      </div>
       <div class="auth-field"><label>Email address</label><input type="email" id="authEmail" autocomplete="username" placeholder="yourname@chamariagroup.com"></div>
       <div class="auth-field"><label>Password</label><input type="password" id="authPassword" autocomplete="current-password" placeholder="Your password"></div>
       <div class="auth-msg" id="authMsg"></div>
       <button class="btn btn-primary auth-btn" id="authSigninBtn">Sign In</button>
-      <p style="font-size:11px;color:var(--ink-soft);text-align:center;margin-top:8px;">Only <strong>@chamariagroup.com</strong> accounts are permitted</p>
+      <p style="font-size:11px;color:var(--ink-soft);text-align:center;margin-top:8px;">Only <strong>@chamariagroup.com</strong> and <strong>@evolvepack.in</strong> accounts are permitted</p>
       <div class="auth-links" style="display:flex;justify-content:space-between;margin-top:10px;">
         <button class="auth-link" id="authForgotBtn">Forgot password?</button>
         <button class="auth-link" id="authCreateAccountBtn" style="color:var(--ink-soft);">Create account</button>
@@ -553,7 +518,7 @@
 
     <!-- View 3: Forgot password → send reset link -->
     <div id="authViewRequest" style="display:none;">
-      <p class="auth-note">Enter your Chamaria Group email. We'll send a password reset link to your inbox.</p>
+      <p class="auth-note">Enter your @chamariagroup.com or @evolvepack.in email. We'll send a password reset link to your inbox.</p>
       <div class="auth-field"><label>Email address</label><input type="email" id="authRecoverEmail" placeholder="yourname@chamariagroup.com"></div>
       <div class="auth-msg" id="authRequestMsg"></div>
       <button class="btn btn-primary auth-btn" id="authSendResetBtn">Send Reset Link</button>
@@ -6497,10 +6462,11 @@ document.addEventListener('keydown', (e)=>{
 
 /* ================= AUTHENTICATION ================= */
 
-const ALLOWED_DOMAIN = 'chamariagroup.com';
+const ALLOWED_DOMAINS = ['chamariagroup.com', 'evolvepack.in'];
 
 function isChamariaEmail(email){
-  return email.trim().toLowerCase().endsWith('@' + ALLOWED_DOMAIN);
+  const lower = email.trim().toLowerCase();
+  return ALLOWED_DOMAINS.some(d => lower.endsWith('@' + d));
 }
 
 function showAuthView(viewId){
@@ -6540,9 +6506,6 @@ async function initAuth(){
   if(!supa){
     // Local mode — simple app password
     $('authGate').style.display = 'flex';
-    initSsoSection();
-    const ssoSec = $('ssoSection');
-    if(ssoSec) ssoSec.style.display = 'none';
     showAuthView('authViewSignin');
     $('authSigninBtn').textContent = 'Unlock';
     $('authEmail').style.display = 'none';
@@ -6568,7 +6531,6 @@ async function initAuth(){
     return;
   }
   if(!DEV_SKIP_LOGIN_SCREEN) $('authGate').style.display = 'flex';
-  initSsoSection();
   const { data: { session } } = await supa.auth.getSession();
   if(session) showApp(session.user);
   else if(DEV_SKIP_LOGIN_SCREEN){ $('authGate').style.display = 'none'; loadAll(); }
@@ -6593,7 +6555,7 @@ $('authSigninBtn').addEventListener('click', async () => {
   const password = $('authPassword').value;
   if(!email || !password){ setAuthMsg('authMsg','Please enter your email and password.','error'); return; }
   if(!isChamariaEmail(email)){
-    setAuthMsg('authMsg','Access restricted to @chamariagroup.com email addresses only.','error');
+    setAuthMsg('authMsg','Access restricted to @chamariagroup.com and @evolvepack.in email addresses only.','error');
     return;
   }
   $('authSigninBtn').disabled = true;
@@ -6629,7 +6591,7 @@ $('authSignupBtn').addEventListener('click', async () => {
   const confirm = $('authSignupConfirm').value;
   if(!email){ setAuthMsg('authSignupMsg','Please enter an email address.','error'); return; }
   if(!isChamariaEmail(email)){
-    setAuthMsg('authSignupMsg','Only @chamariagroup.com email addresses are allowed.','error');
+    setAuthMsg('authSignupMsg','Only @chamariagroup.com and @evolvepack.in email addresses are allowed.','error');
     return;
   }
   if(password.length < 8){ setAuthMsg('authSignupMsg','Password must be at least 8 characters.','error'); return; }
@@ -6669,7 +6631,7 @@ $('authSendResetBtn').addEventListener('click', async () => {
   const email = $('authRecoverEmail').value.trim().toLowerCase();
   if(!email){ setAuthMsg('authRequestMsg','Please enter your email.','error'); return; }
   if(!isChamariaEmail(email)){
-    setAuthMsg('authRequestMsg','Only @chamariagroup.com email addresses are allowed.','error');
+    setAuthMsg('authRequestMsg','Only @chamariagroup.com and @evolvepack.in email addresses are allowed.','error');
     return;
   }
   $('authSendResetBtn').disabled = true;
@@ -6687,30 +6649,6 @@ $('authSendResetBtn').addEventListener('click', async () => {
 });
 
 // ---- SSO ----
-/* =============== SSO — Google & Microsoft =============== */
-async function signInWithProvider(provider){
-  if(!supa){ setAuthMsg('authMsg','SSO requires Supabase to be configured.','error'); return; }
-  const btn = provider === 'google' ? $('ssoGoogleBtn') : $('ssoMicrosoftBtn');
-  btn.disabled = true; btn.style.opacity = '.6';
-  const { error } = await supa.auth.signInWithOAuth({
-    provider: provider === 'microsoft' ? 'azure' : 'google',
-    options: { redirectTo: window.location.href.split('?')[0].split('#')[0], scopes: provider === 'microsoft' ? 'email profile openid' : '' }
-  });
-  if(error){
-    btn.disabled = false; btn.style.opacity = '';
-    setAuthMsg('authMsg',(provider==='google'?'Google':'Microsoft')+' sign-in failed: '+(error.message||'try again.'),'error');
-  }
-}
-function initSsoSection(){
-  const s = $('ssoSection');
-  if(!s) return;
-  if(!supa){ s.style.display = 'none'; return; }
-  s.style.display = '';
-  $('ssoNote').textContent = 'Use your @chamariagroup.com Google or Microsoft account.';
-}
-$('ssoGoogleBtn').addEventListener('click', () => signInWithProvider('google'));
-$('ssoMicrosoftBtn').addEventListener('click', () => signInWithProvider('microsoft'));
-
 // ---- Sign Out ----
 $('signOutBtn').addEventListener('click', async () => {
   if(supa) await supa.auth.signOut();
