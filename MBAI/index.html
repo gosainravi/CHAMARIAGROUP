@@ -319,6 +319,21 @@ a{color:var(--series-1)}
     </div>
 
     <div class="row g-3 mb-3">
+      <div class="col-12 col-xl-5"><div class="card h-100">
+        <div class="card-header"><i class="bi bi-app-indicator" style="color:var(--muted)"></i> App Features — Implementation Status</div>
+        <div class="card-body">
+          <div class="chart-wrap" style="height:222px"><canvas id="chAppFeatures"></canvas></div>
+          <button class="tbl-toggle mt-2" onclick="toggleTable('tvAppFeatures')">Show table view</button>
+          <div class="data-table-view" id="tvAppFeatures"></div>
+        </div></div></div>
+      <div class="col-12 col-xl-7"><div class="card h-100">
+        <div class="card-header"><i class="bi bi-list-task" style="color:var(--muted)"></i> App Features Learning/Implementation Status</div>
+        <div class="card-body p-0"><div class="tbl-scroll"><table class="table" id="tblDashAppFeatures">
+          <thead><tr><th>Feature</th><th>Responsible Person</th><th>Department</th><th>Status</th></tr></thead>
+          <tbody></tbody></table></div></div></div></div>
+    </div>
+
+    <div class="row g-3 mb-3">
       <div class="col-12 col-xl-8"><div class="card h-100">
         <div class="card-header"><i class="bi bi-calendar-date" style="color:var(--muted)"></i> Next sessions</div>
         <div class="card-body p-0"><div class="tbl-scroll"><table class="table" id="tblUpcoming">
@@ -359,21 +374,6 @@ a{color:var(--series-1)}
           <div class="hint mt-2">Both measures are percentages on one shared axis.</div>
           <button class="tbl-toggle mt-1" onclick="toggleTable('tvTeam')">Show table view</button>
           <div class="data-table-view" id="tvTeam"></div></div></div></div>
-    </div>
-
-    <div class="row g-3 mt-1">
-      <div class="col-12 col-xl-5"><div class="card h-100">
-        <div class="card-header"><i class="bi bi-app-indicator" style="color:var(--muted)"></i> App Features — Implementation Status</div>
-        <div class="card-body">
-          <div class="chart-wrap" style="height:222px"><canvas id="chAppFeatures"></canvas></div>
-          <button class="tbl-toggle mt-2" onclick="toggleTable('tvAppFeatures')">Show table view</button>
-          <div class="data-table-view" id="tvAppFeatures"></div>
-        </div></div></div>
-      <div class="col-12 col-xl-7"><div class="card h-100">
-        <div class="card-header"><i class="bi bi-list-task" style="color:var(--muted)"></i> App Features detail</div>
-        <div class="card-body p-0"><div class="tbl-scroll"><table class="table" id="tblDashAppFeatures">
-          <thead><tr><th>Feature</th><th>Responsible Person</th><th>Department</th><th>Status</th></tr></thead>
-          <tbody></tbody></table></div></div></div></div>
     </div>
   </section>
 
