@@ -1595,6 +1595,36 @@
           <div class="field"><label>SSD</label><input id="af_ssd"></div>
         </div>
 
+        <div class="section-label collapsible" id="af_scanToggle">System Details — from IT Agent scan (optional) <span id="af_scanArrow">▾</span></div>
+        <div id="af_scanBody" style="display:none;">
+          <div class="grid2">
+            <div class="field"><label>Service Tag</label><input id="af_serviceTag"></div>
+            <div class="field"><label>Computer Name</label><input id="af_computerName"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Logged-in User</label><input id="af_loggedInUser"></div>
+            <div class="field"><label>Cores / Speed</label><input id="af_coresSpeed"></div>
+          </div>
+          <div class="field"><label>Storage (detailed)</label><input id="af_storage"></div>
+          <div class="grid2">
+            <div class="field"><label>Graphics</label><input id="af_graphics"></div>
+            <div class="field"><label>Monitor</label><input id="af_monitor"></div>
+          </div>
+          <div class="field"><label>Battery</label><input id="af_battery"></div>
+          <div class="grid2">
+            <div class="field"><label>OS Name</label><input id="af_osName"></div>
+            <div class="field"><label>OS Architecture</label><input id="af_osArch"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>OS Version</label><input id="af_osVersion"></div>
+            <div class="field"><label>OS Build</label><input id="af_osBuild"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>IP Address</label><input id="af_ipAddress"></div>
+            <div class="field"><label>MAC Address</label><input id="af_macAddress"></div>
+          </div>
+        </div>
+
         <div class="section-label">Notes</div>
         <div class="field"><label>Remarks</label><textarea id="af_remarks" rows="3"></textarea></div>
       </form>
@@ -2205,7 +2235,13 @@ function assetToDb(a){
     insurance_date: dt(a.insuranceDate), asset_health: txt(a.assetHealth), qty: num(a.qty) ?? 1,
     po_number: txt(a.poNumber), po_date: dt(a.poDate), po_qty: num(a.poQty), po_amount: num(a.poAmount),
     system_type: txt(a.systemType), processor: txt(a.processor), ram: txt(a.ram), hdd: txt(a.hdd),
-    ssd: txt(a.ssd), remarks: txt(a.remarks)
+    ssd: txt(a.ssd), remarks: txt(a.remarks),
+    service_tag: txt(a.serviceTag), computer_name: txt(a.computerName), logged_in_user: txt(a.loggedInUser),
+    cores_speed: txt(a.coresSpeed), storage: txt(a.storage), graphics: txt(a.graphics), battery: txt(a.battery),
+    monitor: txt(a.monitor), os_name: txt(a.osName), os_arch: txt(a.osArch), os_version: txt(a.osVersion),
+    os_build: txt(a.osBuild), ip_address: txt(a.ipAddress), mac_address: txt(a.macAddress),
+    installed_software: a.installedSoftware && a.installedSoftware.length ? a.installedSoftware : null,
+    discovered_from_id: txt(a.discoveredFromId)
   };
 }
 function assetFromDb(r){
@@ -2220,7 +2256,12 @@ function assetFromDb(r){
     assetHealth:r.asset_health||'', qty:r.qty??1,
     poNumber:r.po_number||'', poDate:r.po_date||'', poQty:r.po_qty??'', poAmount:r.po_amount??'',
     systemType:r.system_type||'', processor:r.processor||'', ram:r.ram||'',
-    hdd:r.hdd||'', ssd:r.ssd||'', remarks:r.remarks||''
+    hdd:r.hdd||'', ssd:r.ssd||'', remarks:r.remarks||'',
+    serviceTag:r.service_tag||'', computerName:r.computer_name||'', loggedInUser:r.logged_in_user||'',
+    coresSpeed:r.cores_speed||'', storage:r.storage||'', graphics:r.graphics||'', battery:r.battery||'',
+    monitor:r.monitor||'', osName:r.os_name||'', osArch:r.os_arch||'', osVersion:r.os_version||'',
+    osBuild:r.os_build||'', ipAddress:r.ip_address||'', macAddress:r.mac_address||'',
+    installedSoftware:r.installed_software||[], discoveredFromId:r.discovered_from_id||''
   };
 }
 
@@ -3131,7 +3172,9 @@ function openAssetPanel(asset){
   const fields = ['companyId','brand','model','serialNo','employeeId','assignedUserName','dateAssigned',
     'department','authorisedBy','location','purchaseDate','purchaseAmount','vendor','qty','invoiceNumber','invoiceDate',
     'invoiceValue','warrantyStart','warrantyEnd','insuranceDate','assetHealth','poNumber','poDate','poQty','poAmount',
-    'systemType','processor','ram','hdd','ssd','remarks'];
+    'systemType','processor','ram','hdd','ssd','remarks',
+    'serviceTag','computerName','loggedInUser','coresSpeed','storage','graphics','monitor','battery',
+    'osName','osArch','osVersion','osBuild','ipAddress','macAddress'];
   fields.forEach(f=>{
     const el = $('af_'+f);
     if(!el) return;
@@ -3139,11 +3182,19 @@ function openAssetPanel(asset){
   });
   setCategoryFieldValue(asset ? asset.category : '');
 
+  // Non-editable scan detail carried through on save without a dedicated form field
+  window._assetExtraFields = {
+    installedSoftware: asset ? (asset.installedSoftware || []) : [],
+    discoveredFromId:  asset ? (asset.discoveredFromId  || null) : null
+  };
+
   resetAssetInvoiceUI();
   if(asset && asset.hasInvoice) showAssetInvoiceAttached(asset.invoiceFileName || 'invoice file');
 
   $('af_specsBody').style.display = 'none';
   $('af_specsArrow').textContent = '▾';
+  $('af_scanBody').style.display = 'none';
+  $('af_scanArrow').textContent = '▾';
 
   $('assetOverlay').classList.add('open');
   $('af_companyId').focus();
@@ -3330,11 +3381,22 @@ function openDiscoveryDetail(d){
 }
 function closeDiscoveryDetail(){ $('discoveryDetailOverlay').classList.remove('open'); discoveryCurrentId = null; }
 
+function splitStorageByType(storageStr){
+  // "Model - 932GB (HDD) | Model2 - 238GB (SSD)" -> separate HDD-only / SSD-only strings
+  const parts = (storageStr||'').split('|').map(s=>s.trim()).filter(Boolean);
+  const hdd = parts.filter(p=>/\(HDD/i.test(p));
+  const ssd = parts.filter(p=>/\(SSD/i.test(p));
+  const other = parts.filter(p=>!/\(HDD/i.test(p) && !/\(SSD/i.test(p));
+  return { hdd: hdd.concat(other).join(' | '), ssd: ssd.join(' | ') };
+}
+
 async function addDiscoveryToAssets(){
   const d = discoveryItems.find(x=>x.id===discoveryCurrentId);
   if(!d) return;
 
-  // Pre-fill asset data from discovery
+  const storageSplit = splitStorageByType(d.storage);
+
+  // Pre-fill asset data from discovery — every field the agent collected
   const assetData = {
     companyId: '',  // IT admin will select
     category: guessCategory(d),
@@ -3344,11 +3406,27 @@ async function addDiscoveryToAssets(){
     assignedUserName: d.username || '',
     processor: d.processor || '',
     ram: d.ram_gb || '',
+    hdd: storageSplit.hdd || '',
+    ssd: storageSplit.ssd || '',
     location: '',
     assetHealth: 'Good',
     systemType: d.system_type || '',
+    serviceTag: d.serial_number || '',
+    computerName: d.computer_name || '',
+    loggedInUser: d.username || '',
+    coresSpeed: [d.processor_cores ? (d.processor_cores + ' cores') : '', d.processor_speed ? (d.processor_speed + ' GHz') : ''].filter(Boolean).join(' @ '),
+    storage: d.storage || '',
+    graphics: d.graphics || '',
+    monitor: d.monitor || '',
+    battery: d.battery || '',
+    osName: d.os_name || '',
+    osArch: d.os_arch || '',
+    osVersion: d.os_version || '',
+    osBuild: d.os_build || '',
+    ipAddress: d.ip_address || '',
+    macAddress: d.mac_address || '',
     remarks: 'Added via IT Agent scan on ' + (d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleDateString('en-IN') : '') +
-             '\nIP: ' + (d.ip_address||'') + ' | OS: ' + (d.os_name||'')
+             '\nBIOS: ' + (d.bios_version||'—') + ' | Free space: ' + (d.free_space||'—') + ' | Gateway: ' + (d.gateway||'—')
   };
 
   // Mark discovery as approved
@@ -3362,17 +3440,23 @@ async function addDiscoveryToAssets(){
 
   // Open asset add panel with pre-filled data
   openAssetPanel(null);
+  // Carry the full software list + link back to the source scan through to save,
+  // even though there's no dedicated form field for either
+  window._assetExtraFields = { installedSoftware: d.installed_software || [], discoveredFromId: d.id };
   // Pre-fill fields
   setTimeout(() => {
-    if(assetData.brand)   $('af_brand').value   = assetData.brand;
-    if(assetData.model)   $('af_model').value   = assetData.model;
-    if(assetData.serialNo)$('af_serialNo').value = assetData.serialNo;
-    if(assetData.processor)$('af_processor').value = assetData.processor;
-    if(assetData.ram)     $('af_ram').value     = assetData.ram;
-    if(assetData.remarks) $('af_remarks').value = assetData.remarks;
-    if(assetData.assetHealth) $('af_assetHealth').value = assetData.assetHealth;
-    if(assetData.assignedUserName) $('af_assignedUserName').value = assetData.assignedUserName;
+    Object.keys(assetData).forEach(f=>{
+      if(f==='companyId' || f==='category') return;
+      const el = $('af_'+f);
+      if(el && assetData[f]) el.value = assetData[f];
+    });
     setCategoryFieldValue(assetData.category);
+    if(assetData.systemType || assetData.processor || assetData.hdd || assetData.ssd){
+      $('af_specsBody').style.display = ''; $('af_specsArrow').textContent = '▴';
+    }
+    if(assetData.computerName || assetData.osName || assetData.ipAddress){
+      $('af_scanBody').style.display = ''; $('af_scanArrow').textContent = '▴';
+    }
     switchTab('assets');
     showToast('Asset pre-filled from scan — select Company and save');
   }, 100);
@@ -4782,7 +4866,16 @@ async function saveAsset(){
     insuranceDate: $('af_insuranceDate').value, assetHealth: $('af_assetHealth').value,
     systemType: $('af_systemType').value.trim(), processor: $('af_processor').value.trim(),
     ram: $('af_ram').value.trim(), hdd: $('af_hdd').value.trim(), ssd: $('af_ssd').value.trim(),
-    remarks: $('af_remarks').value.trim()
+    remarks: $('af_remarks').value.trim(),
+    serviceTag: $('af_serviceTag').value.trim(), computerName: $('af_computerName').value.trim(),
+    loggedInUser: $('af_loggedInUser').value.trim(), coresSpeed: $('af_coresSpeed').value.trim(),
+    storage: $('af_storage').value.trim(), graphics: $('af_graphics').value.trim(),
+    monitor: $('af_monitor').value.trim(), battery: $('af_battery').value.trim(),
+    osName: $('af_osName').value.trim(), osArch: $('af_osArch').value.trim(),
+    osVersion: $('af_osVersion').value.trim(), osBuild: $('af_osBuild').value.trim(),
+    ipAddress: $('af_ipAddress').value.trim(), macAddress: $('af_macAddress').value.trim(),
+    installedSoftware: (window._assetExtraFields && window._assetExtraFields.installedSoftware) || [],
+    discoveredFromId: (window._assetExtraFields && window._assetExtraFields.discoveredFromId) || null
   };
 
   try{
@@ -4917,6 +5010,21 @@ function openAssetView(asset){
         viewItem('System Type', asset.systemType) + viewItem('Processor', asset.processor) +
         viewItem('RAM', asset.ram) + viewItem('HDD', asset.hdd) + viewItem('SSD', asset.ssd) +
       '</div></div>' : '') +
+    ((asset.computerName||asset.osName||asset.ipAddress||asset.graphics||asset.monitor||asset.battery||asset.storage||asset.coresSpeed||asset.serviceTag||asset.loggedInUser) ?
+      '<div class="view-section"><h4>System Details — from IT Agent scan</h4><div class="view-grid">' +
+        viewItem('Service Tag', asset.serviceTag, true) + viewItem('Computer Name', asset.computerName) +
+        viewItem('Logged-in User', asset.loggedInUser) + viewItem('Cores / Speed', asset.coresSpeed) +
+        viewItem('Storage (detailed)', asset.storage) + viewItem('Graphics', asset.graphics) +
+        viewItem('Monitor', asset.monitor) + viewItem('Battery', asset.battery) +
+        viewItem('OS', [asset.osName, asset.osArch].filter(Boolean).join(' ')) +
+        viewItem('OS Version / Build', [asset.osVersion, asset.osBuild].filter(Boolean).join(' / '), true) +
+        viewItem('IP Address', asset.ipAddress, true) + viewItem('MAC Address', asset.macAddress, true) +
+      '</div></div>' : '') +
+    (asset.installedSoftware && asset.installedSoftware.length ?
+      '<div class="view-section"><h4>Installed Software (' + asset.installedSoftware.length + ')</h4>' +
+      '<div class="table-card" style="margin-top:8px;max-height:200px;overflow-y:auto;"><table><thead><tr><th>Software</th><th>Version</th><th>Publisher</th></tr></thead><tbody>' +
+      asset.installedSoftware.map(s => '<tr><td style="font-size:12px;">' + escapeHtml(s.name||'') + '</td><td class="mono" style="font-size:11px;">' + escapeHtml(s.version||'—') + '</td><td style="font-size:11px;color:var(--ink-soft);">' + escapeHtml(s.publisher||'—') + '</td></tr>').join('') +
+      '</tbody></table></div></div>' : '') +
     (asset.remarks ? '<div class="view-section"><h4>Remarks</h4><div class="view-item"><span class="vv">'+escapeHtml(asset.remarks)+'</span></div></div>' : '');
 
   const dlBtn = $('avBody').querySelector('[data-avdl]');
@@ -6458,6 +6566,11 @@ $('af_specsToggle').addEventListener('click', ()=>{
   const open = $('af_specsBody').style.display !== 'none';
   $('af_specsBody').style.display = open ? 'none' : '';
   $('af_specsArrow').textContent = open ? '▾' : '▴';
+});
+$('af_scanToggle').addEventListener('click', ()=>{
+  const open = $('af_scanBody').style.display !== 'none';
+  $('af_scanBody').style.display = open ? 'none' : '';
+  $('af_scanArrow').textContent = open ? '▾' : '▴';
 });
 
 // Companies
