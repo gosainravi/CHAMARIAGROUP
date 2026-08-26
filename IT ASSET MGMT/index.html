@@ -706,6 +706,7 @@
         </select>
       </div>
       <div style="display:flex;gap:10px;">
+        <button class="btn btn-danger" id="assetBulkDeleteBtn" style="display:none;">🗑 Delete Selected (<span id="assetBulkCount">0</span>)</button>
         <button class="btn" id="assetImportBtn">⬆ Import Data</button>
         <button class="btn" id="assetExportBtn">Export CSV</button>
         <button class="btn btn-primary" id="assetAddBtn">+ Add Asset</button>
@@ -716,6 +717,7 @@
         <div class="scroll-x">
           <table>
             <thead><tr>
+              <th style="width:36px;"><input type="checkbox" id="assetSelectAll" title="Select all on this page"></th>
               <th>Sl.No</th>
               <th class="sortable" data-sort="assetCode">Asset Code<span class="sort-arrow">↕</span></th>
               <th class="th-invoice">Invoice</th>
@@ -727,7 +729,7 @@
               <th>Health</th>
               <th>Actions</th>
             </tr></thead>
-            <tbody id="assetTableBody"><tr class="empty-row"><td colspan="10"><span class="empty-icon">▤</span>Loading…</td></tr></tbody>
+            <tbody id="assetTableBody"><tr class="empty-row"><td colspan="11"><span class="empty-icon">▤</span>Loading…</td></tr></tbody>
           </table>
         </div>
         <div class="pagination">
@@ -807,6 +809,7 @@
         <h3 style="margin:0;">🔍 Asset Discovery — From Agent Scans</h3>
       </div>
       <div style="display:flex;gap:8px;">
+        <button class="btn btn-danger" id="discoveryBulkDeleteBtn" style="display:none;">🗑 Delete Selected (<span id="discoveryBulkCount">0</span>)</button>
         <button class="btn" id="discoveryRefreshBtn">↻ Refresh</button>
       </div>
     </div>
@@ -817,11 +820,12 @@
     <div class="table-wrap"><div class="table-card"><div class="scroll-x">
       <table>
         <thead><tr>
+          <th style="width:36px;"><input type="checkbox" id="discoverySelectAll" title="Select all"></th>
           <th>Computer</th><th>User</th><th>Model / Serial</th>
           <th>Processor</th><th>RAM</th><th>Storage</th>
           <th>IP Address</th><th>OS</th><th>Scanned</th><th>Status</th><th>Actions</th>
         </tr></thead>
-        <tbody id="discoveryTableBody"><tr class="empty-row"><td colspan="11"><span class="empty-icon">▤</span>Loading…</td></tr></tbody>
+        <tbody id="discoveryTableBody"><tr class="empty-row"><td colspan="12"><span class="empty-icon">▤</span>Loading…</td></tr></tbody>
       </table>
     </div></div></div>
   </section>
@@ -2335,6 +2339,7 @@ let assetCurrentPage = 1;
 let assetSortField = null;
 let assetSortDir = 'asc';
 let assetEditingId = null;
+let selectedAssetIds = new Set();
 let pendingAssetInvoiceFile = null;
 let pendingAssetInvoiceRemoved = false;
 let _assetOpenInvoiceState = { hasInvoice:false, invoiceFileName:'', invoiceStoragePath:'' };
@@ -3001,12 +3006,13 @@ function renderAssets(){
 
   const body = $('assetTableBody');
   if(filtered.length === 0){
-    body.innerHTML = '<tr class="empty-row"><td colspan="10"><span class="empty-icon">▤</span>' +
+    body.innerHTML = '<tr class="empty-row"><td colspan="11"><span class="empty-icon">▤</span>' +
       (assets.length===0 ? 'No assets yet — click "Add Asset" to register your first item.' : 'No assets match your filters.') + '</td></tr>';
   } else {
     body.innerHTML = pageItems.map((a,i)=>{
       const st = warrantyStatus(a.warrantyEnd);
       return '<tr class="row-click" data-row="'+a.id+'">'+
+        '<td><input type="checkbox" class="row-select" data-select="'+a.id+'" '+(selectedAssetIds.has(a.id)?'checked':'')+'></td>'+
         '<td class="mono">'+(startIdx+i+1)+'</td>'+
         '<td><span class="asset-tag">'+escapeHtml(a.assetCode)+'</span></td>'+
         '<td class="invoice-cell">'+(a.hasInvoice ? '<button class="invoice-icon-btn" data-dl="'+a.id+'" title="Download invoice">⬇</button>' : '<span class="invoice-none">—</span>')+'</td>'+
@@ -3023,7 +3029,7 @@ function renderAssets(){
 
   body.querySelectorAll('[data-row]').forEach(tr=>{
     tr.addEventListener('click', (e)=>{
-      if(e.target.closest('button')) return;
+      if(e.target.closest('button') || e.target.closest('input')) return;
       const a = assets.find(x=>x.id===tr.dataset.row);
       if(a) openAssetView(a);
     });
@@ -3037,6 +3043,17 @@ function renderAssets(){
   body.querySelectorAll('[data-dl]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ const a = assets.find(x=>x.id===btn.dataset.dl); if(a) downloadFile('invoices', a.invoiceStoragePath, a.id, a.invoiceFileName); });
   });
+  body.querySelectorAll('[data-select]').forEach(cb=>{
+    cb.addEventListener('click', e=> e.stopPropagation());
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) selectedAssetIds.add(cb.dataset.select);
+      else selectedAssetIds.delete(cb.dataset.select);
+      updateAssetSelectAllState(pageItems);
+      updateAssetBulkUI();
+    });
+  });
+  updateAssetSelectAllState(pageItems);
+  updateAssetBulkUI();
 
   const shownFrom = filtered.length===0 ? 0 : startIdx + 1;
   const shownTo = Math.min(startIdx + PAGE_SIZE, filtered.length);
@@ -3044,6 +3061,45 @@ function renderAssets(){
   $('assetPageCurrent').textContent = 'Page ' + assetCurrentPage + ' of ' + totalPages;
   $('assetPrevBtn').disabled = assetCurrentPage <= 1;
   $('assetNextBtn').disabled = assetCurrentPage >= totalPages;
+}
+
+function updateAssetSelectAllState(pageItems){
+  const selAll = $('assetSelectAll');
+  if(!selAll) return;
+  if(!pageItems || pageItems.length === 0){ selAll.checked = false; selAll.indeterminate = false; return; }
+  const selectedOnPage = pageItems.filter(a => selectedAssetIds.has(a.id)).length;
+  selAll.checked = selectedOnPage === pageItems.length;
+  selAll.indeterminate = selectedOnPage > 0 && selectedOnPage < pageItems.length;
+}
+
+function updateAssetBulkUI(){
+  const btn = $('assetBulkDeleteBtn');
+  if(!btn) return;
+  const n = selectedAssetIds.size;
+  btn.style.display = n > 0 ? '' : 'none';
+  $('assetBulkCount').textContent = n;
+}
+
+async function deleteSelectedAssets(){
+  const ids = Array.from(selectedAssetIds);
+  if(!ids.length) return;
+  const toDelete = assets.filter(a => ids.includes(a.id));
+  const ok = await passwordConfirmDelete('Permanently delete ' + ids.length + ' selected asset' + (ids.length>1?'s':'') + '? This cannot be undone.');
+  if(!ok) return;
+  let failed = 0;
+  for(const a of toDelete){
+    try{
+      await assetsTable.remove(a.id);
+      if(a.hasInvoice) await deleteFile('invoices', a.invoiceStoragePath, a.id);
+    }catch(e){ console.error(e); failed++; }
+  }
+  selectedAssetIds.clear();
+  assets = await assetsTable.list();
+  decorateAssets();
+  renderAssets();
+  renderDashboard();
+  if(failed) showToast(failed + ' asset(s) could not be deleted', true);
+  else showToast((ids.length - failed) + ' asset(s) deleted');
 }
 
 function resetAssetInvoiceUI(){
@@ -3111,6 +3167,7 @@ function handleAssetInvoiceFile(file){
 /* ================= ASSET DISCOVERY ================= */
 let discoveryItems = [];
 let discoveryCurrentId = null;
+let selectedDiscoveryIds = new Set();
 
 async function loadDiscovery(){
   try{
@@ -3138,7 +3195,8 @@ function renderDiscovery(){
 
   const body = $('discoveryTableBody');
   if(!discoveryItems.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="11"><span class="empty-icon">▤</span>No scans yet — install the Chamaria IT Agent on any PC to get started.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="12"><span class="empty-icon">▤</span>No scans yet — install the Chamaria IT Agent on any PC to get started.</td></tr>';
+    updateDiscoveryBulkUI();
     return;
   }
   body.innerHTML = discoveryItems.map(d => {
@@ -3146,6 +3204,7 @@ function renderDiscovery(){
     const statusColor = d.status==='pending' ? '#92400e' : d.status==='approved' ? '#065f46' : '#6b7280';
     const dt = d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
     return '<tr style="cursor:pointer;" data-discid="' + d.id + '">' +
+      '<td><input type="checkbox" class="row-select" data-discselect="' + d.id + '" ' + (selectedDiscoveryIds.has(d.id)?'checked':'') + '></td>' +
       '<td><strong>' + escapeHtml(d.computer_name||'—') + '</strong></td>' +
       '<td>' + escapeHtml(d.username||'—') + '</td>' +
       '<td><span style="font-size:12px;">' + escapeHtml(d.model||'—') + '</span><br><span class="mono" style="font-size:10px;color:var(--ink-soft);">' + escapeHtml(d.serial_number||'—') + '</span></td>' +
@@ -3167,7 +3226,50 @@ function renderDiscovery(){
   body.querySelectorAll('[data-discview]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); openDiscoveryDetail(discoveryItems.find(d=>d.id===b.dataset.discview)); }));
   body.querySelectorAll('[data-discapprove]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); openDiscoveryDetail(discoveryItems.find(d=>d.id===b.dataset.discapprove)); }));
   body.querySelectorAll('[data-discdelete]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); deleteDiscovery(b.dataset.discdelete); }));
-  body.querySelectorAll('[data-discid]').forEach(tr => tr.addEventListener('click', () => { const d=discoveryItems.find(x=>x.id===tr.dataset.discid); if(d) openDiscoveryDetail(d); }));
+  body.querySelectorAll('[data-discid]').forEach(tr => tr.addEventListener('click', (e) => { if(e.target.closest('input')) return; const d=discoveryItems.find(x=>x.id===tr.dataset.discid); if(d) openDiscoveryDetail(d); }));
+  body.querySelectorAll('[data-discselect]').forEach(cb=>{
+    cb.addEventListener('click', e=> e.stopPropagation());
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) selectedDiscoveryIds.add(cb.dataset.discselect);
+      else selectedDiscoveryIds.delete(cb.dataset.discselect);
+      updateDiscoverySelectAllState();
+      updateDiscoveryBulkUI();
+    });
+  });
+  updateDiscoverySelectAllState();
+  updateDiscoveryBulkUI();
+}
+
+function updateDiscoverySelectAllState(){
+  const selAll = $('discoverySelectAll');
+  if(!selAll) return;
+  if(!discoveryItems.length){ selAll.checked = false; selAll.indeterminate = false; return; }
+  const selectedCount = discoveryItems.filter(d => selectedDiscoveryIds.has(d.id)).length;
+  selAll.checked = selectedCount === discoveryItems.length;
+  selAll.indeterminate = selectedCount > 0 && selectedCount < discoveryItems.length;
+}
+
+function updateDiscoveryBulkUI(){
+  const btn = $('discoveryBulkDeleteBtn');
+  if(!btn) return;
+  const n = selectedDiscoveryIds.size;
+  btn.style.display = n > 0 ? '' : 'none';
+  $('discoveryBulkCount').textContent = n;
+}
+
+async function deleteSelectedDiscovery(){
+  const ids = Array.from(selectedDiscoveryIds);
+  if(!ids.length) return;
+  const ok = await passwordConfirmDelete('Permanently delete ' + ids.length + ' selected discovery entr' + (ids.length>1?'ies':'y') + '? This cannot be undone.');
+  if(!ok) return;
+  try{
+    if(supa){ const { error } = await supa.from('asset_discovery').delete().in('id', ids); if(error) throw error; }
+    discoveryItems = discoveryItems.filter(d => !ids.includes(d.id));
+    if(ids.includes(discoveryCurrentId)) closeDiscoveryDetail();
+    selectedDiscoveryIds.clear();
+    renderDiscovery();
+    showToast(ids.length + ' discovery entr' + (ids.length>1?'ies':'y') + ' deleted');
+  }catch(e){ showToast('Could not delete — ' + (e.message||'error'), true); }
 }
 
 function openDiscoveryDetail(d){
@@ -3310,6 +3412,13 @@ async function deleteDiscovery(id){
 
 // Wire up discovery events
 $('discoveryRefreshBtn').addEventListener('click', loadDiscovery);
+$('discoverySelectAll').addEventListener('click', e => e.stopPropagation());
+$('discoverySelectAll').addEventListener('change', ()=>{
+  const checked = $('discoverySelectAll').checked;
+  discoveryItems.forEach(d => { if(checked) selectedDiscoveryIds.add(d.id); else selectedDiscoveryIds.delete(d.id); });
+  renderDiscovery();
+});
+$('discoveryBulkDeleteBtn').addEventListener('click', deleteSelectedDiscovery);
 $('discoveryDetailClose').addEventListener('click', closeDiscoveryDetail);
 $('ddCloseBtn').addEventListener('click', closeDiscoveryDetail);
 $('discoveryDetailOverlay').addEventListener('click', e => { if(e.target.id==='discoveryDetailOverlay') closeDiscoveryDetail(); });
@@ -6306,6 +6415,16 @@ document.querySelectorAll('#tab-assets th.sortable').forEach(th=>{
 $('assetExportBtn').addEventListener('click', exportAssetsCSV);
 // Production mode — dangerous reset button removed
 $('assetImportBtn').addEventListener('click', openImportPanel);
+$('assetSelectAll').addEventListener('change', ()=>{
+  const checked = $('assetSelectAll').checked;
+  document.querySelectorAll('#assetTableBody [data-select]').forEach(cb=>{
+    cb.checked = checked;
+    if(checked) selectedAssetIds.add(cb.dataset.select);
+    else selectedAssetIds.delete(cb.dataset.select);
+  });
+  updateAssetBulkUI();
+});
+$('assetBulkDeleteBtn').addEventListener('click', deleteSelectedAssets);
 $('importPanelClose').addEventListener('click', closeImportPanel);
 $('importCancelBtn').addEventListener('click', closeImportPanel);
 $('importOverlay').addEventListener('click', (e)=>{ if(e.target.id==='importOverlay') closeImportPanel(); });
