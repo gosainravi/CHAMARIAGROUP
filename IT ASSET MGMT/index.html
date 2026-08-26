@@ -982,6 +982,7 @@
       </div>
       <div class="panel-body" style="overflow-y:auto;flex:1;" id="ddBody"></div>
       <div class="panel-foot" style="flex-shrink:0;">
+        <button class="btn btn-danger" id="ddDeleteBtn">🗑 Delete</button>
         <button class="btn btn-danger" id="ddDismissBtn">Dismiss</button>
         <div style="flex:1;"></div>
         <button class="btn" id="ddCloseBtn">Close</button>
@@ -3158,12 +3159,14 @@ function renderDiscovery(){
       '<td><div class="row-actions">' +
         '<button class="btn btn-sm" data-discview="' + d.id + '">View</button>' +
         (d.status==='pending' ? '<button class="btn btn-sm btn-primary" data-discapprove="' + d.id + '" style="font-size:11px;">+ Add</button>' : '') +
+        '<button class="btn btn-sm btn-danger" data-discdelete="' + d.id + '" title="Delete this entry">🗑</button>' +
       '</div></td>' +
     '</tr>';
   }).join('');
 
   body.querySelectorAll('[data-discview]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); openDiscoveryDetail(discoveryItems.find(d=>d.id===b.dataset.discview)); }));
   body.querySelectorAll('[data-discapprove]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); openDiscoveryDetail(discoveryItems.find(d=>d.id===b.dataset.discapprove)); }));
+  body.querySelectorAll('[data-discdelete]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); deleteDiscovery(b.dataset.discdelete); }));
   body.querySelectorAll('[data-discid]').forEach(tr => tr.addEventListener('click', () => { const d=discoveryItems.find(x=>x.id===tr.dataset.discid); if(d) openDiscoveryDetail(d); }));
 }
 
@@ -3292,6 +3295,18 @@ async function dismissDiscovery(id){
     showToast('Discovery dismissed');
   }catch(e){ showToast('Could not dismiss', true); }
 }
+async function deleteDiscovery(id){
+  const d = discoveryItems.find(x=>x.id===id);
+  const ok = await passwordConfirmDelete('Permanently delete this discovery scan (' + (d?d.computer_name:'this entry') + ')? This cannot be undone.');
+  if(!ok) return;
+  try{
+    if(supa){ const { error } = await supa.from('asset_discovery').delete().eq('id', id); if(error) throw error; }
+    discoveryItems = discoveryItems.filter(d => d.id !== id);
+    if(discoveryCurrentId === id) closeDiscoveryDetail();
+    renderDiscovery();
+    showToast('Discovery entry deleted');
+  }catch(e){ showToast('Could not delete — ' + (e.message||'error'), true); }
+}
 
 // Wire up discovery events
 $('discoveryRefreshBtn').addEventListener('click', loadDiscovery);
@@ -3300,6 +3315,7 @@ $('ddCloseBtn').addEventListener('click', closeDiscoveryDetail);
 $('discoveryDetailOverlay').addEventListener('click', e => { if(e.target.id==='discoveryDetailOverlay') closeDiscoveryDetail(); });
 $('ddAddToAssetsBtn').addEventListener('click', addDiscoveryToAssets);
 $('ddDismissBtn').addEventListener('click', () => { if(discoveryCurrentId) dismissDiscovery(discoveryCurrentId); });
+$('ddDeleteBtn').addEventListener('click', () => { if(discoveryCurrentId) deleteDiscovery(discoveryCurrentId); });
 
 /* ================= END ASSET DISCOVERY ================= */
 
