@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sachin Chamaria Equipment</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#F2F3F8; --ink-soft:#9C9DB3; --paper:#202027; --surface:#17171D;
+    --line:rgba(255,255,255,0.08); --line-soft:rgba(255,255,255,0.05);
+    --accent:#4C7FFF; --accent-2:#8B5CF6; --accent-soft:#1B2340;
+    --danger:#F0475A; --danger-soft:#341A22; --success:#34D399; --success-soft:#123128;
+    --radius:14px;
+    --canvas:radial-gradient(circle at 12% 8%,#E9E4FF 0%,transparent 55%),radial-gradient(circle at 90% 15%,#E3EBFF 0%,transparent 50%),radial-gradient(circle at 50% 100%,#FCE7F3 0%,transparent 60%),linear-gradient(135deg,#EFEBFC 0%,#EAF0FE 45%,#FCEBF4 100%);
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{min-height:100vh;background:var(--canvas);font-family:var(--sans);color:var(--ink);}
+  .wrap{max-width:1200px;margin:0 auto;padding:28px 20px 60px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+  .topbar h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-0.01em;color:#1a1a2e;}
+  .topbar .back{font-size:13px;color:#4C3FBF;text-decoration:none;font-weight:600;}
+  .topbar .back:hover{text-decoration:underline;}
+  .app-card-shell{background:var(--surface);border-radius:24px;box-shadow:0 30px 80px -20px rgba(30,20,60,0.35);overflow:hidden;}
+  .tabs{display:flex;gap:4px;padding:16px 20px 0;border-bottom:1px solid var(--line);}
+  .tab-btn{background:none;border:none;color:var(--ink-soft);font-size:14px;font-weight:600;padding:12px 18px;cursor:pointer;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:8px;}
+  .tab-btn.active{color:var(--ink);background:var(--paper);}
+  .tab-btn:hover:not(.active){color:var(--ink);}
+  .panel-content{padding:22px 24px 28px;}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+  .search-wrap{position:relative;}
+  .search-wrap input{width:280px;max-width:60vw;padding:9px 12px 9px 34px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13px;}
+  .search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-soft);}
+  .btn{padding:9px 16px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;}
+  .btn:hover{border-color:var(--accent);}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent;color:#fff;}
+  .btn-danger{background:var(--danger-soft);color:var(--danger);border-color:transparent;}
+  .btn-sm{padding:5px 10px;font-size:12px;}
+  .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{text-align:left;padding:11px 14px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);background:var(--paper);border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,0.02);}
+  .row-actions{display:flex;gap:6px;}
+  .empty-row td{text-align:center;padding:40px 20px;color:var(--ink-soft);}
+  .mono{font-family:var(--mono);}
+  .price{font-family:var(--mono);color:var(--ink);}
+  .file-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:600;background:var(--success-soft);color:var(--success);}
+  .file-pill.none{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
+
+  .overlay{position:fixed;inset:0;background:rgba(10,10,16,0.72);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .overlay.open{display:flex;}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;max-width:560px;width:100%;max-height:90vh;display:flex;flex-direction:column;color:var(--ink);}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--line);}
+  .panel-head h2{margin:0;font-size:17px;}
+  .panel-close{background:none;border:none;color:var(--ink-soft);font-size:20px;cursor:pointer;}
+  .panel-body{padding:20px 24px;overflow-y:auto;}
+  .panel-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--line);}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+  .field input, .field textarea{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13.5px;font-family:inherit;}
+  .field textarea{resize:vertical;min-height:110px;line-height:1.5;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .req{color:var(--danger);}
+  .file-drop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .hint{font-size:11.5px;color:var(--ink-soft);}
+  .file-box{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:var(--paper);border:1px solid var(--line);}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--paper);border:1px solid var(--line);color:var(--ink);padding:12px 20px;border-radius:12px;font-size:13.5px;box-shadow:0 20px 50px -10px rgba(0,0,0,0.5);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .toast.show{opacity:1;}
+  .toast.error{border-color:var(--danger);color:#ffb3bb;}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr;} thead th:nth-child(n+5),tbody td:nth-child(n+5){display:none;} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <h1>🩺 Sachin Chamaria Equipment</h1>
+    <a class="back" href="../index.html">← Back to Business Portal</a>
+  </div>
+
+  <div class="app-card-shell">
+    <div class="tabs">
+      <button class="tab-btn active" data-cat="medical"><span>⚕️</span> Medical Equipment</button>
+      <button class="tab-btn" data-cat="boccia"><span>🎯</span> Boccia Equipment</button>
+    </div>
+    <div class="panel-content">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="eqSearch" type="text" placeholder="Search equipment...">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn" id="eqExportBtn">⬇ Export to Excel</button>
+          <button class="btn btn-primary" id="eqAddBtn">+ Add Equipment</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Sl.No</th><th>Equipment Name</th><th>Make</th><th>Serial Number</th><th>Equipment Type</th>
+            <th>Purchased From</th><th id="eqPurchaseDateHead" style="display:none;">Purchase Date</th><th>Purchase Price</th><th>Invoice</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="eqTableBody"><tr class="empty-row"><td colspan="10">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Add/Edit Equipment Panel ============ -->
+<div class="overlay" id="eqOverlay">
+  <div class="panel">
+    <div class="panel-head"><h2 id="eqPanelTitle">Add Equipment</h2><button class="panel-close" id="eqPanelClose">✕</button></div>
+    <div class="panel-body">
+      <form id="eqForm">
+        <div class="grid2">
+          <div class="field"><label>Equipment Name <span class="req">*</span></label><input id="ef_equipmentName" required></div>
+          <div class="field"><label>Make</label><input id="ef_make"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Serial Number</label><input id="ef_serialNumber"></div>
+          <div class="field"><label>Equipment Type</label><input id="ef_equipmentType"></div>
+        </div>
+        <div class="field"><label>Specification</label><textarea id="ef_specification" rows="6"></textarea></div>
+        <div class="field"><label>Other Specification</label><textarea id="ef_otherSpecification" rows="6"></textarea></div>
+        <div class="grid2">
+          <div class="field"><label>Purchased From</label><input id="ef_purchasedFrom"></div>
+          <div class="field" id="ef_purchaseDateField" style="display:none;"><label>Purchase Date</label><input type="date" id="ef_purchaseDate"></div>
+        </div>
+        <div class="field"><label>Purchase Price</label><input type="number" id="ef_purchasePrice" step="0.01"></div>
+        <div class="field">
+          <label>Invoice Attachment</label>
+          <div class="file-drop">
+            <input type="file" id="ef_invoiceFile" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none;">
+            <div id="ef_invoiceEmpty"><button type="button" class="btn btn-sm" id="ef_chooseInvoiceBtn">Choose file…</button> <span class="hint">PDF or image</span></div>
+            <div id="ef_invoiceAttached" class="file-box" style="display:none;">
+              <span id="ef_invoiceFileName"></span>
+              <button type="button" class="btn btn-sm btn-danger" id="ef_removeInvoiceBtn">Remove</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="panel-foot">
+      <button class="btn" id="eqCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="eqSaveBtn">Save Equipment</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://bnaoylezumflyvfdmsnm.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuYW95bGV6dW1mbHl2ZmRtc25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0OTk3NTIsImV4cCI6MjEwMTA3NTc1Mn0.MG8UmI7d7TrqWnwgAPp5dv3sEdTrNv5vuyV3lZDwYEI';
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const BUCKET = 'sachin-equipment-invoices';
+
+const $ = id => document.getElementById(id);
+let equipment = [];
+let activeCategory = 'medical';
+let editingId = null;
+let pendingInvoiceFile = null;
+let pendingInvoiceRemoved = false;
+
+function showToast(msg, isError){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(()=> t.classList.remove('show'), 3200);
+}
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtMoney(v){
+  if(v === '' || v === null || v === undefined) return '';
+  return '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:2});
+}
+
+function rowFromDb(r){
+  return {
+    id: r.id, category: r.category, equipmentName: r.equipment_name || '', make: r.make || '',
+    serialNumber: r.serial_number || '', equipmentType: r.equipment_type || '',
+    specification: r.specification || '', otherSpecification: r.other_specification || '',
+    purchasedFrom: r.purchased_from || '', purchaseDate: r.purchase_date || '',
+    purchasePrice: r.purchase_price ?? '', hasInvoice: !!r.has_invoice,
+    invoiceFileName: r.invoice_file_name || '', invoiceStoragePath: r.invoice_storage_path || ''
+  };
+}
+function rowToDb(e){
+  return {
+    category: e.category, equipment_name: e.equipmentName || null, make: e.make || null,
+    serial_number: e.serialNumber || null, equipment_type: e.equipmentType || null,
+    specification: e.specification || null, other_specification: e.otherSpecification || null,
+    purchased_from: e.purchasedFrom || null, purchase_date: e.purchaseDate || null,
+    purchase_price: (e.purchasePrice === '' || e.purchasePrice == null) ? null : Number(e.purchasePrice),
+    has_invoice: !!e.hasInvoice, invoice_file_name: e.invoiceFileName || null, invoice_storage_path: e.invoiceStoragePath || null
+  };
+}
+
+async function loadEquipment(){
+  try{
+    const { data, error } = await supa.from('sachin_equipment').select('*').order('created_at', { ascending:true });
+    if(error) throw error;
+    equipment = data.map(rowFromDb);
+  }catch(e){
+    console.warn('Could not load equipment — has the migration been run?', e);
+    equipment = [];
+    showToast('Could not load data — ask IT to run the sachin_equipment migration', true);
+  }
+  render();
+}
+
+async function uploadInvoice(recordId, file){
+  const path = recordId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const { error } = await supa.storage.from(BUCKET).upload(path, file, { upsert:true });
+  if(error) throw error;
+  return { storagePath: path, filename: file.name };
+}
+async function downloadInvoice(storagePath, fallbackName){
+  if(!storagePath){ showToast('File not found', true); return; }
+  const { data, error } = await supa.storage.from(BUCKET).createSignedUrl(storagePath, 60);
+  if(error){ showToast('Could not retrieve file', true); return; }
+  window.open(data.signedUrl, '_blank');
+}
+async function deleteInvoice(storagePath){
+  if(storagePath) await supa.storage.from(BUCKET).remove([storagePath]);
+}
+
+function switchCategory(cat){
+  activeCategory = cat;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  $('eqPurchaseDateHead').style.display = cat === 'boccia' ? '' : 'none';
+  $('ef_purchaseDateField').style.display = cat === 'boccia' ? '' : 'none';
+  render();
+}
+
+function render(){
+  const q = ($('eqSearch').value || '').toLowerCase();
+  const list = equipment.filter(e => e.category === activeCategory).filter(e => !q ||
+    (e.equipmentName||'').toLowerCase().includes(q) || (e.make||'').toLowerCase().includes(q) ||
+    (e.serialNumber||'').toLowerCase().includes(q) || (e.equipmentType||'').toLowerCase().includes(q) ||
+    (e.purchasedFrom||'').toLowerCase().includes(q));
+  const body = $('eqTableBody');
+  const colCount = activeCategory === 'boccia' ? 10 : 9;
+  if(!list.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="'+colCount+'">' +
+      (equipment.filter(e=>e.category===activeCategory).length===0 ? 'No equipment yet — click "Add Equipment" to register the first item.' : 'No equipment matches your search.') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map((e,i) => '<tr data-row="'+e.id+'">' +
+    '<td class="mono">'+(i+1)+'</td>' +
+    '<td>'+escapeHtml(e.equipmentName)+'</td>' +
+    '<td>'+escapeHtml(e.make||'—')+'</td>' +
+    '<td class="mono">'+escapeHtml(e.serialNumber||'—')+'</td>' +
+    '<td>'+escapeHtml(e.equipmentType||'—')+'</td>' +
+    '<td>'+escapeHtml(e.purchasedFrom||'—')+'</td>' +
+    (activeCategory==='boccia' ? '<td class="mono">'+escapeHtml(e.purchaseDate||'—')+'</td>' : '') +
+    '<td class="price">'+(e.purchasePrice!=='' ? fmtMoney(e.purchasePrice) : '—')+'</td>' +
+    '<td>'+(e.hasInvoice ? '<button class="file-pill" data-dl="'+e.id+'" style="cursor:pointer;border:none;">📎 View</button>' : '<span class="file-pill none">None</span>')+'</td>' +
+    '<td><div class="row-actions"><button class="btn btn-sm" data-edit="'+e.id+'">Edit</button><button class="btn btn-sm btn-danger" data-del="'+e.id+'">Del</button></div></td>' +
+  '</tr>').join('');
+
+  body.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => {
+    const e = equipment.find(x=>x.id===btn.dataset.edit); if(e) openPanel(e);
+  }));
+  body.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => deleteRecord(btn.dataset.del)));
+  body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', () => {
+    const e = equipment.find(x=>x.id===btn.dataset.dl); if(e) downloadInvoice(e.invoiceStoragePath, e.invoiceFileName);
+  }));
+}
+
+function resetInvoiceUI(){
+  pendingInvoiceFile = null; pendingInvoiceRemoved = false;
+  $('ef_invoiceFile').value = '';
+  $('ef_invoiceEmpty').style.display = '';
+  $('ef_invoiceAttached').style.display = 'none';
+}
+function showInvoiceAttached(name){
+  $('ef_invoiceEmpty').style.display = 'none';
+  $('ef_invoiceAttached').style.display = 'flex';
+  $('ef_invoiceFileName').textContent = name;
+}
+
+function openPanel(record){
+  editingId = record ? record.id : null;
+  $('eqPanelTitle').textContent = record ? 'Edit Equipment' : 'Add Equipment';
+  $('ef_equipmentName').value = record ? record.equipmentName : '';
+  $('ef_make').value = record ? record.make : '';
+  $('ef_serialNumber').value = record ? record.serialNumber : '';
+  $('ef_equipmentType').value = record ? record.equipmentType : '';
+  $('ef_specification').value = record ? record.specification : '';
+  $('ef_otherSpecification').value = record ? record.otherSpecification : '';
+  $('ef_purchasedFrom').value = record ? record.purchasedFrom : '';
+  $('ef_purchaseDate').value = record ? record.purchaseDate : '';
+  $('ef_purchasePrice').value = record ? record.purchasePrice : '';
+  resetInvoiceUI();
+  if(record && record.hasInvoice) showInvoiceAttached(record.invoiceFileName || 'invoice file');
+  $('eqOverlay').classList.add('open');
+  $('ef_equipmentName').focus();
+}
+function closePanel(){ $('eqOverlay').classList.remove('open'); editingId = null; resetInvoiceUI(); }
+
+async function saveRecord(){
+  const equipmentName = $('ef_equipmentName').value.trim();
+  if(!equipmentName){ showToast('Equipment name is required', true); $('ef_equipmentName').focus(); return; }
+  const data = {
+    category: activeCategory, equipmentName, make: $('ef_make').value.trim(),
+    serialNumber: $('ef_serialNumber').value.trim(), equipmentType: $('ef_equipmentType').value.trim(),
+    specification: $('ef_specification').value.trim(), otherSpecification: $('ef_otherSpecification').value.trim(),
+    purchasedFrom: $('ef_purchasedFrom').value.trim(),
+    purchaseDate: activeCategory === 'boccia' ? $('ef_purchaseDate').value : '',
+    purchasePrice: $('ef_purchasePrice').value
+  };
+  try{
+    let record;
+    if(editingId){
+      const existing = equipment.find(x=>x.id===editingId) || {};
+      const dbData = rowToDb(data);
+      dbData.has_invoice = existing.hasInvoice || false;
+      dbData.invoice_file_name = existing.invoiceFileName || null;
+      dbData.invoice_storage_path = existing.invoiceStoragePath || null;
+      const { error } = await supa.from('sachin_equipment').update(dbData).eq('id', editingId);
+      if(error) throw error;
+      record = { ...existing, ...data, id: editingId };
+    } else {
+      const { data: inserted, error } = await supa.from('sachin_equipment').insert(rowToDb(data)).select().single();
+      if(error) throw error;
+      record = rowFromDb(inserted);
+    }
+
+    if(pendingInvoiceFile){
+      const result = await uploadInvoice(record.id, pendingInvoiceFile);
+      const { error } = await supa.from('sachin_equipment').update({ has_invoice:true, invoice_file_name:result.filename, invoice_storage_path:result.storagePath }).eq('id', record.id);
+      if(error) throw error;
+    } else if(pendingInvoiceRemoved){
+      if(record.invoiceStoragePath) await deleteInvoice(record.invoiceStoragePath);
+      const { error } = await supa.from('sachin_equipment').update({ has_invoice:false, invoice_file_name:null, invoice_storage_path:null }).eq('id', record.id);
+      if(error) throw error;
+    }
+
+    await loadEquipment();
+    closePanel();
+    showToast(editingId ? 'Equipment updated' : 'Equipment added');
+  }catch(e){
+    console.error(e);
+    showToast('Could not save — ' + (e.message || 'check your database connection'), true);
+  }
+}
+
+async function deleteRecord(id){
+  const e = equipment.find(x=>x.id===id);
+  if(!e) return;
+  if(!confirm('Delete "' + e.equipmentName + '"? This cannot be undone.')) return;
+  try{
+    if(e.hasInvoice && e.invoiceStoragePath) await deleteInvoice(e.invoiceStoragePath);
+    const { error } = await supa.from('sachin_equipment').delete().eq('id', id);
+    if(error) throw error;
+    await loadEquipment();
+    showToast('Equipment deleted');
+  }catch(err){
+    console.error(err);
+    showToast('Could not delete', true);
+  }
+}
+
+function exportExcel(){
+  const list = equipment.filter(e => e.category === activeCategory);
+  if(!list.length){ showToast('No data to export', true); return; }
+  const rows = list.map((e,i) => {
+    const row = {
+      'Sl.No': i+1, 'Equipment Name': e.equipmentName, 'Make': e.make, 'Serial Number': e.serialNumber,
+      'Equipment Type': e.equipmentType, 'Specification': e.specification, 'Other Specification': e.otherSpecification,
+      'Purchased From': e.purchasedFrom
+    };
+    if(activeCategory === 'boccia') row['Purchase Date'] = e.purchaseDate;
+    row['Purchase Price'] = e.purchasePrice;
+    row['Invoice Attached'] = e.hasInvoice ? 'Yes' : 'No';
+    return row;
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(Math.max(k.length, 14), 45) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, activeCategory === 'medical' ? 'Medical Equipment' : 'Boccia Equipment');
+  XLSX.writeFile(wb, (activeCategory === 'medical' ? 'medical-equipment' : 'boccia-equipment') + '-' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchCategory(btn.dataset.cat)));
+$('eqSearch').addEventListener('input', render);
+$('eqAddBtn').addEventListener('click', () => openPanel(null));
+$('eqExportBtn').addEventListener('click', exportExcel);
+$('eqPanelClose').addEventListener('click', closePanel);
+$('eqCancelBtn').addEventListener('click', closePanel);
+$('eqOverlay').addEventListener('click', e => { if(e.target.id==='eqOverlay') closePanel(); });
+$('eqSaveBtn').addEventListener('click', saveRecord);
+$('ef_chooseInvoiceBtn').addEventListener('click', () => $('ef_invoiceFile').click());
+$('ef_invoiceFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 10*1024*1024){ showToast('File too large — keep it under 10 MB', true); return; }
+  pendingInvoiceFile = file; pendingInvoiceRemoved = false;
+  showInvoiceAttached(file.name);
+});
+$('ef_removeInvoiceBtn').addEventListener('click', () => {
+  pendingInvoiceFile = null; pendingInvoiceRemoved = true;
+  $('ef_invoiceFile').value = ''; $('ef_invoiceEmpty').style.display = ''; $('ef_invoiceAttached').style.display = 'none';
+});
+
+loadEquipment();
+</script>
+
+</body>
+</html>
