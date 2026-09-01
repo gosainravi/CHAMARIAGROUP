@@ -1676,9 +1676,53 @@
     <div class="panel-body" id="avBody"></div>
     <div class="panel-foot">
       <button class="btn btn-danger" id="avDeleteBtn">Delete</button>
+      <button class="btn" id="avRecoverBtn" style="display:none;">🔄 Recover from User</button>
       <div style="flex:1;"></div>
       <button class="btn" id="avCloseBtn">Close</button>
       <button class="btn btn-primary" id="avEditBtn">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Asset History Entry Panel ============ -->
+<div class="overlay" id="historyEntryOverlay">
+  <div class="panel narrow">
+    <div class="panel-head"><h2>Add History Entry</h2><button class="panel-close" id="historyEntryPanelClose">✕</button></div>
+    <div class="panel-body">
+      <form id="historyEntryForm">
+        <div class="grid2">
+          <div class="field"><label>Event Type <span class="req">*</span></label>
+            <select id="he_eventType">
+              <option value="repair">Repair</option>
+              <option value="upgrade">Upgrade</option>
+              <option value="issued">Issued</option>
+              <option value="returned">Returned</option>
+              <option value="transferred">Transferred</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field"><label>Date <span class="req">*</span></label><input type="date" id="he_eventDate"></div>
+        </div>
+        <div class="field"><label>Description <span class="req">*</span></label><input id="he_description" placeholder="e.g. RAM upgraded 8GB → 16GB, Screen repair"></div>
+        <div class="grid2">
+          <div class="field"><label>Amount / Cost (₹)</label><input type="number" id="he_amount" step="0.01"></div>
+          <div class="field"><label>Vendor</label><input id="he_vendor" list="he_vendorList" placeholder="Who did the work?">
+            <datalist id="he_vendorList"></datalist>
+          </div>
+        </div>
+        <div class="field" id="he_employeeField"><label>Employee</label><select id="he_employeeId"><option value="">— None —</option></select></div>
+        <div class="field">
+          <label>Bill / Invoice (optional)</label>
+          <input type="file" id="he_billFile" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none;">
+          <div id="he_billEmpty"><button type="button" class="btn btn-sm" id="he_chooseBillBtn">Choose file…</button><span class="hint">PDF or image</span></div>
+          <div id="he_billAttached" style="display:none;"><span class="asset-tag file-attached-name" id="he_billFileName"></span> <button type="button" class="btn btn-sm btn-danger" id="he_removeBillBtn">Remove</button></div>
+        </div>
+        <div class="field"><label>Remarks</label><textarea id="he_remarks" rows="2"></textarea></div>
+      </form>
+    </div>
+    <div class="panel-foot">
+      <button class="btn" id="historyEntryCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="historyEntrySaveBtn">Save Entry</button>
     </div>
   </div>
 </div>
@@ -2329,6 +2373,88 @@ const companiesTable = makeTable('companies', companyToDb, companyFromDb, 'compa
 const employeesTable = makeTable('employees', employeeToDb, employeeFromDb, 'employees');
 const vendorsTable = makeTable('vendors', vendorToDb, vendorFromDb, 'vendors');
 
+/* ================= ASSET HISTORY (repairs, upgrades, issue/return log) ================= */
+function historyToDb(h){
+  return {
+    asset_id: h.assetId, event_type: h.eventType, event_date: h.eventDate || null,
+    employee_id: h.employeeId || null, employee_name: h.employeeName || null,
+    description: h.description || null, amount: (h.amount === '' || h.amount == null) ? null : Number(h.amount),
+    vendor: h.vendor || null, has_bill: !!h.hasBill, bill_file_name: h.billFileName || null,
+    bill_storage_path: h.billStoragePath || null, remarks: h.remarks || null,
+    performed_by: h.performedBy || null
+  };
+}
+function historyFromDb(r){
+  return {
+    id: r.id, assetId: r.asset_id, eventType: r.event_type, eventDate: r.event_date || '',
+    employeeId: r.employee_id || '', employeeName: r.employee_name || '',
+    description: r.description || '', amount: r.amount ?? '', vendor: r.vendor || '',
+    hasBill: !!r.has_bill, billFileName: r.bill_file_name || '', billStoragePath: r.bill_storage_path || '',
+    remarks: r.remarks || '', performedBy: r.performed_by || '', createdAt: r.created_at || ''
+  };
+}
+function historyLocalKey(){ return 'asset_history_local'; }
+function historyLocalList(){
+  try{ const raw = localStorage.getItem(historyLocalKey()); return raw ? JSON.parse(raw) : []; }catch(e){ return []; }
+}
+function historyLocalSave(list){ localStorage.setItem(historyLocalKey(), JSON.stringify(list)); }
+
+async function loadAssetHistory(assetId){
+  if(supa){
+    const { data, error } = await supa.from('asset_history').select('*').eq('asset_id', assetId).order('event_date', { ascending:false });
+    if(error) throw error;
+    return data.map(historyFromDb);
+  }
+  return historyLocalList().filter(h => h.assetId === assetId).sort((a,b)=> (b.eventDate||'').localeCompare(a.eventDate||''));
+}
+async function loadEmployeeHistory(employeeId, employeeName){
+  if(supa){
+    let query = supa.from('asset_history').select('*').order('event_date', { ascending:false });
+    query = employeeId ? query.eq('employee_id', employeeId) : query.eq('employee_name', employeeName);
+    const { data, error } = await query;
+    if(error) throw error;
+    return data.map(historyFromDb);
+  }
+  return historyLocalList().filter(h => (employeeId && h.employeeId === employeeId) || (!h.employeeId && h.employeeName === employeeName))
+    .sort((a,b)=> (b.eventDate||'').localeCompare(a.eventDate||''));
+}
+async function insertHistoryEntry(h){
+  if(supa){
+    const { data, error } = await supa.from('asset_history').insert(historyToDb(h)).select().single();
+    if(error) throw error;
+    return historyFromDb(data);
+  }
+  const list = historyLocalList();
+  const rec = { id: 'local_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...h };
+  list.push(rec);
+  historyLocalSave(list);
+  return rec;
+}
+async function removeHistoryEntry(id){
+  if(supa){ const { error } = await supa.from('asset_history').delete().eq('id', id); if(error) throw error; return; }
+  historyLocalSave(historyLocalList().filter(h => h.id !== id));
+}
+
+const HISTORY_TYPE_LABEL = { issued:'Issued', returned:'Returned', transferred:'Transferred', repair:'Repair', upgrade:'Upgrade', other:'Other' };
+const HISTORY_TYPE_STYLE = {
+  issued:      'background:var(--success-soft);color:var(--success);',
+  returned:    'background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);',
+  transferred: 'background:var(--accent-soft);color:var(--accent-2);',
+  repair:      'background:var(--warn-soft);color:var(--warn);',
+  upgrade:     'background:var(--accent-soft);color:var(--accent);',
+  other:       'background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);'
+};
+
+async function logAssignmentHistory(assetId, eventType, employeeId, employeeName, eventDate, remarks){
+  try{
+    await insertHistoryEntry({
+      assetId, eventType, employeeId: employeeId || null, employeeName: employeeName || '',
+      eventDate: eventDate || new Date().toISOString().slice(0,10), description: HISTORY_TYPE_LABEL[eventType] + (employeeName ? ' — ' + employeeName : ''),
+      remarks: remarks || '', performedBy: (supa && window._currentUserEmail) ? window._currentUserEmail : ''
+    });
+  }catch(e){ console.warn('Could not log assignment history (run the asset_history migration?)', e); }
+}
+
 let localAssetCounter = 0;
 const assetsTable = {
   async list(){
@@ -2437,6 +2563,8 @@ let companies = [];
 let employees = [];
 let vendors = [];
 let vendorEditingId = null;
+let historyEntryContext = { assetId: null, employeeId: null, employeeName: null };
+let pendingHistoryBillFile = null;
 let assets = [];
 
 let assetCurrentPage = 1;
@@ -2842,6 +2970,9 @@ function populateDropdowns(){
   const employeeOptionsHtml = employees.slice().sort((a,b)=>a.name.localeCompare(b.name))
     .map(e => '<option value="'+e.id+'">'+escapeHtml(e.name)+(e.department?' ('+escapeHtml(e.department)+')':'')+'</option>').join('');
   $('af_employeeId').innerHTML = '<option value="">— Not assigned via employee record —</option>' + employeeOptionsHtml;
+  if($('he_employeeId')) $('he_employeeId').innerHTML = '<option value="">— None —</option>' + employeeOptionsHtml;
+  if($('he_vendorList')) $('he_vendorList').innerHTML = vendors.slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .map(v => '<option value="'+escapeHtml(v.name)+'"></option>').join('');
 
   const usedCategories = assets.map(a=>a.category).filter(Boolean);
   const categories = [...new Set([...CATEGORY_OPTIONS, ...usedCategories])].sort();
@@ -4984,8 +5115,12 @@ async function saveAsset(){
 
   try{
     let asset;
-    const prevAssignedEmpId = assetEditingId ? (assets.find(a=>a.id===assetEditingId)||{}).assignedEmployeeId : null;
     const existingAsset = assetEditingId ? (assets.find(a=>a.id===assetEditingId)||{}) : {};
+    const prevEmployeeId = existingAsset.employeeId || '';
+    const prevAssignedUserName = existingAsset.assignedUserName || '';
+    const prevHolderKey = prevEmployeeId ? ('emp:'+prevEmployeeId) : (prevAssignedUserName ? ('name:'+prevAssignedUserName) : '');
+    const newHolderKey = data.employeeId ? ('emp:'+data.employeeId) : (data.assignedUserName ? ('name:'+data.assignedUserName) : '');
+    const holderChanged = prevHolderKey !== newHolderKey;
 
     if(assetEditingId){
       if(supa){
@@ -5010,9 +5145,19 @@ async function saveAsset(){
       showToast('Asset added — ' + asset.assetCode);
     }
 
-    // Send allocation email if employee assignment changed
-    if(data.assignedEmployeeId && data.assignedEmployeeId !== prevAssignedEmpId){
-      sendAllocationEmail(asset, data.assignedEmployeeId);
+    // Send allocation email + log issue/return history if the assigned holder changed
+    if(data.employeeId && holderChanged){
+      sendAllocationEmail(asset, data.employeeId);
+    }
+    if(holderChanged){
+      if(prevHolderKey){
+        const prevName = prevEmployeeId ? ((employees.find(e=>e.id===prevEmployeeId)||{}).name || prevAssignedUserName) : prevAssignedUserName;
+        await logAssignmentHistory(asset.id, 'returned', prevEmployeeId, prevName, new Date().toISOString().slice(0,10));
+      }
+      if(newHolderKey){
+        const newName = data.employeeId ? ((employees.find(e=>e.id===data.employeeId)||{}).name || data.assignedUserName) : data.assignedUserName;
+        await logAssignmentHistory(asset.id, 'issued', data.employeeId, newName, data.dateAssigned || new Date().toISOString().slice(0,10));
+      }
     }
 
     if(pendingAssetInvoiceFile){
@@ -5129,16 +5274,160 @@ function openAssetView(asset){
       '<div class="table-card" style="margin-top:8px;max-height:200px;overflow-y:auto;"><table><thead><tr><th>Software</th><th>Version</th><th>Publisher</th></tr></thead><tbody>' +
       asset.installedSoftware.map(s => '<tr><td style="font-size:12px;">' + escapeHtml(s.name||'') + '</td><td class="mono" style="font-size:11px;">' + escapeHtml(s.version||'—') + '</td><td style="font-size:11px;color:var(--ink-soft);">' + escapeHtml(s.publisher||'—') + '</td></tr>').join('') +
       '</tbody></table></div></div>' : '') +
-    (asset.remarks ? '<div class="view-section"><h4>Remarks</h4><div class="view-item"><span class="vv">'+escapeHtml(asset.remarks)+'</span></div></div>' : '');
+    (asset.remarks ? '<div class="view-section"><h4>Remarks</h4><div class="view-item"><span class="vv">'+escapeHtml(asset.remarks)+'</span></div></div>' : '') +
+    '<div class="view-section"><h4>Asset History <button class="btn btn-sm" id="avAddHistoryBtn" style="margin-left:8px;">+ Add Entry</button></h4>' +
+    '<div id="avHistoryBody"><div class="mini-empty">Loading…</div></div></div>';
 
   const dlBtn = $('avBody').querySelector('[data-avdl]');
   if(dlBtn) dlBtn.addEventListener('click', ()=> downloadFile('invoices', asset.invoiceStoragePath, asset.id, asset.invoiceFileName));
 
   $('avEditBtn').onclick = ()=>{ closeAssetView(); openAssetPanel(asset); };
   $('avDeleteBtn').onclick = ()=>{ closeAssetView(); deleteAsset(asset.id); };
+  $('avAddHistoryBtn').onclick = ()=> openHistoryEntryPanel(asset.id);
+
+  const isAssigned = !!(asset.employeeId || asset.assignedUserName);
+  $('avRecoverBtn').style.display = isAssigned ? '' : 'none';
+  $('avRecoverBtn').onclick = ()=> recoverAssetFromUser(asset);
+
+  loadAndRenderAssetHistory(asset.id);
+
   $('assetViewOverlay').classList.add('open');
 }
 function closeAssetView(){ $('assetViewOverlay').classList.remove('open'); }
+
+async function loadAndRenderAssetHistory(assetId){
+  historyEntryContext = { assetId, employeeId: null, employeeName: null };
+  const box = $('avHistoryBody');
+  try{
+    const list = await loadAssetHistory(assetId);
+    box.innerHTML = renderHistoryTable(list, 'asset');
+    wireHistoryTableActions(box);
+  }catch(e){
+    console.warn('Asset history unavailable — run the asset_history migration?', e);
+    box.innerHTML = '<div class="mini-empty">History not available yet — ask IT to run the asset_history migration.</div>';
+  }
+}
+
+function renderHistoryTable(list, context){
+  if(!list.length) return '<div class="mini-empty">No history entries yet</div>';
+  return '<table class="mini-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th>' +
+    (context==='employee' ? '<th>Asset</th>' : '<th>Employee</th>') +
+    '<th>Amount</th><th>Bill</th><th></th></tr></thead><tbody>' +
+    list.map(h => '<tr>' +
+      '<td class="mono">'+escapeHtml(h.eventDate || '—')+'</td>' +
+      '<td><span class="status-pill" style="'+(HISTORY_TYPE_STYLE[h.eventType]||HISTORY_TYPE_STYLE.other)+'">'+escapeHtml(HISTORY_TYPE_LABEL[h.eventType] || h.eventType)+'</span></td>' +
+      '<td>'+escapeHtml(h.description || '—')+'</td>' +
+      (context==='employee' ? '<td>'+escapeHtml((assets.find(a=>a.id===h.assetId)||{}).assetCode || '—')+'</td>' : '<td>'+escapeHtml(h.employeeName || '—')+'</td>') +
+      '<td>'+(h.amount ? fmtMoney(h.amount) : '—')+'</td>' +
+      '<td>'+(h.hasBill ? '<button class="btn btn-sm" data-hdl="'+h.id+'" data-hpath="'+escapeHtml(h.billStoragePath)+'" data-hname="'+escapeHtml(h.billFileName)+'">⬇</button>' : '—')+'</td>' +
+      '<td>'+(context!=='employee' ? '<button class="btn btn-sm btn-danger" data-hdel="'+h.id+'">🗑</button>' : '')+'</td>' +
+    '</tr>').join('') +
+    '</tbody></table>';
+}
+
+function wireHistoryTableActions(container){
+  container.querySelectorAll('[data-hdl]').forEach(btn=>{
+    btn.addEventListener('click', ()=> downloadFile('asset-bills', btn.dataset.hpath, btn.dataset.hdl, btn.dataset.hname));
+  });
+  container.querySelectorAll('[data-hdel]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const ok = await passwordConfirmDelete('Delete this history entry? This cannot be undone.');
+      if(!ok) return;
+      try{
+        await removeHistoryEntry(btn.dataset.hdel);
+        if(historyEntryContext.assetId) loadAndRenderAssetHistory(historyEntryContext.assetId);
+        else if(historyEntryContext.employeeId || historyEntryContext.employeeName) loadAndRenderEmployeeHistory(historyEntryContext.employeeId, historyEntryContext.employeeName);
+      }catch(e){ showToast('Could not delete entry', true); }
+    });
+  });
+}
+
+async function recoverAssetFromUser(asset){
+  const ok = await passwordConfirmDelete('Recover this asset from ' + (asset.assignedDisplayName || 'the current user') + '? It will be marked unassigned and logged as returned.');
+  if(!ok) return;
+  try{
+    const prevName = asset.assignedDisplayName || asset.assignedUserName || '';
+    const data = { ...asset, employeeId: '', assignedUserName: '', dateAssigned: '' };
+    if(supa){
+      const { error } = await supa.from('assets').update({ assigned_employee_id: null, assigned_user_name: null, date_assigned: null }).eq('id', asset.id);
+      if(error) throw error;
+    } else {
+      await assetsTable.update(asset.id, { employeeId:'', assignedUserName:'', dateAssigned:'' });
+    }
+    await logAssignmentHistory(asset.id, 'returned', asset.employeeId, prevName, new Date().toISOString().slice(0,10), 'Recovered via Asset Details');
+    assets = await assetsTable.list();
+    decorateAssets();
+    renderAssets();
+    renderDashboard();
+    closeAssetView();
+    showToast('Asset recovered — now unassigned');
+  }catch(e){
+    console.error(e);
+    showToast('Could not recover asset', true);
+  }
+}
+
+function openHistoryEntryPanel(assetId){
+  historyEntryContext.assetId = assetId;
+  pendingHistoryBillFile = null;
+  $('he_eventType').value = 'repair';
+  $('he_eventDate').value = new Date().toISOString().slice(0,10);
+  $('he_description').value = '';
+  $('he_amount').value = '';
+  $('he_vendor').value = '';
+  $('he_employeeId').value = '';
+  $('he_remarks').value = '';
+  $('he_billFile').value = '';
+  $('he_billEmpty').style.display = '';
+  $('he_billAttached').style.display = 'none';
+  toggleHistoryEmployeeField();
+  $('historyEntryOverlay').classList.add('open');
+  $('he_description').focus();
+}
+function closeHistoryEntryPanel(){ $('historyEntryOverlay').classList.remove('open'); pendingHistoryBillFile = null; }
+function toggleHistoryEmployeeField(){
+  const relevant = ['issued','returned','transferred'].includes($('he_eventType').value);
+  $('he_employeeField').style.display = relevant ? '' : 'none';
+}
+function handleHistoryBillFile(file){
+  if(!file) return;
+  const MAX = (supa ? 10 : 3.5) * 1024 * 1024;
+  if(file.size > MAX){ showToast('File too large — please keep it under ' + (supa ? '10 MB' : '3.5 MB'), true); return; }
+  pendingHistoryBillFile = file;
+  $('he_billEmpty').style.display = 'none';
+  $('he_billAttached').style.display = '';
+  $('he_billFileName').textContent = file.name;
+}
+
+async function saveHistoryEntry(){
+  const description = $('he_description').value.trim();
+  if(!description){ showToast('Description is required', true); $('he_description').focus(); return; }
+  const employeeId = $('he_employeeId').value;
+  const employeeName = employeeId ? ((employees.find(e=>e.id===employeeId)||{}).name || '') : '';
+  const data = {
+    assetId: historyEntryContext.assetId,
+    eventType: $('he_eventType').value,
+    eventDate: $('he_eventDate').value || new Date().toISOString().slice(0,10),
+    description, amount: $('he_amount').value,
+    vendor: $('he_vendor').value.trim(),
+    employeeId, employeeName,
+    remarks: $('he_remarks').value.trim(),
+    performedBy: (supa && window._currentUserEmail) ? window._currentUserEmail : ''
+  };
+  try{
+    if(pendingHistoryBillFile){
+      const result = await uploadFile('asset-bills', data.assetId, pendingHistoryBillFile);
+      data.hasBill = true; data.billFileName = result.filename; data.billStoragePath = result.storagePath;
+    }
+    await insertHistoryEntry(data);
+    closeHistoryEntryPanel();
+    loadAndRenderAssetHistory(data.assetId);
+    showToast('History entry saved');
+  }catch(e){
+    console.error(e);
+    showToast('Could not save entry — ' + (e.message || 'run the asset_history migration?'), true);
+  }
+}
 
 function exportAssetsCSV(){
   if(assets.length===0){ showToast('No data to export', true); return; }
@@ -6202,7 +6491,8 @@ function openEmployeeView(employee){
         return '<tr class="clickable" data-eviewasset="'+a.id+'"><td><span class="asset-tag">'+escapeHtml(a.assetCode)+'</span></td><td>'+escapeHtml(a.category)+'</td><td>'+escapeHtml(a.model)+'</td><td><span class="status-pill '+st.cls+'">'+st.label+'</span></td></tr>';
       }).join('') + '</tbody></table>'
       : '<div class="mini-empty">No assets currently assigned</div>') +
-    '</div>';
+    '</div>' +
+    '<div class="view-section"><h4>Issuance History</h4><div id="evHistoryBody"><div class="mini-empty">Loading…</div></div></div>';
   $('evBody').querySelectorAll('[data-eviewasset]').forEach(tr=>{
     tr.addEventListener('click', ()=>{ const a = assets.find(x=>x.id===tr.dataset.eviewasset); if(a){ closeEmployeeView(); switchTab('assets'); openAssetView(a); } });
   });
@@ -6213,9 +6503,24 @@ function openEmployeeView(employee){
   viewAssetsBtn.textContent = 'View in Assets →';
   viewAssetsBtn.onclick = ()=>{ closeEmployeeView(); switchTab('assets'); $('assetAssignedFilter').value = employee.name; assetCurrentPage = 1; renderAssets(); };
   $('evBody').prepend(viewAssetsBtn);
+  loadAndRenderEmployeeHistory(employee.id, employee.name);
   $('employeeViewOverlay').classList.add('open');
 }
 function closeEmployeeView(){ $('employeeViewOverlay').classList.remove('open'); }
+
+async function loadAndRenderEmployeeHistory(employeeId, employeeName){
+  historyEntryContext = { assetId: null, employeeId, employeeName };
+  const box = $('evHistoryBody');
+  if(!box) return;
+  try{
+    const list = await loadEmployeeHistory(employeeId, employeeName);
+    box.innerHTML = renderHistoryTable(list, 'employee');
+    wireHistoryTableActions(box);
+  }catch(e){
+    console.warn('Employee history unavailable — run the asset_history migration?', e);
+    box.innerHTML = '<div class="mini-empty">History not available yet — ask IT to run the asset_history migration.</div>';
+  }
+}
 
 /* ================= IT SERVICES (Domain / Email / Backup / Endpoint) ================= */
 // Known vendor consoles — direct login shortcuts shown next to the matching provider/registrar field.
@@ -6814,6 +7119,19 @@ $('vendorOverlay').addEventListener('click', (e)=>{ if(e.target.id==='vendorOver
 $('vendorSaveBtn').addEventListener('click', saveVendor);
 $('vendorSearch').addEventListener('input', renderVendors);
 $('vendorExportBtn').addEventListener('click', exportVendorsCSV);
+
+// Asset History
+$('historyEntryPanelClose').addEventListener('click', closeHistoryEntryPanel);
+$('historyEntryCancelBtn').addEventListener('click', closeHistoryEntryPanel);
+$('historyEntryOverlay').addEventListener('click', (e)=>{ if(e.target.id==='historyEntryOverlay') closeHistoryEntryPanel(); });
+$('historyEntrySaveBtn').addEventListener('click', saveHistoryEntry);
+$('he_eventType').addEventListener('change', toggleHistoryEmployeeField);
+$('he_chooseBillBtn').addEventListener('click', ()=> $('he_billFile').click());
+$('he_billFile').addEventListener('change', (e)=> handleHistoryBillFile(e.target.files[0]));
+$('he_removeBillBtn').addEventListener('click', ()=>{
+  pendingHistoryBillFile = null;
+  $('he_billFile').value = ''; $('he_billEmpty').style.display = ''; $('he_billAttached').style.display = 'none';
+});
 $('employeeImportBtn').addEventListener('click', openEmpImportPanel);
 $('empImportPanelClose').addEventListener('click', closeEmpImportPanel);
 $('empImportCancelBtn').addEventListener('click', closeEmpImportPanel);
