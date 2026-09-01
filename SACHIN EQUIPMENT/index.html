@@ -111,9 +111,10 @@
             <th>Sl.No</th><th>Equipment Name</th><th>Make</th><th>Serial Number</th><th>Equipment Type</th>
             <th>Purchased From</th><th>Purchase Date</th><th>Purchase Price</th>
             <th>Custom Duty Paid</th><th>CHA Detail</th><th>Transport Company</th>
-            <th>Invoice</th><th>Actions</th>
+            <th>Insurance Policy No.</th><th>Insurance Valid From</th><th>Insurance Valid To</th><th>Insurance Cost</th>
+            <th>Attachments</th><th>Actions</th>
           </tr></thead>
-          <tbody id="eqTableBody"><tr class="empty-row"><td colspan="13">Loading…</td></tr></tbody>
+          <tbody id="eqTableBody"><tr class="empty-row"><td colspan="17">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -182,7 +183,7 @@
           </div>
           <p class="hint" style="margin-top:6px;">Upload a small logo image to use as the tab icon instead of an emoji.</p>
         </div>
-        <p class="hint">All categories share the same column set (Equipment Name, Make, Serial Number, Type, Specifications, Purchased From, Purchase Date, Price, Invoice, Custom Duty Paid, CHA Detail, Transport Company).</p>
+        <p class="hint">All categories share the same column set (Equipment Name, Make, Serial Number, Type, Specifications, Purchased From, Purchase Date, Price, Custom Duty Paid, CHA Detail, Transport Company, Insurance details, Attachments).</p>
       </form>
     </div>
     <div class="panel-foot">
@@ -212,23 +213,40 @@
           <div class="field"><label>Purchased From</label><input id="ef_purchasedFrom"></div>
           <div class="field"><label>Purchase Date</label><input type="date" id="ef_purchaseDate"></div>
         </div>
-        <div class="field"><label>Purchase Price</label><input type="number" id="ef_purchasePrice" step="0.01"></div>
+        <div class="field"><label>Purchase Price</label>
+          <div style="display:flex;gap:8px;">
+            <select id="ef_purchasePriceCurrency" style="width:90px;flex-shrink:0;padding:9px 8px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13.5px;">
+              <option value="INR">₹ INR</option>
+              <option value="USD">$ USD</option>
+            </select>
+            <input type="number" id="ef_purchasePrice" step="0.01" style="flex:1;">
+          </div>
+        </div>
         <div class="section-label" style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin:18px 0 12px;">Import / Logistics (optional)</div>
         <div class="grid2">
           <div class="field"><label>Custom Duty Paid</label><input type="number" id="ef_customDutyPaid" step="0.01"></div>
           <div class="field"><label>CHA Detail</label><input id="ef_chaDetail" placeholder="Customs House Agent name / contact"></div>
         </div>
         <div class="field"><label>Transport Company</label><input id="ef_transportCompany"></div>
+
+        <div class="section-label" style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin:18px 0 12px;">Insurance (optional)</div>
+        <div class="grid2">
+          <div class="field"><label>Insurance Policy Number</label><input id="ef_insurancePolicyNumber"></div>
+          <div class="field"><label>Insurance Cost</label><input type="number" id="ef_insuranceCost" step="0.01"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Valid From</label><input type="date" id="ef_insuranceValidFrom"></div>
+          <div class="field"><label>Valid To</label><input type="date" id="ef_insuranceValidTo"></div>
+        </div>
+
         <div class="field">
-          <label>Invoice Attachment</label>
+          <label>Attachments</label>
           <div class="file-drop">
-            <input type="file" id="ef_invoiceFile" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none;">
-            <div id="ef_invoiceEmpty"><button type="button" class="btn btn-sm" id="ef_chooseInvoiceBtn">Choose file…</button> <span class="hint">PDF or image</span></div>
-            <div id="ef_invoiceAttached" class="file-box" style="display:none;">
-              <span id="ef_invoiceFileName"></span>
-              <button type="button" class="btn btn-sm btn-danger" id="ef_removeInvoiceBtn">Remove</button>
-            </div>
+            <input type="file" id="ef_attachFile" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style="display:none;">
+            <button type="button" class="btn btn-sm" id="ef_chooseAttachBtn">+ Add file(s)…</button>
+            <span class="hint">Invoices, insurance docs, warranty cards — PDF or image, any number of files</span>
           </div>
+          <div id="ef_attachList" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
         </div>
       </form>
     </div>
@@ -260,8 +278,10 @@ let equipment = [];
 let categories = [];
 let activeCategory = null;
 let editingId = null;
-let pendingInvoiceFile = null;
-let pendingInvoiceRemoved = false;
+let pendingNewRecordId = null; // pre-generated id for a not-yet-saved new record, so attachments can upload immediately
+let currentAttachments = [];
+let pendingNewAttachFiles = [];
+let removedAttachmentPaths = [];
 let viewMode = 'equipment'; // 'equipment' | 'vendors'
 let vendors = [];
 let vendorEditingId = null;
@@ -294,8 +314,9 @@ function showToast(msg, isError){
 function escapeHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function fmtMoney(v){
+function fmtMoney(v, currency){
   if(v === '' || v === null || v === undefined) return '';
+  if(currency === 'USD') return '$' + Number(v).toLocaleString('en-US', {maximumFractionDigits:2});
   return '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:2});
 }
 
@@ -305,10 +326,12 @@ function rowFromDb(r){
     serialNumber: r.serial_number || '', equipmentType: r.equipment_type || '',
     specification: r.specification || '', otherSpecification: r.other_specification || '',
     purchasedFrom: r.purchased_from || '', purchaseDate: r.purchase_date || '',
-    purchasePrice: r.purchase_price ?? '', customDutyPaid: r.custom_duty_paid ?? '',
+    purchasePrice: r.purchase_price ?? '', purchasePriceCurrency: r.purchase_price_currency || 'INR',
+    customDutyPaid: r.custom_duty_paid ?? '',
     chaDetail: r.cha_detail || '', transportCompany: r.transport_company || '',
-    hasInvoice: !!r.has_invoice,
-    invoiceFileName: r.invoice_file_name || '', invoiceStoragePath: r.invoice_storage_path || ''
+    insurancePolicyNumber: r.insurance_policy_number || '', insuranceValidFrom: r.insurance_valid_from || '',
+    insuranceValidTo: r.insurance_valid_to || '', insuranceCost: r.insurance_cost ?? '',
+    attachments: Array.isArray(r.attachments) ? r.attachments : []
   };
 }
 function rowToDb(e){
@@ -318,9 +341,13 @@ function rowToDb(e){
     specification: e.specification || null, other_specification: e.otherSpecification || null,
     purchased_from: e.purchasedFrom || null, purchase_date: e.purchaseDate || null,
     purchase_price: (e.purchasePrice === '' || e.purchasePrice == null) ? null : Number(e.purchasePrice),
+    purchase_price_currency: e.purchasePriceCurrency || 'INR',
     custom_duty_paid: (e.customDutyPaid === '' || e.customDutyPaid == null) ? null : Number(e.customDutyPaid),
     cha_detail: e.chaDetail || null, transport_company: e.transportCompany || null,
-    has_invoice: !!e.hasInvoice, invoice_file_name: e.invoiceFileName || null, invoice_storage_path: e.invoiceStoragePath || null
+    insurance_policy_number: e.insurancePolicyNumber || null,
+    insurance_valid_from: e.insuranceValidFrom || null, insurance_valid_to: e.insuranceValidTo || null,
+    insurance_cost: (e.insuranceCost === '' || e.insuranceCost == null) ? null : Number(e.insuranceCost),
+    attachments: e.attachments || []
   };
 }
 
@@ -453,22 +480,6 @@ async function deleteCategory(){
   }
 }
 
-async function uploadInvoice(recordId, file){
-  const path = recordId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const { error } = await supa.storage.from(BUCKET).upload(path, file, { upsert:true });
-  if(error) throw error;
-  return { storagePath: path, filename: file.name };
-}
-async function downloadInvoice(storagePath, fallbackName){
-  if(!storagePath){ showToast('File not found', true); return; }
-  const { data, error } = await supa.storage.from(BUCKET).createSignedUrl(storagePath, 60);
-  if(error){ showToast('Could not retrieve file', true); return; }
-  window.open(data.signedUrl, '_blank');
-}
-async function deleteInvoice(storagePath){
-  if(storagePath) await supa.storage.from(BUCKET).remove([storagePath]);
-}
-
 function switchCategory(cat){
   viewMode = 'equipment';
   activeCategory = cat;
@@ -480,7 +491,7 @@ function switchCategory(cat){
 
 function render(){
   if(!activeCategory){
-    $('eqTableBody').innerHTML = '<tr class="empty-row"><td colspan="13">No categories yet — click "+ New Category" to create one.</td></tr>';
+    $('eqTableBody').innerHTML = '<tr class="empty-row"><td colspan="17">No categories yet — click "+ New Category" to create one.</td></tr>';
     return;
   }
   const q = ($('eqSearch').value || '').toLowerCase();
@@ -488,10 +499,10 @@ function render(){
     (e.equipmentName||'').toLowerCase().includes(q) || (e.make||'').toLowerCase().includes(q) ||
     (e.serialNumber||'').toLowerCase().includes(q) || (e.equipmentType||'').toLowerCase().includes(q) ||
     (e.purchasedFrom||'').toLowerCase().includes(q) || (e.chaDetail||'').toLowerCase().includes(q) ||
-    (e.transportCompany||'').toLowerCase().includes(q));
+    (e.transportCompany||'').toLowerCase().includes(q) || (e.insurancePolicyNumber||'').toLowerCase().includes(q));
   const body = $('eqTableBody');
   if(!list.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="13">' +
+    body.innerHTML = '<tr class="empty-row"><td colspan="17">' +
       (equipment.filter(e=>e.category===activeCategory).length===0 ? 'No equipment yet — click "Add Equipment" to register the first item.' : 'No equipment matches your search.') + '</td></tr>';
     return;
   }
@@ -503,11 +514,17 @@ function render(){
     '<td>'+escapeHtml(e.equipmentType||'—')+'</td>' +
     '<td>'+escapeHtml(e.purchasedFrom||'—')+'</td>' +
     '<td class="mono">'+escapeHtml(e.purchaseDate||'—')+'</td>' +
-    '<td class="price">'+(e.purchasePrice!=='' ? fmtMoney(e.purchasePrice) : '—')+'</td>' +
+    '<td class="price">'+(e.purchasePrice!=='' ? fmtMoney(e.purchasePrice, e.purchasePriceCurrency) : '—')+'</td>' +
     '<td class="price">'+(e.customDutyPaid!=='' ? fmtMoney(e.customDutyPaid) : '—')+'</td>' +
     '<td>'+escapeHtml(e.chaDetail||'—')+'</td>' +
     '<td>'+escapeHtml(e.transportCompany||'—')+'</td>' +
-    '<td>'+(e.hasInvoice ? '<button class="file-pill" data-dl="'+e.id+'" style="cursor:pointer;border:none;">📎 View</button>' : '<span class="file-pill none">None</span>')+'</td>' +
+    '<td class="mono">'+escapeHtml(e.insurancePolicyNumber||'—')+'</td>' +
+    '<td class="mono">'+escapeHtml(e.insuranceValidFrom||'—')+'</td>' +
+    '<td class="mono">'+escapeHtml(e.insuranceValidTo||'—')+'</td>' +
+    '<td class="price">'+(e.insuranceCost!=='' ? fmtMoney(e.insuranceCost) : '—')+'</td>' +
+    '<td>'+(e.attachments && e.attachments.length
+      ? e.attachments.map(a => '<button class="file-pill" data-dl="'+escapeHtml(a.storagePath)+'" data-dlname="'+escapeHtml(a.name)+'" style="cursor:pointer;border:none;margin:1px;">📎 '+escapeHtml((a.name||'file').slice(0,16))+'</button>').join('')
+      : '<span class="file-pill none">None</span>')+'</td>' +
     '<td><div class="row-actions"><button class="btn btn-sm" data-edit="'+e.id+'">Edit</button><button class="btn btn-sm btn-danger" data-del="'+e.id+'">Del</button></div></td>' +
   '</tr>').join('');
 
@@ -515,25 +532,56 @@ function render(){
     const e = equipment.find(x=>x.id===btn.dataset.edit); if(e) openPanel(e);
   }));
   body.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => deleteRecord(btn.dataset.del)));
-  body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', () => {
-    const e = equipment.find(x=>x.id===btn.dataset.dl); if(e) downloadInvoice(e.invoiceStoragePath, e.invoiceFileName);
-  }));
+  body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', () => downloadAttachment(btn.dataset.dl, btn.dataset.dlname)));
 }
 
-function resetInvoiceUI(){
-  pendingInvoiceFile = null; pendingInvoiceRemoved = false;
-  $('ef_invoiceFile').value = '';
-  $('ef_invoiceEmpty').style.display = '';
-  $('ef_invoiceAttached').style.display = 'none';
+async function uploadAttachment(recordId, file){
+  const path = recordId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const { error } = await supa.storage.from(BUCKET).upload(path, file, { upsert:true });
+  if(error) throw error;
+  return { storagePath: path, filename: file.name };
 }
-function showInvoiceAttached(name){
-  $('ef_invoiceEmpty').style.display = 'none';
-  $('ef_invoiceAttached').style.display = 'flex';
-  $('ef_invoiceFileName').textContent = name;
+async function downloadAttachment(storagePath, fallbackName){
+  if(!storagePath){ showToast('File not found', true); return; }
+  const { data, error } = await supa.storage.from(BUCKET).createSignedUrl(storagePath, 60);
+  if(error){ showToast('Could not retrieve file', true); return; }
+  window.open(data.signedUrl, '_blank');
+}
+async function deleteAttachmentFile(storagePath){
+  if(storagePath) await supa.storage.from(BUCKET).remove([storagePath]);
+}
+
+function renderAttachList(){
+  const box = $('ef_attachList');
+  const existingHtml = currentAttachments.map((a,i) =>
+    '<div class="file-box"><span>📎 '+escapeHtml(a.name||'file')+'</span><button type="button" class="btn btn-sm" data-viewexisting="'+i+'">View</button><button type="button" class="btn btn-sm btn-danger" data-removeexisting="'+i+'">Remove</button></div>'
+  ).join('');
+  const pendingHtml = pendingNewAttachFiles.map((f,i) =>
+    '<div class="file-box"><span>🆕 '+escapeHtml(f.name)+'</span><button type="button" class="btn btn-sm btn-danger" data-removepending="'+i+'">Remove</button></div>'
+  ).join('');
+  box.innerHTML = existingHtml + pendingHtml;
+  box.querySelectorAll('[data-viewexisting]').forEach(btn => btn.addEventListener('click', () => {
+    const a = currentAttachments[Number(btn.dataset.viewexisting)];
+    if(a) downloadAttachment(a.storagePath, a.name);
+  }));
+  box.querySelectorAll('[data-removeexisting]').forEach(btn => btn.addEventListener('click', () => {
+    const idx = Number(btn.dataset.removeexisting);
+    const [removed] = currentAttachments.splice(idx, 1);
+    if(removed) removedAttachmentPaths.push(removed.storagePath);
+    renderAttachList();
+  }));
+  box.querySelectorAll('[data-removepending]').forEach(btn => btn.addEventListener('click', () => {
+    pendingNewAttachFiles.splice(Number(btn.dataset.removepending), 1);
+    renderAttachList();
+  }));
 }
 
 function openPanel(record){
   editingId = record ? record.id : null;
+  pendingNewRecordId = record ? null : crypto.randomUUID();
+  currentAttachments = record ? (record.attachments || []).slice() : [];
+  pendingNewAttachFiles = [];
+  removedAttachmentPaths = [];
   $('eqPanelTitle').textContent = record ? 'Edit Equipment' : 'Add Equipment';
   $('ef_equipmentName').value = record ? record.equipmentName : '';
   $('ef_make').value = record ? record.make : '';
@@ -544,15 +592,24 @@ function openPanel(record){
   $('ef_purchasedFrom').value = record ? record.purchasedFrom : '';
   $('ef_purchaseDate').value = record ? record.purchaseDate : '';
   $('ef_purchasePrice').value = record ? record.purchasePrice : '';
+  $('ef_purchasePriceCurrency').value = record ? (record.purchasePriceCurrency || 'INR') : 'INR';
   $('ef_customDutyPaid').value = record ? record.customDutyPaid : '';
   $('ef_chaDetail').value = record ? record.chaDetail : '';
   $('ef_transportCompany').value = record ? record.transportCompany : '';
-  resetInvoiceUI();
-  if(record && record.hasInvoice) showInvoiceAttached(record.invoiceFileName || 'invoice file');
+  $('ef_insurancePolicyNumber').value = record ? record.insurancePolicyNumber : '';
+  $('ef_insuranceCost').value = record ? record.insuranceCost : '';
+  $('ef_insuranceValidFrom').value = record ? record.insuranceValidFrom : '';
+  $('ef_insuranceValidTo').value = record ? record.insuranceValidTo : '';
+  $('ef_attachFile').value = '';
+  renderAttachList();
   $('eqOverlay').classList.add('open');
   $('ef_equipmentName').focus();
 }
-function closePanel(){ $('eqOverlay').classList.remove('open'); editingId = null; resetInvoiceUI(); }
+function closePanel(){
+  $('eqOverlay').classList.remove('open');
+  editingId = null; pendingNewRecordId = null;
+  currentAttachments = []; pendingNewAttachFiles = []; removedAttachmentPaths = [];
+}
 
 async function saveRecord(){
   if(!activeCategory){ showToast('Create a category first', true); return; }
@@ -565,34 +622,36 @@ async function saveRecord(){
     purchasedFrom: $('ef_purchasedFrom').value.trim(),
     purchaseDate: $('ef_purchaseDate').value,
     purchasePrice: $('ef_purchasePrice').value,
+    purchasePriceCurrency: $('ef_purchasePriceCurrency').value,
     customDutyPaid: $('ef_customDutyPaid').value,
     chaDetail: $('ef_chaDetail').value.trim(),
-    transportCompany: $('ef_transportCompany').value.trim()
+    transportCompany: $('ef_transportCompany').value.trim(),
+    insurancePolicyNumber: $('ef_insurancePolicyNumber').value.trim(),
+    insuranceCost: $('ef_insuranceCost').value,
+    insuranceValidFrom: $('ef_insuranceValidFrom').value,
+    insuranceValidTo: $('ef_insuranceValidTo').value
   };
+  const recordId = editingId || pendingNewRecordId;
   try{
-    let record;
-    if(editingId){
-      const existing = equipment.find(x=>x.id===editingId) || {};
-      const dbData = rowToDb(data);
-      dbData.has_invoice = existing.hasInvoice || false;
-      dbData.invoice_file_name = existing.invoiceFileName || null;
-      dbData.invoice_storage_path = existing.invoiceStoragePath || null;
-      const { error } = await supa.from('sachin_equipment').update(dbData).eq('id', editingId);
-      if(error) throw error;
-      record = { ...existing, ...data, id: editingId };
-    } else {
-      const { data: inserted, error } = await supa.from('sachin_equipment').insert(rowToDb(data)).select().single();
-      if(error) throw error;
-      record = rowFromDb(inserted);
+    // Upload any newly-picked files and drop any removed ones first, so the
+    // final attachments list can be written in the same insert/update below.
+    for(const path of removedAttachmentPaths){
+      await deleteAttachmentFile(path);
     }
+    const uploaded = [];
+    for(const file of pendingNewAttachFiles){
+      const result = await uploadAttachment(recordId, file);
+      uploaded.push({ name: result.filename, storagePath: result.storagePath });
+    }
+    data.attachments = currentAttachments.concat(uploaded);
 
-    if(pendingInvoiceFile){
-      const result = await uploadInvoice(record.id, pendingInvoiceFile);
-      const { error } = await supa.from('sachin_equipment').update({ has_invoice:true, invoice_file_name:result.filename, invoice_storage_path:result.storagePath }).eq('id', record.id);
+    if(editingId){
+      const { error } = await supa.from('sachin_equipment').update(rowToDb(data)).eq('id', editingId);
       if(error) throw error;
-    } else if(pendingInvoiceRemoved){
-      if(record.invoiceStoragePath) await deleteInvoice(record.invoiceStoragePath);
-      const { error } = await supa.from('sachin_equipment').update({ has_invoice:false, invoice_file_name:null, invoice_storage_path:null }).eq('id', record.id);
+    } else {
+      const dbData = rowToDb(data);
+      dbData.id = recordId;
+      const { error } = await supa.from('sachin_equipment').insert(dbData);
       if(error) throw error;
     }
 
@@ -610,7 +669,9 @@ async function deleteRecord(id){
   if(!e) return;
   if(!confirm('Delete "' + e.equipmentName + '"? This cannot be undone.')) return;
   try{
-    if(e.hasInvoice && e.invoiceStoragePath) await deleteInvoice(e.invoiceStoragePath);
+    for(const a of (e.attachments || [])){
+      if(a.storagePath) await deleteAttachmentFile(a.storagePath);
+    }
     const { error } = await supa.from('sachin_equipment').delete().eq('id', id);
     if(error) throw error;
     await loadEquipment();
@@ -628,9 +689,12 @@ function exportExcel(){
   const rows = list.map((e,i) => ({
     'Sl.No': i+1, 'Equipment Name': e.equipmentName, 'Make': e.make, 'Serial Number': e.serialNumber,
     'Equipment Type': e.equipmentType, 'Specification': e.specification, 'Other Specification': e.otherSpecification,
-    'Purchased From': e.purchasedFrom, 'Purchase Date': e.purchaseDate, 'Purchase Price': e.purchasePrice,
+    'Purchased From': e.purchasedFrom, 'Purchase Date': e.purchaseDate,
+    'Purchase Price': e.purchasePrice, 'Currency': e.purchasePriceCurrency || 'INR',
     'Custom Duty Paid': e.customDutyPaid, 'CHA Detail': e.chaDetail, 'Transport Company': e.transportCompany,
-    'Invoice Attached': e.hasInvoice ? 'Yes' : 'No'
+    'Insurance Policy Number': e.insurancePolicyNumber, 'Insurance Valid From': e.insuranceValidFrom,
+    'Insurance Valid To': e.insuranceValidTo, 'Insurance Cost': e.insuranceCost,
+    'Attachments': (e.attachments||[]).map(a=>a.name).join('; ') || 'None'
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(Math.max(k.length, 14), 45) }));
@@ -795,17 +859,15 @@ $('cf_removeIconBtn').addEventListener('click', () => {
   $('cf_removeIconBtn').style.display = 'none';
   $('cf_icon').style.display = '';
 });
-$('ef_chooseInvoiceBtn').addEventListener('click', () => $('ef_invoiceFile').click());
-$('ef_invoiceFile').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(!file) return;
-  if(file.size > 10*1024*1024){ showToast('File too large — keep it under 10 MB', true); return; }
-  pendingInvoiceFile = file; pendingInvoiceRemoved = false;
-  showInvoiceAttached(file.name);
-});
-$('ef_removeInvoiceBtn').addEventListener('click', () => {
-  pendingInvoiceFile = null; pendingInvoiceRemoved = true;
-  $('ef_invoiceFile').value = ''; $('ef_invoiceEmpty').style.display = ''; $('ef_invoiceAttached').style.display = 'none';
+$('ef_chooseAttachBtn').addEventListener('click', () => $('ef_attachFile').click());
+$('ef_attachFile').addEventListener('change', e => {
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+  const tooBig = files.find(f => f.size > 10*1024*1024);
+  if(tooBig){ showToast('"' + tooBig.name + '" is too large — keep each file under 10 MB', true); return; }
+  pendingNewAttachFiles.push(...files);
+  $('ef_attachFile').value = '';
+  renderAttachList();
 });
 
 $('vendorSearch').addEventListener('input', renderVendorsTable);
