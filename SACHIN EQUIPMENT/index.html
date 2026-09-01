@@ -145,9 +145,9 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Sl.No</th><th>Name of Vendor</th><th>Contact Person</th><th>Address</th><th>Mobile Number</th><th>Purpose</th><th>Actions</th>
+            <th>Sl.No</th><th>Name of Vendor</th><th>Contact Person</th><th>Address</th><th>Mobile Number</th><th>Purpose</th><th>Attachments</th><th>Actions</th>
           </tr></thead>
-          <tbody id="vendorTableBody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+          <tbody id="vendorTableBody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -167,12 +167,32 @@
           <div class="field"><label>Mobile Number</label><input id="vf_mobileNumber" type="tel" placeholder="+91 98765 43210"></div>
           <div class="field"><label>Purpose</label><input id="vf_purpose" placeholder="e.g. Equipment supplier"></div>
         </div>
+        <div class="field">
+          <label>Photos / Documents</label>
+          <div class="file-drop">
+            <input type="file" id="vf_attachFile" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style="display:none;">
+            <button type="button" class="btn btn-sm" id="vf_chooseAttachBtn">+ Add file(s)…</button>
+            <span class="hint">Photos or PDFs — any number of files</span>
+          </div>
+          <div id="vf_attachList" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div>
+        </div>
       </form>
     </div>
     <div class="panel-foot">
       <button class="btn" id="vendorCancelBtn">Cancel</button>
       <button class="btn btn-primary" id="vendorSaveBtn">Save Vendor</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ Image Lightbox ============ -->
+<div class="overlay" id="lightboxOverlay" style="background:rgba(0,0,0,0.9);">
+  <div style="max-width:92vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;color:#fff;">
+      <span id="lightboxName" style="font-size:13px;color:var(--ink-soft);"></span>
+      <button id="lightboxClose" style="background:none;border:none;color:#fff;font-size:26px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <img id="lightboxImg" style="max-width:92vw;max-height:80vh;object-fit:contain;border-radius:8px;">
   </div>
 </div>
 
@@ -334,6 +354,10 @@ let viewMode = 'equipment'; // 'equipment' | 'vendors'
 let selectedEquipmentIds = new Set();
 let vendors = [];
 let vendorEditingId = null;
+let vendorPendingNewRecordId = null;
+let vendorCurrentAttachments = [];
+let vendorPendingNewAttachFiles = [];
+let vendorRemovedAttachmentPaths = [];
 const connStatus = { categories: null, equipment: null, vendors: null }; // null=pending, true=ok, false=failed
 
 function setBanner(cls, html){
@@ -629,7 +653,7 @@ function render(){
     const rec = equipment.find(x=>x.id===btn.dataset.edit); if(rec) openPanel(rec);
   }));
   body.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deleteRecord(btn.dataset.del); }));
-  body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); downloadAttachment(btn.dataset.dl, btn.dataset.dlname); }));
+  body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); viewOrDownloadAttachment(btn.dataset.dl, btn.dataset.dlname); }));
   body.querySelectorAll('[data-select]').forEach(cb => {
     cb.addEventListener('click', e => e.stopPropagation());
     cb.addEventListener('change', () => {
@@ -696,6 +720,28 @@ async function downloadAttachment(storagePath, fallbackName){
 async function deleteAttachmentFile(storagePath){
   if(storagePath) await supa.storage.from(BUCKET).remove([storagePath]);
 }
+function isImageFile(name){
+  return /\.(jpe?g|png|gif|webp|bmp)$/i.test(name || '');
+}
+async function viewOrDownloadAttachment(storagePath, name){
+  if(!storagePath){ showToast('File not found', true); return; }
+  if(isImageFile(name)){
+    const { data, error } = await supa.storage.from(BUCKET).createSignedUrl(storagePath, 300);
+    if(error){ showToast('Could not retrieve image', true); return; }
+    openLightbox(data.signedUrl, name);
+  } else {
+    downloadAttachment(storagePath, name);
+  }
+}
+function openLightbox(url, name){
+  $('lightboxImg').src = url;
+  $('lightboxName').textContent = name || '';
+  $('lightboxOverlay').classList.add('open');
+}
+function closeLightbox(){
+  $('lightboxOverlay').classList.remove('open');
+  $('lightboxImg').src = '';
+}
 
 function renderAttachList(){
   const box = $('ef_attachList');
@@ -708,7 +754,7 @@ function renderAttachList(){
   box.innerHTML = existingHtml + pendingHtml;
   box.querySelectorAll('[data-viewexisting]').forEach(btn => btn.addEventListener('click', () => {
     const a = currentAttachments[Number(btn.dataset.viewexisting)];
-    if(a) downloadAttachment(a.storagePath, a.name);
+    if(a) viewOrDownloadAttachment(a.storagePath, a.name);
   }));
   box.querySelectorAll('[data-removeexisting]').forEach(btn => btn.addEventListener('click', () => {
     const idx = Number(btn.dataset.removeexisting);
@@ -762,7 +808,7 @@ function openEquipmentView(record){
         ).join('') + '</div>'
       : '<div class="hint">No attachments</div>') +
     '</div>';
-  $('evBody').querySelectorAll('[data-vdl]').forEach(btn => btn.addEventListener('click', () => downloadAttachment(btn.dataset.vdl, btn.dataset.vdlname)));
+  $('evBody').querySelectorAll('[data-vdl]').forEach(btn => btn.addEventListener('click', () => viewOrDownloadAttachment(btn.dataset.vdl, btn.dataset.vdlname)));
   $('evEditBtn').onclick = () => { closeEquipmentView(); openPanel(record); };
   $('evDeleteBtn').onclick = () => { closeEquipmentView(); deleteRecord(record.id); };
   $('eqViewOverlay').classList.add('open');
@@ -901,11 +947,11 @@ function exportExcel(){
 /* ================= VENDORS ================= */
 function vendorFromDb(r){
   return { id: r.id, name: r.name || '', contactPerson: r.contact_person || '', address: r.address || '',
-    mobileNumber: r.mobile_number || '', purpose: r.purpose || '' };
+    mobileNumber: r.mobile_number || '', purpose: r.purpose || '', attachments: Array.isArray(r.attachments) ? r.attachments : [] };
 }
 function vendorToDb(v){
   return { name: v.name || null, contact_person: v.contactPerson || null, address: v.address || null,
-    mobile_number: v.mobileNumber || null, purpose: v.purpose || null };
+    mobile_number: v.mobileNumber || null, purpose: v.purpose || null, attachments: v.attachments || [] };
 }
 
 async function loadVendors(){
@@ -929,7 +975,7 @@ function renderVendorsTable(){
     (v.purpose||'').toLowerCase().includes(q) || (v.mobileNumber||'').toLowerCase().includes(q));
   const body = $('vendorTableBody');
   if(!list.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="7">' +
+    body.innerHTML = '<tr class="empty-row"><td colspan="8">' +
       (vendors.length===0 ? 'No vendors yet — click "Add Vendor" to create one.' : 'No vendors match your search.') + '</td></tr>';
     return;
   }
@@ -941,25 +987,64 @@ function renderVendorsTable(){
       '<td>'+escapeHtml(v.address||'—')+'</td>' +
       '<td class="mono">'+escapeHtml(v.mobileNumber||'—')+'</td>' +
       '<td>'+escapeHtml(v.purpose||'—')+'</td>' +
+      '<td>'+((v.attachments && v.attachments.length)
+        ? v.attachments.map(a => '<button class="file-pill" data-vdl="'+escapeHtml(a.storagePath)+'" data-vdlname="'+escapeHtml(a.name)+'" style="cursor:pointer;border:none;margin:1px;">'+(isImageFile(a.name)?'🖼️':'📎')+' '+escapeHtml((a.name||'file').slice(0,16))+'</button>').join('')
+        : '<span class="file-pill none">None</span>')+'</td>' +
       '<td><div class="row-actions"><button class="btn btn-sm" data-vedit="'+v.id+'">Edit</button><button class="btn btn-sm btn-danger" data-vdel="'+v.id+'">Del</button></div></td>' +
     '</tr>'
   ).join('');
   body.querySelectorAll('[data-vedit]').forEach(btn => btn.addEventListener('click', () => { const v = vendors.find(x=>x.id===btn.dataset.vedit); if(v) openVendorPanel(v); }));
   body.querySelectorAll('[data-vdel]').forEach(btn => btn.addEventListener('click', () => deleteVendor(btn.dataset.vdel)));
+  body.querySelectorAll('[data-vdl]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); viewOrDownloadAttachment(btn.dataset.vdl, btn.dataset.vdlname); }));
+}
+
+function renderVendorAttachList(){
+  const box = $('vf_attachList');
+  const existingHtml = vendorCurrentAttachments.map((a,i) =>
+    '<div class="file-box"><span>'+(isImageFile(a.name)?'🖼️':'📎')+' '+escapeHtml(a.name||'file')+'</span><button type="button" class="btn btn-sm" data-vviewexisting="'+i+'">View</button><button type="button" class="btn btn-sm btn-danger" data-vremoveexisting="'+i+'">Remove</button></div>'
+  ).join('');
+  const pendingHtml = vendorPendingNewAttachFiles.map((f,i) =>
+    '<div class="file-box"><span>🆕 '+escapeHtml(f.name)+'</span><button type="button" class="btn btn-sm btn-danger" data-vremovepending="'+i+'">Remove</button></div>'
+  ).join('');
+  box.innerHTML = existingHtml + pendingHtml;
+  box.querySelectorAll('[data-vviewexisting]').forEach(btn => btn.addEventListener('click', () => {
+    const a = vendorCurrentAttachments[Number(btn.dataset.vviewexisting)];
+    if(a) viewOrDownloadAttachment(a.storagePath, a.name);
+  }));
+  box.querySelectorAll('[data-vremoveexisting]').forEach(btn => btn.addEventListener('click', () => {
+    const idx = Number(btn.dataset.vremoveexisting);
+    const [removed] = vendorCurrentAttachments.splice(idx, 1);
+    if(removed) vendorRemovedAttachmentPaths.push(removed.storagePath);
+    renderVendorAttachList();
+  }));
+  box.querySelectorAll('[data-vremovepending]').forEach(btn => btn.addEventListener('click', () => {
+    vendorPendingNewAttachFiles.splice(Number(btn.dataset.vremovepending), 1);
+    renderVendorAttachList();
+  }));
 }
 
 function openVendorPanel(vendor){
   vendorEditingId = vendor ? vendor.id : null;
+  vendorPendingNewRecordId = vendor ? null : crypto.randomUUID();
+  vendorCurrentAttachments = vendor ? (vendor.attachments || []).slice() : [];
+  vendorPendingNewAttachFiles = [];
+  vendorRemovedAttachmentPaths = [];
   $('vendorPanelTitle').textContent = vendor ? 'Edit Vendor' : 'Add Vendor';
   $('vf_name').value = vendor ? vendor.name : '';
   $('vf_contactPerson').value = vendor ? vendor.contactPerson : '';
   $('vf_address').value = vendor ? vendor.address : '';
   $('vf_mobileNumber').value = vendor ? vendor.mobileNumber : '';
   $('vf_purpose').value = vendor ? vendor.purpose : '';
+  $('vf_attachFile').value = '';
+  renderVendorAttachList();
   $('vendorOverlay').classList.add('open');
   $('vf_name').focus();
 }
-function closeVendorPanel(){ $('vendorOverlay').classList.remove('open'); vendorEditingId = null; }
+function closeVendorPanel(){
+  $('vendorOverlay').classList.remove('open');
+  vendorEditingId = null; vendorPendingNewRecordId = null;
+  vendorCurrentAttachments = []; vendorPendingNewAttachFiles = []; vendorRemovedAttachmentPaths = [];
+}
 
 async function saveVendor(){
   const name = $('vf_name').value.trim();
@@ -968,12 +1053,25 @@ async function saveVendor(){
     name, contactPerson: $('vf_contactPerson').value.trim(), address: $('vf_address').value.trim(),
     mobileNumber: $('vf_mobileNumber').value.trim(), purpose: $('vf_purpose').value.trim()
   };
+  const recordId = vendorEditingId || vendorPendingNewRecordId;
   try{
+    for(const path of vendorRemovedAttachmentPaths){
+      await deleteAttachmentFile(path);
+    }
+    const uploaded = [];
+    for(const file of vendorPendingNewAttachFiles){
+      const result = await uploadAttachment('vendor-' + recordId, file);
+      uploaded.push({ name: result.filename, storagePath: result.storagePath });
+    }
+    data.attachments = vendorCurrentAttachments.concat(uploaded);
+
     if(vendorEditingId){
       const { error } = await supa.from('sachin_vendors').update(vendorToDb(data)).eq('id', vendorEditingId);
       if(error) throw error;
     } else {
-      const { error } = await supa.from('sachin_vendors').insert(vendorToDb(data));
+      const dbData = vendorToDb(data);
+      dbData.id = recordId;
+      const { error } = await supa.from('sachin_vendors').insert(dbData);
       if(error) throw error;
     }
     await loadVendors();
@@ -990,6 +1088,9 @@ async function deleteVendor(id){
   if(!v) return;
   if(!await passwordConfirmDelete('Delete vendor "' + v.name + '"? This cannot be undone.')) return;
   try{
+    for(const a of (v.attachments || [])){
+      if(a.storagePath) await deleteAttachmentFile(a.storagePath);
+    }
     const { error } = await supa.from('sachin_vendors').delete().eq('id', id);
     if(error) throw error;
     await loadVendors();
@@ -1002,8 +1103,8 @@ async function deleteVendor(id){
 
 function exportVendorsCSV(){
   if(!vendors.length){ showToast('No data to export', true); return; }
-  const headers = ['Name of Vendor','Contact Person','Address','Mobile Number','Purpose'];
-  const csv = [headers, ...vendors.map(v => [v.name, v.contactPerson, v.address, v.mobileNumber, v.purpose])]
+  const headers = ['Name of Vendor','Contact Person','Address','Mobile Number','Purpose','Attachments'];
+  const csv = [headers, ...vendors.map(v => [v.name, v.contactPerson, v.address, v.mobileNumber, v.purpose, (v.attachments||[]).map(a=>a.name).join('; ') || 'None'])]
     .map(r => r.map(val => {
       const s = String(val ?? '');
       return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
@@ -1083,6 +1184,18 @@ $('vendorPanelClose').addEventListener('click', closeVendorPanel);
 $('vendorCancelBtn').addEventListener('click', closeVendorPanel);
 $('vendorOverlay').addEventListener('click', e => { if(e.target.id==='vendorOverlay') closeVendorPanel(); });
 $('vendorSaveBtn').addEventListener('click', saveVendor);
+$('vf_chooseAttachBtn').addEventListener('click', () => $('vf_attachFile').click());
+$('vf_attachFile').addEventListener('change', e => {
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+  const tooBig = files.find(f => f.size > 10*1024*1024);
+  if(tooBig){ showToast('"' + tooBig.name + '" is too large — keep each file under 10 MB', true); return; }
+  vendorPendingNewAttachFiles.push(...files);
+  $('vf_attachFile').value = '';
+  renderVendorAttachList();
+});
+$('lightboxClose').addEventListener('click', closeLightbox);
+$('lightboxOverlay').addEventListener('click', e => { if(e.target.id==='lightboxOverlay') closeLightbox(); });
 
 // Some browsers (notably Edge) restore a previously-typed value into these
 // search boxes on reload/back-forward navigation regardless of
