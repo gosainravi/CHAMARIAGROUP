@@ -78,7 +78,17 @@
   .db-banner.ok{background:var(--success-soft);color:var(--success);}
   .db-banner.error{background:var(--danger-soft);color:#ffb3bb;}
   .db-banner.loading{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
-  @media (max-width:640px){ .grid2{grid-template-columns:1fr;} thead th:nth-child(n+5),tbody td:nth-child(n+5){display:none;} }
+  .view-section{margin-bottom:20px;}
+  .view-section h4{font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:var(--accent);margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;}
+  .view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
+  .view-item{font-size:13px;}
+  .view-item.full{grid-column:1 / -1;}
+  .view-item .vl{display:block;font-size:11px;color:var(--ink-soft);margin-bottom:2px;}
+  .view-item .vv{color:var(--ink);word-break:break-word;white-space:pre-wrap;}
+  .view-item .vv.mono{font-family:var(--mono);font-size:12.5px;}
+  .view-item .vv.empty{color:var(--ink-soft);}
+  tbody tr.row-click{cursor:pointer;}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr;} .view-grid{grid-template-columns:1fr;} thead th:nth-child(n+5),tbody td:nth-child(n+5){display:none;} }
 </style>
 </head>
 <body>
@@ -257,6 +267,42 @@
   </div>
 </div>
 
+<!-- ============ Equipment Detail (view) Panel ============ -->
+<div class="overlay" id="eqViewOverlay">
+  <div class="panel">
+    <div class="panel-head">
+      <div><h2 id="evTitle">Equipment Details</h2><p id="evSub" style="margin:2px 0 0;font-size:12px;color:var(--ink-soft);"></p></div>
+      <button class="panel-close" id="evClose">✕</button>
+    </div>
+    <div class="panel-body" id="evBody"></div>
+    <div class="panel-foot">
+      <button class="btn btn-danger" id="evDeleteBtn">Delete</button>
+      <div style="flex:1;"></div>
+      <button class="btn" id="evCloseBtn">Close</button>
+      <button class="btn btn-primary" id="evEditBtn">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Password Confirm Panel ============ -->
+<div class="overlay" id="pwdOverlay">
+  <div class="panel" style="max-width:380px;">
+    <div class="panel-head"><h2>Confirm Deletion</h2><button class="panel-close" id="pwdPanelClose">✕</button></div>
+    <div class="panel-body">
+      <p id="pwdMsg" style="font-size:13.5px;color:var(--ink-soft);margin:0 0 14px;"></p>
+      <div class="field">
+        <label>Enter password to confirm</label>
+        <input type="password" id="pwdInput" placeholder="Password">
+      </div>
+      <p id="pwdError" style="font-size:12px;color:var(--danger);margin:6px 0 0;display:none;"></p>
+    </div>
+    <div class="panel-foot">
+      <button class="btn" id="pwdCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="pwdConfirmBtn">Confirm Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -318,6 +364,47 @@ function fmtMoney(v, currency){
   if(v === '' || v === null || v === undefined) return '';
   if(currency === 'USD') return '$' + Number(v).toLocaleString('en-US', {maximumFractionDigits:2});
   return '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:2});
+}
+
+// Same delete password used across the Chamaria Group apps (IT Console etc.) —
+// stored as a SHA-256 hash, never in plain text.
+const DELETE_PASSWORD_HASH = '8baf299d8d56fa54e03adc21cca7973e6b6b17c984e495ae437be32b995605e9';
+async function hashPassword(pwd){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function checkPassword(input, storedHash){
+  return (await hashPassword(input)) === storedHash;
+}
+function passwordConfirmDelete(message){
+  return new Promise(resolve => {
+    $('pwdMsg').textContent = message;
+    $('pwdInput').value = '';
+    $('pwdError').style.display = 'none';
+    $('pwdOverlay').classList.add('open');
+    setTimeout(() => $('pwdInput').focus(), 80);
+
+    function cleanup(result){
+      $('pwdOverlay').classList.remove('open');
+      $('pwdConfirmBtn').removeEventListener('click', onConfirm);
+      $('pwdCancelBtn').removeEventListener('click', onCancel);
+      $('pwdPanelClose').removeEventListener('click', onCancel);
+      $('pwdInput').removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+    async function onConfirm(){
+      const ok = await checkPassword($('pwdInput').value, DELETE_PASSWORD_HASH);
+      if(!ok){ $('pwdError').textContent = 'Incorrect password — try again.'; $('pwdError').style.display = ''; $('pwdInput').value=''; $('pwdInput').focus(); return; }
+      cleanup(true);
+    }
+    function onCancel(){ cleanup(false); }
+    function onKey(e){ if(e.key === 'Enter') onConfirm(); if(e.key === 'Escape') onCancel(); }
+
+    $('pwdConfirmBtn').addEventListener('click', onConfirm);
+    $('pwdCancelBtn').addEventListener('click', onCancel);
+    $('pwdPanelClose').addEventListener('click', onCancel);
+    $('pwdInput').addEventListener('keydown', onKey);
+  });
 }
 
 function rowFromDb(r){
@@ -466,7 +553,7 @@ async function deleteCategory(){
   if(!activeCategory) return;
   const count = equipment.filter(e => e.category === activeCategory).length;
   if(count > 0){ showToast('Cannot delete — ' + count + ' equipment record(s) still use this category', true); return; }
-  if(!confirm('Delete the "' + activeCategory + '" category? This cannot be undone.')) return;
+  if(!await passwordConfirmDelete('Delete the "' + activeCategory + '" category? This cannot be undone.')) return;
   try{
     const cat = categories.find(c => c.name === activeCategory);
     if(cat){ const { error } = await supa.from('sachin_equipment_categories').delete().eq('id', cat.id); if(error) throw error; }
@@ -506,7 +593,7 @@ function render(){
       (equipment.filter(e=>e.category===activeCategory).length===0 ? 'No equipment yet — click "Add Equipment" to register the first item.' : 'No equipment matches your search.') + '</td></tr>';
     return;
   }
-  body.innerHTML = list.map((e,i) => '<tr data-row="'+e.id+'">' +
+  body.innerHTML = list.map((e,i) => '<tr class="row-click" data-row="'+e.id+'">' +
     '<td class="mono">'+(i+1)+'</td>' +
     '<td>'+escapeHtml(e.equipmentName)+'</td>' +
     '<td>'+escapeHtml(e.make||'—')+'</td>' +
@@ -528,10 +615,15 @@ function render(){
     '<td><div class="row-actions"><button class="btn btn-sm" data-edit="'+e.id+'">Edit</button><button class="btn btn-sm btn-danger" data-del="'+e.id+'">Del</button></div></td>' +
   '</tr>').join('');
 
-  body.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => {
-    const e = equipment.find(x=>x.id===btn.dataset.edit); if(e) openPanel(e);
+  body.querySelectorAll('[data-row]').forEach(tr => tr.addEventListener('click', e => {
+    if(e.target.closest('button')) return;
+    const rec = equipment.find(x=>x.id===tr.dataset.row); if(rec) openEquipmentView(rec);
   }));
-  body.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => deleteRecord(btn.dataset.del)));
+  body.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const rec = equipment.find(x=>x.id===btn.dataset.edit); if(rec) openPanel(rec);
+  }));
+  body.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deleteRecord(btn.dataset.del); }));
   body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', () => downloadAttachment(btn.dataset.dl, btn.dataset.dlname)));
 }
 
@@ -575,6 +667,53 @@ function renderAttachList(){
     renderAttachList();
   }));
 }
+
+function viewItem(label, value, mono){
+  const has = value !== '' && value !== null && value !== undefined;
+  return '<div class="view-item"><span class="vl">'+label+'</span><span class="vv '+(mono?'mono':'')+' '+(has?'':'empty')+'">'+(has ? escapeHtml(value) : '—')+'</span></div>';
+}
+
+function openEquipmentView(record){
+  $('evTitle').textContent = record.equipmentName;
+  $('evSub').textContent = [record.category, record.make, record.equipmentType].filter(Boolean).join(' · ');
+  $('evBody').innerHTML =
+    '<div class="view-section"><h4>Identification</h4><div class="view-grid">' +
+      viewItem('Category', record.category) + viewItem('Make', record.make) +
+      viewItem('Serial Number', record.serialNumber, true) + viewItem('Equipment Type', record.equipmentType) +
+    '</div></div>' +
+    ((record.specification || record.otherSpecification) ?
+      '<div class="view-section"><h4>Specifications</h4><div class="view-grid">' +
+        '<div class="view-item full"><span class="vl">Specification</span><span class="vv">'+(record.specification?escapeHtml(record.specification):'—')+'</span></div>' +
+        '<div class="view-item full"><span class="vl">Other Specification</span><span class="vv">'+(record.otherSpecification?escapeHtml(record.otherSpecification):'—')+'</span></div>' +
+      '</div></div>' : '') +
+    '<div class="view-section"><h4>Purchase Details</h4><div class="view-grid">' +
+      viewItem('Purchased From', record.purchasedFrom) + viewItem('Purchase Date', record.purchaseDate, true) +
+      viewItem('Purchase Price', record.purchasePrice!=='' ? fmtMoney(record.purchasePrice, record.purchasePriceCurrency) : '') +
+    '</div></div>' +
+    ((record.customDutyPaid!=='' || record.chaDetail || record.transportCompany) ?
+      '<div class="view-section"><h4>Import / Logistics</h4><div class="view-grid">' +
+        viewItem('Custom Duty Paid', record.customDutyPaid!=='' ? fmtMoney(record.customDutyPaid) : '') +
+        viewItem('CHA Detail', record.chaDetail) + viewItem('Transport Company', record.transportCompany) +
+      '</div></div>' : '') +
+    ((record.insurancePolicyNumber || record.insuranceValidFrom || record.insuranceValidTo || record.insuranceCost!=='') ?
+      '<div class="view-section"><h4>Insurance</h4><div class="view-grid">' +
+        viewItem('Policy Number', record.insurancePolicyNumber, true) +
+        viewItem('Cost', record.insuranceCost!=='' ? fmtMoney(record.insuranceCost) : '') +
+        viewItem('Valid From', record.insuranceValidFrom, true) + viewItem('Valid To', record.insuranceValidTo, true) +
+      '</div></div>' : '') +
+    '<div class="view-section"><h4>Attachments ('+(record.attachments||[]).length+')</h4>' +
+    ((record.attachments && record.attachments.length)
+      ? '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + record.attachments.map(a =>
+          '<button class="file-pill" data-vdl="'+escapeHtml(a.storagePath)+'" data-vdlname="'+escapeHtml(a.name)+'" style="cursor:pointer;border:none;">📎 '+escapeHtml(a.name||'file')+'</button>'
+        ).join('') + '</div>'
+      : '<div class="hint">No attachments</div>') +
+    '</div>';
+  $('evBody').querySelectorAll('[data-vdl]').forEach(btn => btn.addEventListener('click', () => downloadAttachment(btn.dataset.vdl, btn.dataset.vdlname)));
+  $('evEditBtn').onclick = () => { closeEquipmentView(); openPanel(record); };
+  $('evDeleteBtn').onclick = () => { closeEquipmentView(); deleteRecord(record.id); };
+  $('eqViewOverlay').classList.add('open');
+}
+function closeEquipmentView(){ $('eqViewOverlay').classList.remove('open'); }
 
 function openPanel(record){
   editingId = record ? record.id : null;
@@ -667,7 +806,7 @@ async function saveRecord(){
 async function deleteRecord(id){
   const e = equipment.find(x=>x.id===id);
   if(!e) return;
-  if(!confirm('Delete "' + e.equipmentName + '"? This cannot be undone.')) return;
+  if(!await passwordConfirmDelete('Delete "' + e.equipmentName + '"? This cannot be undone.')) return;
   try{
     for(const a of (e.attachments || [])){
       if(a.storagePath) await deleteAttachmentFile(a.storagePath);
@@ -795,7 +934,7 @@ async function saveVendor(){
 async function deleteVendor(id){
   const v = vendors.find(x=>x.id===id);
   if(!v) return;
-  if(!confirm('Delete vendor "' + v.name + '"?')) return;
+  if(!await passwordConfirmDelete('Delete vendor "' + v.name + '"? This cannot be undone.')) return;
   try{
     const { error } = await supa.from('sachin_vendors').delete().eq('id', id);
     if(error) throw error;
@@ -833,6 +972,9 @@ $('eqPanelClose').addEventListener('click', closePanel);
 $('eqCancelBtn').addEventListener('click', closePanel);
 $('eqOverlay').addEventListener('click', e => { if(e.target.id==='eqOverlay') closePanel(); });
 $('eqSaveBtn').addEventListener('click', saveRecord);
+$('evClose').addEventListener('click', closeEquipmentView);
+$('evCloseBtn').addEventListener('click', closeEquipmentView);
+$('eqViewOverlay').addEventListener('click', e => { if(e.target.id==='eqViewOverlay') closeEquipmentView(); });
 $('categoryPanelClose').addEventListener('click', closeCategoryPanel);
 $('categoryCancelBtn').addEventListener('click', closeCategoryPanel);
 $('categoryOverlay').addEventListener('click', e => { if(e.target.id==='categoryOverlay') closeCategoryPanel(); });
