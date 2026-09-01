@@ -810,6 +810,7 @@
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-danger" id="discoveryBulkDeleteBtn" style="display:none;">🗑 Delete Selected (<span id="discoveryBulkCount">0</span>)</button>
+        <button class="btn" id="discoveryExportBtn">⬇ Export Excel</button>
         <button class="btn" id="discoveryRefreshBtn">↻ Refresh</button>
       </div>
     </div>
@@ -3308,6 +3309,44 @@ function updateDiscoveryBulkUI(){
   $('discoveryBulkCount').textContent = n;
 }
 
+function exportDiscoveryExcel(){
+  if(!discoveryItems.length){ showToast('No data to export', true); return; }
+  const rows = discoveryItems.map((d,i) => ({
+    'Sl.No': i+1,
+    'Computer Name': d.computer_name || '',
+    'Logged-in User': d.username || '',
+    'Manufacturer': d.manufacturer || '',
+    'Model': d.model || '',
+    'Serial Number': d.serial_number || '',
+    'System Type': d.system_type || '',
+    'Processor': d.processor || '',
+    'Cores': d.processor_cores || '',
+    'Speed (GHz)': d.processor_speed || '',
+    'RAM': d.ram_gb || '',
+    'Storage': d.storage || '',
+    'Free Space': d.free_space || '',
+    'Graphics': d.graphics || '',
+    'Monitor': d.monitor || '',
+    'Battery': d.battery || '',
+    'OS Name': d.os_name || '',
+    'OS Architecture': d.os_arch || '',
+    'OS Version': d.os_version || '',
+    'OS Build': d.os_build || '',
+    'IP Address': d.ip_address || '',
+    'MAC Address': d.mac_address || '',
+    'Gateway': d.gateway || '',
+    'BIOS Version': d.bios_version || '',
+    'Installed Software Count': (d.installed_software || []).length,
+    'Scan Time': d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleString('en-IN') : '',
+    'Status': d.status || 'pending'
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(Math.max(k.length, 12), 40) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Asset Discovery');
+  XLSX.writeFile(wb, 'asset-discovery-' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
 async function deleteSelectedDiscovery(){
   const ids = Array.from(selectedDiscoveryIds);
   if(!ids.length) return;
@@ -3496,6 +3535,7 @@ async function deleteDiscovery(id){
 
 // Wire up discovery events
 $('discoveryRefreshBtn').addEventListener('click', loadDiscovery);
+$('discoveryExportBtn').addEventListener('click', exportDiscoveryExcel);
 $('discoverySelectAll').addEventListener('click', e => e.stopPropagation());
 $('discoverySelectAll').addEventListener('change', ()=>{
   const checked = $('discoverySelectAll').checked;
