@@ -244,7 +244,15 @@
 <script>
 const SUPA_URL = 'https://bnaoylezumflyvfdmsnm.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuYW95bGV6dW1mbHl2ZmRtc25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0OTk3NTIsImV4cCI6MjEwMTA3NTc1Mn0.MG8UmI7d7TrqWnwgAPp5dv3sEdTrNv5vuyV3lZDwYEI';
-const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+// This page shares its origin (gosainravi.github.io) with IT Console, which DOES
+// keep a signed-in Supabase session in localStorage. Without the options below,
+// this client would silently inherit that session and start making requests as
+// that authenticated user instead of the public "anon" role this app's RLS
+// policies are actually written for — causing every read/write to be rejected.
+// This app has no sign-in of its own, so it must never read or persist a session.
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+});
 const BUCKET = 'sachin-equipment-invoices';
 
 const $ = id => document.getElementById(id);
