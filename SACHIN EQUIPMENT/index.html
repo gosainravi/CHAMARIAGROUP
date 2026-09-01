@@ -107,7 +107,7 @@
       <div class="toolbar">
         <div class="search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input id="eqSearch" type="text" placeholder="Search equipment...">
+          <input id="eqSearch" type="text" name="eq-filter-text" placeholder="Search equipment..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         </div>
         <div style="display:flex;gap:10px;">
           <button class="btn btn-danger" id="eqBulkDeleteBtn" style="display:none;">🗑 Delete Selected (<span id="eqBulkCount">0</span>)</button>
@@ -135,7 +135,7 @@
       <div class="toolbar">
         <div class="search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input id="vendorSearch" type="text" placeholder="Search vendors...">
+          <input id="vendorSearch" type="text" name="vendor-filter-text" placeholder="Search vendors..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         </div>
         <div style="display:flex;gap:10px;">
           <button class="btn" id="vendorExportBtn">⬇ Export CSV</button>
