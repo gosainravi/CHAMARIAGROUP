@@ -549,6 +549,7 @@
       <button class="tab-btn" data-tab="assets"><span class="nav-ic">▮</span><span class="nav-txt">Assets</span></button>
       <button class="tab-btn" data-tab="companies"><span class="nav-ic">▦</span><span class="nav-txt">Companies</span></button>
       <button class="tab-btn" data-tab="employees"><span class="nav-ic">◔</span><span class="nav-txt">User</span></button>
+      <button class="tab-btn" data-tab="vendors"><span class="nav-ic">🧾</span><span class="nav-txt">Vendors</span></button>
       <button class="tab-btn" data-tab="projects"><span class="nav-ic">📋</span><span class="nav-txt">IT Projects</span></button>
       <button class="tab-btn" data-tab="tickets"><span class="nav-ic">🎫</span><span class="nav-txt">Raise Ticket</span></button>
       <button class="tab-btn" data-tab="discovery"><span class="nav-ic">🔍</span><span class="nav-txt">Asset Discovery</span></button>
@@ -800,6 +801,34 @@
       </div>
     </div>
     <p class="footnote">Click an employee row to see every asset currently assigned to them.</p>
+  </section>
+
+  <!-- ================= VENDORS ================= -->
+  <section id="tab-vendors" class="tab-panel">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="vendorSearch" type="text" placeholder="Search vendors...">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" id="vendorExportBtn">⬇ Export CSV</button>
+        <button class="btn btn-primary" id="vendorAddBtn">+ Add Vendor</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-card">
+        <div class="scroll-x">
+          <table>
+            <thead><tr>
+              <th>Sl.No</th><th>Name of Vendor</th><th>Contact Person</th><th>Address</th><th>Mobile Number</th><th>Purpose</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="vendorTableBody"><tr class="empty-row"><td colspan="7"><span class="empty-icon">▤</span>Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= ASSET DISCOVERY ================= -->
@@ -1719,6 +1748,28 @@
   </div>
 </div>
 
+<!-- ============ Vendor Add/Edit Panel ============ -->
+<div class="overlay" id="vendorOverlay">
+  <div class="panel narrow">
+    <div class="panel-head"><h2 id="vendorPanelTitle">Add Vendor</h2><button class="panel-close" id="vendorPanelClose">✕</button></div>
+    <div class="panel-body">
+      <form id="vendorForm">
+        <div class="field"><label>Name of Vendor <span class="req">*</span></label><input id="vf_name" required></div>
+        <div class="field"><label>Contact Person</label><input id="vf_contactPerson"></div>
+        <div class="field"><label>Address</label><textarea id="vf_address" rows="2"></textarea></div>
+        <div class="grid2">
+          <div class="field"><label>Mobile Number</label><input id="vf_mobileNumber" type="tel" placeholder="+91 98765 43210"></div>
+          <div class="field"><label>Purpose</label><input id="vf_purpose" placeholder="e.g. Laptop supplier, AMC vendor…"></div>
+        </div>
+      </form>
+    </div>
+    <div class="panel-foot">
+      <button class="btn" id="vendorCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="vendorSaveBtn">Save Vendor</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ Employee View Panel ============ -->
 <div class="overlay" id="employeeViewOverlay">
   <div class="panel">
@@ -2221,6 +2272,14 @@ function employeeFromDb(r){
     employeeType:r.employee_type||'', joiningDate:r.joining_date||'',
     email:r.email||'', phone:r.phone||'', companyId:r.company_id||'' };
 }
+function vendorToDb(v){
+  return { name: v.name || null, contact_person: v.contactPerson || null, address: v.address || null,
+    mobile_number: v.mobileNumber || null, purpose: v.purpose || null };
+}
+function vendorFromDb(r){
+  return { id:r.id, name:r.name||'', contactPerson:r.contact_person||'', address:r.address||'',
+    mobileNumber:r.mobile_number||'', purpose:r.purpose||'' };
+}
 function assetToDb(a){
   const num = v => (v === '' || v === null || v === undefined) ? null : Number(v);
   const txt = v => (v === '' || v === null || v === undefined) ? null : String(v);
@@ -2268,6 +2327,7 @@ function assetFromDb(r){
 
 const companiesTable = makeTable('companies', companyToDb, companyFromDb, 'companies');
 const employeesTable = makeTable('employees', employeeToDb, employeeFromDb, 'employees');
+const vendorsTable = makeTable('vendors', vendorToDb, vendorFromDb, 'vendors');
 
 let localAssetCounter = 0;
 const assetsTable = {
@@ -2375,6 +2435,8 @@ const settingsTable = {
 /* ---------- App state ---------- */
 let companies = [];
 let employees = [];
+let vendors = [];
+let vendorEditingId = null;
 let assets = [];
 
 let assetCurrentPage = 1;
@@ -2711,6 +2773,7 @@ async function loadAll(){
     employees = await employeesTable.list();
     assets = await assetsTable.list();
     try{ itServices = await itServicesTable.list(); }catch(e){ console.warn('IT Services table not available yet — run the migration SQL.', e); itServices = []; }
+    try{ vendors = await vendorsTable.list(); }catch(e){ console.warn('Vendors table not available yet — run the migration SQL.', e); vendors = []; }
     await loadNetworkDevices().catch(e => { console.warn('Network devices skipped:', e.message); networkDevices = []; });
     loadFirewallStatus();
     await loadProjects().catch(e => { console.warn('IT Projects skipped:', e.message); itProjects = []; });
@@ -2739,6 +2802,7 @@ async function loadAll(){
   renderAssets();
   renderCompanies();
   renderEmployees();
+  renderVendors();
 }
 
 function applyBranding(settings){
@@ -6027,6 +6091,98 @@ async function deleteEmployee(id){
   }
 }
 
+function renderVendors(){
+  const q = ($('vendorSearch').value || '').toLowerCase();
+  const filtered = vendors.filter(v => !q || (v.name||'').toLowerCase().includes(q) || (v.contactPerson||'').toLowerCase().includes(q) ||
+    (v.purpose||'').toLowerCase().includes(q) || (v.mobileNumber||'').toLowerCase().includes(q));
+  const body = $('vendorTableBody');
+  if(filtered.length === 0){
+    body.innerHTML = '<tr class="empty-row"><td colspan="7"><span class="empty-icon">▤</span>' +
+      (vendors.length===0 ? 'No vendors yet — click "Add Vendor" to create one.' : 'No vendors match your search.') + '</td></tr>';
+  } else {
+    body.innerHTML = filtered.slice().sort((a,b)=>a.name.localeCompare(b.name)).map((v,i)=>
+      '<tr class="row-click" data-vrow="'+v.id+'">'+
+        '<td class="mono">'+(i+1)+'</td>'+
+        '<td>'+escapeHtml(v.name)+'</td>'+
+        '<td>'+escapeHtml(v.contactPerson || '—')+'</td>'+
+        '<td>'+escapeHtml(v.address || '—')+'</td>'+
+        '<td class="mono">'+escapeHtml(v.mobileNumber || '—')+'</td>'+
+        '<td>'+escapeHtml(v.purpose || '—')+'</td>'+
+        '<td><div class="row-actions"><button class="btn btn-sm" data-vedit="'+v.id+'">Edit</button><button class="btn btn-sm btn-danger" data-vdel="'+v.id+'">Del</button></div></td>'+
+      '</tr>'
+    ).join('');
+  }
+  body.querySelectorAll('[data-vrow]').forEach(tr=>{
+    tr.addEventListener('click', (e)=>{ if(e.target.closest('button')) return; const v = vendors.find(x=>x.id===tr.dataset.vrow); if(v) openVendorPanel(v); });
+  });
+  body.querySelectorAll('[data-vedit]').forEach(btn=> btn.addEventListener('click', ()=>{ const v = vendors.find(x=>x.id===btn.dataset.vedit); if(v) openVendorPanel(v); }));
+  body.querySelectorAll('[data-vdel]').forEach(btn=> btn.addEventListener('click', ()=> deleteVendor(btn.dataset.vdel)));
+}
+
+function openVendorPanel(vendor){
+  vendorEditingId = vendor ? vendor.id : null;
+  $('vendorPanelTitle').textContent = vendor ? 'Edit Vendor' : 'Add Vendor';
+  $('vf_name').value = vendor ? vendor.name : '';
+  $('vf_contactPerson').value = vendor ? vendor.contactPerson : '';
+  $('vf_address').value = vendor ? vendor.address : '';
+  $('vf_mobileNumber').value = vendor ? vendor.mobileNumber : '';
+  $('vf_purpose').value = vendor ? vendor.purpose : '';
+  $('vendorOverlay').classList.add('open');
+  $('vf_name').focus();
+}
+function closeVendorPanel(){ $('vendorOverlay').classList.remove('open'); vendorEditingId = null; }
+
+async function saveVendor(){
+  const name = $('vf_name').value.trim();
+  if(!name){ showToast('Vendor name is required', true); $('vf_name').focus(); return; }
+  const data = {
+    name, contactPerson: $('vf_contactPerson').value.trim(), address: $('vf_address').value.trim(),
+    mobileNumber: $('vf_mobileNumber').value.trim(), purpose: $('vf_purpose').value.trim()
+  };
+  try{
+    if(vendorEditingId){
+      await vendorsTable.update(vendorEditingId, data);
+      showToast('Vendor updated');
+    } else {
+      await vendorsTable.insert(data);
+      showToast('Vendor added');
+    }
+    vendors = await vendorsTable.list();
+    closeVendorPanel();
+    renderVendors();
+  }catch(e){
+    console.error(e);
+    showToast('Could not save vendor — ' + (e.message || 'check your database connection'), true);
+  }
+}
+
+async function deleteVendor(id){
+  const v = vendors.find(x=>x.id===id);
+  if(!v) return;
+  const ok = await passwordConfirmDelete('Delete vendor ' + v.name + '?');
+  if(!ok) return;
+  try{
+    await vendorsTable.remove(id);
+    vendors = await vendorsTable.list();
+    showToast('Vendor deleted');
+    renderVendors();
+  }catch(e){
+    console.error(e);
+    showToast('Could not delete vendor', true);
+  }
+}
+
+function exportVendorsCSV(){
+  const rows = vendors.map(v => ({
+    'Name of Vendor':  v.name || '',
+    'Contact Person':  v.contactPerson || '',
+    'Address':         v.address || '',
+    'Mobile Number':   v.mobileNumber || '',
+    'Purpose':         v.purpose || ''
+  }));
+  downloadCSV(rows, 'vendors_export.csv');
+}
+
 function openEmployeeView(employee){
   $('evName').textContent = employee.name;
   $('evDept').textContent = [employee.employeeCode, employee.department, companyNameById(employee.companyId)].filter(Boolean).join(' · ');
@@ -6520,6 +6676,7 @@ function switchTab(tabName){
   if(tabName === 'assets') renderAssets();
   if(tabName === 'companies') renderCompanies();
   if(tabName === 'employees') renderEmployees();
+  if(tabName === 'vendors') renderVendors();
   if(tabName === 'services') renderServiceTable(svcCurrentType);
   if(tabName === 'projects') renderProjects();
   if(tabName === 'tickets') { renderTickets(); updateTicketBadge(); }
@@ -6648,6 +6805,15 @@ $('employeeCancelBtn').addEventListener('click', closeEmployeePanel);
 $('employeeOverlay').addEventListener('click', (e)=>{ if(e.target.id==='employeeOverlay') closeEmployeePanel(); });
 $('employeeSaveBtn').addEventListener('click', saveEmployee);
 $('employeeSearch').addEventListener('input', renderEmployees);
+
+// Vendors
+$('vendorAddBtn').addEventListener('click', ()=> openVendorPanel(null));
+$('vendorPanelClose').addEventListener('click', closeVendorPanel);
+$('vendorCancelBtn').addEventListener('click', closeVendorPanel);
+$('vendorOverlay').addEventListener('click', (e)=>{ if(e.target.id==='vendorOverlay') closeVendorPanel(); });
+$('vendorSaveBtn').addEventListener('click', saveVendor);
+$('vendorSearch').addEventListener('input', renderVendors);
+$('vendorExportBtn').addEventListener('click', exportVendorsCSV);
 $('employeeImportBtn').addEventListener('click', openEmpImportPanel);
 $('empImportPanelClose').addEventListener('click', closeEmpImportPanel);
 $('empImportCancelBtn').addEventListener('click', closeEmpImportPanel);
