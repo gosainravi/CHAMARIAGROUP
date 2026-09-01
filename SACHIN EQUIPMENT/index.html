@@ -110,6 +110,7 @@
           <input id="eqSearch" type="text" placeholder="Search equipment...">
         </div>
         <div style="display:flex;gap:10px;">
+          <button class="btn btn-danger" id="eqBulkDeleteBtn" style="display:none;">🗑 Delete Selected (<span id="eqBulkCount">0</span>)</button>
           <button class="btn btn-danger" id="eqDeleteCategoryBtn">🗑 Delete This Category</button>
           <button class="btn" id="eqExportBtn">⬇ Export to Excel</button>
           <button class="btn btn-primary" id="eqAddBtn">+ Add Equipment</button>
@@ -118,13 +119,14 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
+            <th style="width:36px;"><input type="checkbox" id="eqSelectAll" title="Select all"></th>
             <th>Sl.No</th><th>Equipment Name</th><th>Make</th><th>Serial Number</th><th>Equipment Type</th>
             <th>Purchased From</th><th>Purchase Date</th><th>Purchase Price</th>
             <th>Custom Duty Paid</th><th>CHA Detail</th><th>Transport Company</th>
             <th>Insurance Policy No.</th><th>Insurance Valid From</th><th>Insurance Valid To</th><th>Insurance Cost</th>
             <th>Attachments</th><th>Actions</th>
           </tr></thead>
-          <tbody id="eqTableBody"><tr class="empty-row"><td colspan="17">Loading…</td></tr></tbody>
+          <tbody id="eqTableBody"><tr class="empty-row"><td colspan="18">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -329,6 +331,7 @@ let currentAttachments = [];
 let pendingNewAttachFiles = [];
 let removedAttachmentPaths = [];
 let viewMode = 'equipment'; // 'equipment' | 'vendors'
+let selectedEquipmentIds = new Set();
 let vendors = [];
 let vendorEditingId = null;
 const connStatus = { categories: null, equipment: null, vendors: null }; // null=pending, true=ok, false=failed
@@ -570,6 +573,7 @@ async function deleteCategory(){
 function switchCategory(cat){
   viewMode = 'equipment';
   activeCategory = cat;
+  selectedEquipmentIds.clear();
   $('vendorPanelContent').style.display = 'none';
   $('equipmentPanelContent').style.display = '';
   renderTabs();
@@ -578,7 +582,7 @@ function switchCategory(cat){
 
 function render(){
   if(!activeCategory){
-    $('eqTableBody').innerHTML = '<tr class="empty-row"><td colspan="17">No categories yet — click "+ New Category" to create one.</td></tr>';
+    $('eqTableBody').innerHTML = '<tr class="empty-row"><td colspan="18">No categories yet — click "+ New Category" to create one.</td></tr>';
     return;
   }
   const q = ($('eqSearch').value || '').toLowerCase();
@@ -589,11 +593,12 @@ function render(){
     (e.transportCompany||'').toLowerCase().includes(q) || (e.insurancePolicyNumber||'').toLowerCase().includes(q));
   const body = $('eqTableBody');
   if(!list.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="17">' +
+    body.innerHTML = '<tr class="empty-row"><td colspan="18">' +
       (equipment.filter(e=>e.category===activeCategory).length===0 ? 'No equipment yet — click "Add Equipment" to register the first item.' : 'No equipment matches your search.') + '</td></tr>';
     return;
   }
   body.innerHTML = list.map((e,i) => '<tr class="row-click" data-row="'+e.id+'">' +
+    '<td><input type="checkbox" class="row-select" data-select="'+e.id+'" '+(selectedEquipmentIds.has(e.id)?'checked':'')+'></td>' +
     '<td class="mono">'+(i+1)+'</td>' +
     '<td>'+escapeHtml(e.equipmentName)+'</td>' +
     '<td>'+escapeHtml(e.make||'—')+'</td>' +
@@ -624,7 +629,56 @@ function render(){
     const rec = equipment.find(x=>x.id===btn.dataset.edit); if(rec) openPanel(rec);
   }));
   body.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deleteRecord(btn.dataset.del); }));
-  body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', () => downloadAttachment(btn.dataset.dl, btn.dataset.dlname)));
+  body.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); downloadAttachment(btn.dataset.dl, btn.dataset.dlname); }));
+  body.querySelectorAll('[data-select]').forEach(cb => {
+    cb.addEventListener('click', e => e.stopPropagation());
+    cb.addEventListener('change', () => {
+      if(cb.checked) selectedEquipmentIds.add(cb.dataset.select);
+      else selectedEquipmentIds.delete(cb.dataset.select);
+      updateEquipmentSelectAllState(list);
+      updateEquipmentBulkUI();
+    });
+  });
+  updateEquipmentSelectAllState(list);
+  updateEquipmentBulkUI();
+}
+
+function updateEquipmentSelectAllState(list){
+  const selAll = $('eqSelectAll');
+  if(!selAll) return;
+  if(!list || !list.length){ selAll.checked = false; selAll.indeterminate = false; return; }
+  const selectedOnPage = list.filter(e => selectedEquipmentIds.has(e.id)).length;
+  selAll.checked = selectedOnPage === list.length;
+  selAll.indeterminate = selectedOnPage > 0 && selectedOnPage < list.length;
+}
+
+function updateEquipmentBulkUI(){
+  const btn = $('eqBulkDeleteBtn');
+  if(!btn) return;
+  const n = selectedEquipmentIds.size;
+  btn.style.display = n > 0 ? '' : 'none';
+  $('eqBulkCount').textContent = n;
+}
+
+async function deleteSelectedRecords(){
+  const ids = Array.from(selectedEquipmentIds);
+  if(!ids.length) return;
+  const toDelete = equipment.filter(e => ids.includes(e.id));
+  if(!await passwordConfirmDelete('Permanently delete ' + ids.length + ' selected equipment item' + (ids.length>1?'s':'') + '? This cannot be undone.')) return;
+  let failed = 0;
+  for(const e of toDelete){
+    try{
+      for(const a of (e.attachments || [])){
+        if(a.storagePath) await deleteAttachmentFile(a.storagePath);
+      }
+      const { error } = await supa.from('sachin_equipment').delete().eq('id', e.id);
+      if(error) throw error;
+    }catch(err){ console.error(err); failed++; }
+  }
+  selectedEquipmentIds.clear();
+  await loadEquipment();
+  if(failed) showToast(failed + ' item(s) could not be deleted', true);
+  else showToast(ids.length + ' item(s) deleted');
 }
 
 async function uploadAttachment(recordId, file){
@@ -968,6 +1022,16 @@ $('eqAddBtn').addEventListener('click', () => {
 });
 $('eqExportBtn').addEventListener('click', exportExcel);
 $('eqDeleteCategoryBtn').addEventListener('click', deleteCategory);
+$('eqBulkDeleteBtn').addEventListener('click', deleteSelectedRecords);
+$('eqSelectAll').addEventListener('change', () => {
+  const checked = $('eqSelectAll').checked;
+  document.querySelectorAll('#eqTableBody [data-select]').forEach(cb => {
+    cb.checked = checked;
+    if(checked) selectedEquipmentIds.add(cb.dataset.select);
+    else selectedEquipmentIds.delete(cb.dataset.select);
+  });
+  updateEquipmentBulkUI();
+});
 $('eqPanelClose').addEventListener('click', closePanel);
 $('eqCancelBtn').addEventListener('click', closePanel);
 $('eqOverlay').addEventListener('click', e => { if(e.target.id==='eqOverlay') closePanel(); });
