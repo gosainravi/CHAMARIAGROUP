@@ -73,6 +73,11 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--paper);border:1px solid var(--line);color:var(--ink);padding:12px 20px;border-radius:12px;font-size:13.5px;box-shadow:0 20px 50px -10px rgba(0,0,0,0.5);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;}
   .toast.show{opacity:1;}
   .toast.error{border-color:var(--danger);color:#ffb3bb;}
+  .db-banner{display:none;align-items:center;gap:8px;font-size:13px;padding:10px 16px;border-radius:12px;margin-bottom:16px;font-weight:600;}
+  .db-banner.show{display:flex;}
+  .db-banner.ok{background:var(--success-soft);color:var(--success);}
+  .db-banner.error{background:var(--danger-soft);color:#ffb3bb;}
+  .db-banner.loading{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
   @media (max-width:640px){ .grid2{grid-template-columns:1fr;} thead th:nth-child(n+5),tbody td:nth-child(n+5){display:none;} }
 </style>
 </head>
@@ -83,6 +88,8 @@
     <h1>🩺 Sachin Chamaria Equipment</h1>
     <a class="back" href="../index.html">← Back to Business Portal</a>
   </div>
+
+  <div class="db-banner loading show" id="dbBanner">⏳ Connecting to database…</div>
 
   <div class="app-card-shell">
     <div class="tabs" id="tabsBar"></div>
@@ -250,6 +257,24 @@ let pendingInvoiceRemoved = false;
 let viewMode = 'equipment'; // 'equipment' | 'vendors'
 let vendors = [];
 let vendorEditingId = null;
+const connStatus = { categories: null, equipment: null, vendors: null }; // null=pending, true=ok, false=failed
+
+function setBanner(cls, html){
+  const b = $('dbBanner');
+  b.className = 'db-banner show ' + cls;
+  b.innerHTML = html;
+}
+function updateConnectionBanner(){
+  const vals = Object.values(connStatus);
+  if(vals.some(v => v === null)) return; // still waiting on one of the three
+  const failed = Object.keys(connStatus).filter(k => connStatus[k] === false);
+  if(!failed.length){
+    setBanner('ok', '✅ Connected to Supabase — data is live and shared across every device.');
+    setTimeout(() => { $('dbBanner').classList.remove('show'); }, 4000);
+  } else {
+    setBanner('error', '⚠ Not connected — could not reach: <b>' + failed.join(', ') + '</b>. Run the migration SQL in Supabase, then reload this page.');
+  }
+}
 let pendingCategoryIconDataUrl = null;
 
 function showToast(msg, isError){
@@ -296,10 +321,13 @@ async function loadCategories(){
     const { data, error } = await supa.from('sachin_equipment_categories').select('*').order('sort_order', { ascending:true });
     if(error) throw error;
     categories = data;
+    connStatus.categories = true;
   }catch(e){
     console.warn('Could not load categories — has the migration been run?', e);
     categories = [];
+    connStatus.categories = false;
   }
+  updateConnectionBanner();
   if(!activeCategory || !categories.find(c=>c.name===activeCategory)){
     activeCategory = categories.length ? categories[0].name : null;
   }
@@ -357,11 +385,13 @@ async function loadEquipment(){
     const { data, error } = await supa.from('sachin_equipment').select('*').order('created_at', { ascending:true });
     if(error) throw error;
     equipment = data.map(rowFromDb);
+    connStatus.equipment = true;
   }catch(e){
     console.warn('Could not load equipment — has the migration been run?', e);
     equipment = [];
-    showToast('Could not load data — ask IT to run the sachin_equipment migration', true);
+    connStatus.equipment = false;
   }
+  updateConnectionBanner();
   render();
 }
 
@@ -618,10 +648,13 @@ async function loadVendors(){
     const { data, error } = await supa.from('sachin_vendors').select('*').order('name', { ascending:true });
     if(error) throw error;
     vendors = data.map(vendorFromDb);
+    connStatus.vendors = true;
   }catch(e){
     console.warn('Could not load vendors — has the migration been run?', e);
     vendors = [];
+    connStatus.vendors = false;
   }
+  updateConnectionBanner();
   if(viewMode === 'vendors') renderVendorsTable();
 }
 
