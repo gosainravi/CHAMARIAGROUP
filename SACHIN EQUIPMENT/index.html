@@ -86,7 +86,7 @@
 
   <div class="app-card-shell">
     <div class="tabs" id="tabsBar"></div>
-    <div class="panel-content">
+    <div class="panel-content" id="equipmentPanelContent">
       <div class="toolbar">
         <div class="search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -109,6 +109,49 @@
           <tbody id="eqTableBody"><tr class="empty-row"><td colspan="13">Loading…</td></tr></tbody>
         </table>
       </div>
+    </div>
+
+    <div class="panel-content" id="vendorPanelContent" style="display:none;">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="vendorSearch" type="text" placeholder="Search vendors...">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn" id="vendorExportBtn">⬇ Export CSV</button>
+          <button class="btn btn-primary" id="vendorAddBtn">+ Add Vendor</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Sl.No</th><th>Name of Vendor</th><th>Contact Person</th><th>Address</th><th>Mobile Number</th><th>Purpose</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="vendorTableBody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Vendor Add/Edit Panel ============ -->
+<div class="overlay" id="vendorOverlay">
+  <div class="panel" style="max-width:460px;">
+    <div class="panel-head"><h2 id="vendorPanelTitle">Add Vendor</h2><button class="panel-close" id="vendorPanelClose">✕</button></div>
+    <div class="panel-body">
+      <form id="vendorForm">
+        <div class="field"><label>Name of Vendor <span class="req">*</span></label><input id="vf_name" required></div>
+        <div class="field"><label>Contact Person</label><input id="vf_contactPerson"></div>
+        <div class="field"><label>Address</label><textarea id="vf_address" rows="2"></textarea></div>
+        <div class="grid2">
+          <div class="field"><label>Mobile Number</label><input id="vf_mobileNumber" type="tel" placeholder="+91 98765 43210"></div>
+          <div class="field"><label>Purpose</label><input id="vf_purpose" placeholder="e.g. Equipment supplier"></div>
+        </div>
+      </form>
+    </div>
+    <div class="panel-foot">
+      <button class="btn" id="vendorCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="vendorSaveBtn">Save Vendor</button>
     </div>
   </div>
 </div>
@@ -204,6 +247,9 @@ let activeCategory = null;
 let editingId = null;
 let pendingInvoiceFile = null;
 let pendingInvoiceRemoved = false;
+let viewMode = 'equipment'; // 'equipment' | 'vendors'
+let vendors = [];
+let vendorEditingId = null;
 let pendingCategoryIconDataUrl = null;
 
 function showToast(msg, isError){
@@ -263,13 +309,24 @@ async function loadCategories(){
 function renderTabs(){
   const bar = $('tabsBar');
   bar.innerHTML = categories.map(c =>
-    '<button class="tab-btn'+(c.name===activeCategory?' active':'')+'" data-cat="'+escapeHtml(c.name)+'">' +
+    '<button class="tab-btn'+(viewMode==='equipment' && c.name===activeCategory?' active':'')+'" data-cat="'+escapeHtml(c.name)+'">' +
       (c.icon_image ? '<img src="'+c.icon_image+'" style="width:18px;height:18px;object-fit:contain;border-radius:4px;">' : '<span>'+escapeHtml(c.icon||'🧰')+'</span>') +
       ' '+escapeHtml(c.name)+
     '</button>'
-  ).join('') + '<button class="tab-btn" id="eqNewCategoryBtn" style="color:var(--accent);">+ New Category</button>';
+  ).join('') +
+    '<button class="tab-btn" id="eqNewCategoryBtn" style="color:var(--accent);">+ New Category</button>' +
+    '<button class="tab-btn'+(viewMode==='vendors'?' active':'')+'" id="vendorsTabBtn" style="margin-left:auto;"><span>🧾</span> Vendors</button>';
   bar.querySelectorAll('[data-cat]').forEach(btn => btn.addEventListener('click', () => switchCategory(btn.dataset.cat)));
   $('eqNewCategoryBtn').addEventListener('click', openCategoryPanel);
+  $('vendorsTabBtn').addEventListener('click', switchToVendors);
+}
+
+function switchToVendors(){
+  viewMode = 'vendors';
+  $('equipmentPanelContent').style.display = 'none';
+  $('vendorPanelContent').style.display = '';
+  renderTabs();
+  renderVendorsTable();
 }
 
 function resizeImageToDataUrl(file, maxDim){
@@ -375,8 +432,11 @@ async function deleteInvoice(storagePath){
 }
 
 function switchCategory(cat){
+  viewMode = 'equipment';
   activeCategory = cat;
-  document.querySelectorAll('#tabsBar [data-cat]').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  $('vendorPanelContent').style.display = 'none';
+  $('equipmentPanelContent').style.display = '';
+  renderTabs();
   render();
 }
 
@@ -543,6 +603,120 @@ function exportExcel(){
   XLSX.writeFile(wb, fileSlug + '-' + new Date().toISOString().slice(0,10) + '.xlsx');
 }
 
+/* ================= VENDORS ================= */
+function vendorFromDb(r){
+  return { id: r.id, name: r.name || '', contactPerson: r.contact_person || '', address: r.address || '',
+    mobileNumber: r.mobile_number || '', purpose: r.purpose || '' };
+}
+function vendorToDb(v){
+  return { name: v.name || null, contact_person: v.contactPerson || null, address: v.address || null,
+    mobile_number: v.mobileNumber || null, purpose: v.purpose || null };
+}
+
+async function loadVendors(){
+  try{
+    const { data, error } = await supa.from('sachin_vendors').select('*').order('name', { ascending:true });
+    if(error) throw error;
+    vendors = data.map(vendorFromDb);
+  }catch(e){
+    console.warn('Could not load vendors — has the migration been run?', e);
+    vendors = [];
+  }
+  if(viewMode === 'vendors') renderVendorsTable();
+}
+
+function renderVendorsTable(){
+  const q = ($('vendorSearch').value || '').toLowerCase();
+  const list = vendors.filter(v => !q || (v.name||'').toLowerCase().includes(q) || (v.contactPerson||'').toLowerCase().includes(q) ||
+    (v.purpose||'').toLowerCase().includes(q) || (v.mobileNumber||'').toLowerCase().includes(q));
+  const body = $('vendorTableBody');
+  if(!list.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="7">' +
+      (vendors.length===0 ? 'No vendors yet — click "Add Vendor" to create one.' : 'No vendors match your search.') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map((v,i) =>
+    '<tr>' +
+      '<td class="mono">'+(i+1)+'</td>' +
+      '<td>'+escapeHtml(v.name)+'</td>' +
+      '<td>'+escapeHtml(v.contactPerson||'—')+'</td>' +
+      '<td>'+escapeHtml(v.address||'—')+'</td>' +
+      '<td class="mono">'+escapeHtml(v.mobileNumber||'—')+'</td>' +
+      '<td>'+escapeHtml(v.purpose||'—')+'</td>' +
+      '<td><div class="row-actions"><button class="btn btn-sm" data-vedit="'+v.id+'">Edit</button><button class="btn btn-sm btn-danger" data-vdel="'+v.id+'">Del</button></div></td>' +
+    '</tr>'
+  ).join('');
+  body.querySelectorAll('[data-vedit]').forEach(btn => btn.addEventListener('click', () => { const v = vendors.find(x=>x.id===btn.dataset.vedit); if(v) openVendorPanel(v); }));
+  body.querySelectorAll('[data-vdel]').forEach(btn => btn.addEventListener('click', () => deleteVendor(btn.dataset.vdel)));
+}
+
+function openVendorPanel(vendor){
+  vendorEditingId = vendor ? vendor.id : null;
+  $('vendorPanelTitle').textContent = vendor ? 'Edit Vendor' : 'Add Vendor';
+  $('vf_name').value = vendor ? vendor.name : '';
+  $('vf_contactPerson').value = vendor ? vendor.contactPerson : '';
+  $('vf_address').value = vendor ? vendor.address : '';
+  $('vf_mobileNumber').value = vendor ? vendor.mobileNumber : '';
+  $('vf_purpose').value = vendor ? vendor.purpose : '';
+  $('vendorOverlay').classList.add('open');
+  $('vf_name').focus();
+}
+function closeVendorPanel(){ $('vendorOverlay').classList.remove('open'); vendorEditingId = null; }
+
+async function saveVendor(){
+  const name = $('vf_name').value.trim();
+  if(!name){ showToast('Vendor name is required', true); $('vf_name').focus(); return; }
+  const data = {
+    name, contactPerson: $('vf_contactPerson').value.trim(), address: $('vf_address').value.trim(),
+    mobileNumber: $('vf_mobileNumber').value.trim(), purpose: $('vf_purpose').value.trim()
+  };
+  try{
+    if(vendorEditingId){
+      const { error } = await supa.from('sachin_vendors').update(vendorToDb(data)).eq('id', vendorEditingId);
+      if(error) throw error;
+    } else {
+      const { error } = await supa.from('sachin_vendors').insert(vendorToDb(data));
+      if(error) throw error;
+    }
+    await loadVendors();
+    closeVendorPanel();
+    showToast(vendorEditingId ? 'Vendor updated' : 'Vendor added');
+  }catch(e){
+    console.error(e);
+    showToast('Could not save vendor — ' + (e.message || 'check your database connection'), true);
+  }
+}
+
+async function deleteVendor(id){
+  const v = vendors.find(x=>x.id===id);
+  if(!v) return;
+  if(!confirm('Delete vendor "' + v.name + '"?')) return;
+  try{
+    const { error } = await supa.from('sachin_vendors').delete().eq('id', id);
+    if(error) throw error;
+    await loadVendors();
+    showToast('Vendor deleted');
+  }catch(e){
+    console.error(e);
+    showToast('Could not delete vendor', true);
+  }
+}
+
+function exportVendorsCSV(){
+  if(!vendors.length){ showToast('No data to export', true); return; }
+  const headers = ['Name of Vendor','Contact Person','Address','Mobile Number','Purpose'];
+  const csv = [headers, ...vendors.map(v => [v.name, v.contactPerson, v.address, v.mobileNumber, v.purpose])]
+    .map(r => r.map(val => {
+      const s = String(val ?? '');
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'vendors_export.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
 $('eqSearch').addEventListener('input', render);
 $('eqAddBtn').addEventListener('click', () => {
   if(!activeCategory){ showToast('Create a category first', true); return; }
@@ -593,7 +767,16 @@ $('ef_removeInvoiceBtn').addEventListener('click', () => {
   $('ef_invoiceFile').value = ''; $('ef_invoiceEmpty').style.display = ''; $('ef_invoiceAttached').style.display = 'none';
 });
 
+$('vendorSearch').addEventListener('input', renderVendorsTable);
+$('vendorAddBtn').addEventListener('click', () => openVendorPanel(null));
+$('vendorExportBtn').addEventListener('click', exportVendorsCSV);
+$('vendorPanelClose').addEventListener('click', closeVendorPanel);
+$('vendorCancelBtn').addEventListener('click', closeVendorPanel);
+$('vendorOverlay').addEventListener('click', e => { if(e.target.id==='vendorOverlay') closeVendorPanel(); });
+$('vendorSaveBtn').addEventListener('click', saveVendor);
+
 loadEquipment();
+loadVendors();
 </script>
 
 </body>
