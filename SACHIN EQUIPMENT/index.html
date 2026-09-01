@@ -1084,6 +1084,42 @@ $('vendorCancelBtn').addEventListener('click', closeVendorPanel);
 $('vendorOverlay').addEventListener('click', e => { if(e.target.id==='vendorOverlay') closeVendorPanel(); });
 $('vendorSaveBtn').addEventListener('click', saveVendor);
 
+// Some browsers (notably Edge) restore a previously-typed value into these
+// search boxes on reload/back-forward navigation regardless of
+// autocomplete="off" — so force them empty ourselves rather than trusting
+// the browser. Cleared immediately, and again after load/pageshow since the
+// browser's own restore can happen slightly after this script runs.
+function clearSearchBoxes(){
+  const eqBox = $('eqSearch'), vBox = $('vendorSearch');
+  const eqHadValue = eqBox && eqBox.value !== '';
+  const vHadValue = vBox && vBox.value !== '';
+  if(eqBox) eqBox.value = '';
+  if(vBox) vBox.value = '';
+  // if the browser had already filtered the visible list against a stale
+  // value before we cleared it, force a re-render so the list reappears
+  // without the user having to touch anything.
+  if(eqHadValue && activeCategory) render();
+  if(vHadValue && viewMode === 'vendors') renderVendorsTable();
+}
+clearSearchBoxes();
+window.addEventListener('load', clearSearchBoxes);
+window.addEventListener('pageshow', clearSearchBoxes);
+// The browser's own restore can land at an unpredictable moment after load —
+// not necessarily within the first couple seconds — so on top of the
+// one-shot clears above, keep a standing guard: whenever a search box isn't
+// focused (i.e. the user isn't actively typing into it) and its value looks
+// like an email address rather than something you'd search equipment for,
+// clear it. This doesn't depend on guessing the browser's timing at all.
+setInterval(() => {
+  [$('eqSearch'), $('vendorSearch')].forEach(el => {
+    if(el && document.activeElement !== el && /\S+@\S+\.\S+/.test(el.value)){
+      el.value = '';
+      if(el === $('eqSearch') && activeCategory) render();
+      if(el === $('vendorSearch') && viewMode === 'vendors') renderVendorsTable();
+    }
+  });
+}, 1000);
+
 loadEquipment();
 loadVendors();
 </script>
