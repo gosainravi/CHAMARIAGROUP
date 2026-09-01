@@ -85,10 +85,7 @@
   </div>
 
   <div class="app-card-shell">
-    <div class="tabs">
-      <button class="tab-btn active" data-cat="medical"><span>⚕️</span> Medical Equipment</button>
-      <button class="tab-btn" data-cat="boccia"><span>🎯</span> Boccia Equipment</button>
-    </div>
+    <div class="tabs" id="tabsBar"></div>
     <div class="panel-content">
       <div class="toolbar">
         <div class="search-wrap">
@@ -96,6 +93,7 @@
           <input id="eqSearch" type="text" placeholder="Search equipment...">
         </div>
         <div style="display:flex;gap:10px;">
+          <button class="btn btn-danger" id="eqDeleteCategoryBtn">🗑 Delete This Category</button>
           <button class="btn" id="eqExportBtn">⬇ Export to Excel</button>
           <button class="btn btn-primary" id="eqAddBtn">+ Add Equipment</button>
         </div>
@@ -104,11 +102,33 @@
         <table>
           <thead><tr>
             <th>Sl.No</th><th>Equipment Name</th><th>Make</th><th>Serial Number</th><th>Equipment Type</th>
-            <th>Purchased From</th><th id="eqPurchaseDateHead" style="display:none;">Purchase Date</th><th>Purchase Price</th><th>Invoice</th><th>Actions</th>
+            <th>Purchased From</th><th>Purchase Date</th><th>Purchase Price</th>
+            <th>Custom Duty Paid</th><th>CHA Detail</th><th>Transport Company</th>
+            <th>Invoice</th><th>Actions</th>
           </tr></thead>
-          <tbody id="eqTableBody"><tr class="empty-row"><td colspan="10">Loading…</td></tr></tbody>
+          <tbody id="eqTableBody"><tr class="empty-row"><td colspan="13">Loading…</td></tr></tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ New Category Panel ============ -->
+<div class="overlay" id="categoryOverlay">
+  <div class="panel" style="max-width:400px;">
+    <div class="panel-head"><h2>New Equipment Category</h2><button class="panel-close" id="categoryPanelClose">✕</button></div>
+    <div class="panel-body">
+      <form id="categoryForm">
+        <div class="grid2">
+          <div class="field" style="grid-column:span 1;max-width:90px;"><label>Icon</label><input id="cf_icon" maxlength="4" value="🧰" style="text-align:center;font-size:18px;"></div>
+          <div class="field"><label>Category Name <span class="req">*</span></label><input id="cf_name" placeholder="e.g. Physiotherapy Equipment"></div>
+        </div>
+        <p class="hint">All categories share the same column set (Equipment Name, Make, Serial Number, Type, Specifications, Purchased From, Purchase Date, Price, Invoice).</p>
+      </form>
+    </div>
+    <div class="panel-foot">
+      <button class="btn" id="categoryCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="categorySaveBtn">Create Category</button>
     </div>
   </div>
 </div>
@@ -131,9 +151,15 @@
         <div class="field"><label>Other Specification</label><textarea id="ef_otherSpecification" rows="6"></textarea></div>
         <div class="grid2">
           <div class="field"><label>Purchased From</label><input id="ef_purchasedFrom"></div>
-          <div class="field" id="ef_purchaseDateField" style="display:none;"><label>Purchase Date</label><input type="date" id="ef_purchaseDate"></div>
+          <div class="field"><label>Purchase Date</label><input type="date" id="ef_purchaseDate"></div>
         </div>
         <div class="field"><label>Purchase Price</label><input type="number" id="ef_purchasePrice" step="0.01"></div>
+        <div class="section-label" style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin:18px 0 12px;">Import / Logistics (optional)</div>
+        <div class="grid2">
+          <div class="field"><label>Custom Duty Paid</label><input type="number" id="ef_customDutyPaid" step="0.01"></div>
+          <div class="field"><label>CHA Detail</label><input id="ef_chaDetail" placeholder="Customs House Agent name / contact"></div>
+        </div>
+        <div class="field"><label>Transport Company</label><input id="ef_transportCompany"></div>
         <div class="field">
           <label>Invoice Attachment</label>
           <div class="file-drop">
@@ -164,7 +190,8 @@ const BUCKET = 'sachin-equipment-invoices';
 
 const $ = id => document.getElementById(id);
 let equipment = [];
-let activeCategory = 'medical';
+let categories = [];
+let activeCategory = null;
 let editingId = null;
 let pendingInvoiceFile = null;
 let pendingInvoiceRemoved = false;
@@ -189,7 +216,9 @@ function rowFromDb(r){
     serialNumber: r.serial_number || '', equipmentType: r.equipment_type || '',
     specification: r.specification || '', otherSpecification: r.other_specification || '',
     purchasedFrom: r.purchased_from || '', purchaseDate: r.purchase_date || '',
-    purchasePrice: r.purchase_price ?? '', hasInvoice: !!r.has_invoice,
+    purchasePrice: r.purchase_price ?? '', customDutyPaid: r.custom_duty_paid ?? '',
+    chaDetail: r.cha_detail || '', transportCompany: r.transport_company || '',
+    hasInvoice: !!r.has_invoice,
     invoiceFileName: r.invoice_file_name || '', invoiceStoragePath: r.invoice_storage_path || ''
   };
 }
@@ -200,11 +229,38 @@ function rowToDb(e){
     specification: e.specification || null, other_specification: e.otherSpecification || null,
     purchased_from: e.purchasedFrom || null, purchase_date: e.purchaseDate || null,
     purchase_price: (e.purchasePrice === '' || e.purchasePrice == null) ? null : Number(e.purchasePrice),
+    custom_duty_paid: (e.customDutyPaid === '' || e.customDutyPaid == null) ? null : Number(e.customDutyPaid),
+    cha_detail: e.chaDetail || null, transport_company: e.transportCompany || null,
     has_invoice: !!e.hasInvoice, invoice_file_name: e.invoiceFileName || null, invoice_storage_path: e.invoiceStoragePath || null
   };
 }
 
+async function loadCategories(){
+  try{
+    const { data, error } = await supa.from('sachin_equipment_categories').select('*').order('sort_order', { ascending:true });
+    if(error) throw error;
+    categories = data;
+  }catch(e){
+    console.warn('Could not load categories — has the migration been run?', e);
+    categories = [];
+  }
+  if(!activeCategory || !categories.find(c=>c.name===activeCategory)){
+    activeCategory = categories.length ? categories[0].name : null;
+  }
+  renderTabs();
+}
+
+function renderTabs(){
+  const bar = $('tabsBar');
+  bar.innerHTML = categories.map(c =>
+    '<button class="tab-btn'+(c.name===activeCategory?' active':'')+'" data-cat="'+escapeHtml(c.name)+'"><span>'+escapeHtml(c.icon||'🧰')+'</span> '+escapeHtml(c.name)+'</button>'
+  ).join('') + '<button class="tab-btn" id="eqNewCategoryBtn" style="color:var(--accent);">+ New Category</button>';
+  bar.querySelectorAll('[data-cat]').forEach(btn => btn.addEventListener('click', () => switchCategory(btn.dataset.cat)));
+  $('eqNewCategoryBtn').addEventListener('click', openCategoryPanel);
+}
+
 async function loadEquipment(){
+  await loadCategories();
   try{
     const { data, error } = await supa.from('sachin_equipment').select('*').order('created_at', { ascending:true });
     if(error) throw error;
@@ -215,6 +271,51 @@ async function loadEquipment(){
     showToast('Could not load data — ask IT to run the sachin_equipment migration', true);
   }
   render();
+}
+
+function openCategoryPanel(){
+  $('cf_name').value = '';
+  $('cf_icon').value = '🧰';
+  $('categoryOverlay').classList.add('open');
+  $('cf_name').focus();
+}
+function closeCategoryPanel(){ $('categoryOverlay').classList.remove('open'); }
+
+async function saveCategory(){
+  const name = $('cf_name').value.trim();
+  if(!name){ showToast('Category name is required', true); $('cf_name').focus(); return; }
+  if(categories.find(c => c.name.toLowerCase() === name.toLowerCase())){ showToast('A category with this name already exists', true); return; }
+  const icon = $('cf_icon').value.trim() || '🧰';
+  try{
+    const { error } = await supa.from('sachin_equipment_categories').insert({ name, icon, sort_order: categories.length });
+    if(error) throw error;
+    activeCategory = name;
+    await loadCategories();
+    closeCategoryPanel();
+    render();
+    showToast('Category "' + name + '" created');
+  }catch(e){
+    console.error(e);
+    showToast('Could not create category — ' + (e.message || 'check your database connection'), true);
+  }
+}
+
+async function deleteCategory(){
+  if(!activeCategory) return;
+  const count = equipment.filter(e => e.category === activeCategory).length;
+  if(count > 0){ showToast('Cannot delete — ' + count + ' equipment record(s) still use this category', true); return; }
+  if(!confirm('Delete the "' + activeCategory + '" category? This cannot be undone.')) return;
+  try{
+    const cat = categories.find(c => c.name === activeCategory);
+    if(cat){ const { error } = await supa.from('sachin_equipment_categories').delete().eq('id', cat.id); if(error) throw error; }
+    activeCategory = null;
+    await loadCategories();
+    render();
+    showToast('Category deleted');
+  }catch(e){
+    console.error(e);
+    showToast('Could not delete category', true);
+  }
 }
 
 async function uploadInvoice(recordId, file){
@@ -235,22 +336,24 @@ async function deleteInvoice(storagePath){
 
 function switchCategory(cat){
   activeCategory = cat;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
-  $('eqPurchaseDateHead').style.display = cat === 'boccia' ? '' : 'none';
-  $('ef_purchaseDateField').style.display = cat === 'boccia' ? '' : 'none';
+  document.querySelectorAll('#tabsBar [data-cat]').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
   render();
 }
 
 function render(){
+  if(!activeCategory){
+    $('eqTableBody').innerHTML = '<tr class="empty-row"><td colspan="13">No categories yet — click "+ New Category" to create one.</td></tr>';
+    return;
+  }
   const q = ($('eqSearch').value || '').toLowerCase();
   const list = equipment.filter(e => e.category === activeCategory).filter(e => !q ||
     (e.equipmentName||'').toLowerCase().includes(q) || (e.make||'').toLowerCase().includes(q) ||
     (e.serialNumber||'').toLowerCase().includes(q) || (e.equipmentType||'').toLowerCase().includes(q) ||
-    (e.purchasedFrom||'').toLowerCase().includes(q));
+    (e.purchasedFrom||'').toLowerCase().includes(q) || (e.chaDetail||'').toLowerCase().includes(q) ||
+    (e.transportCompany||'').toLowerCase().includes(q));
   const body = $('eqTableBody');
-  const colCount = activeCategory === 'boccia' ? 10 : 9;
   if(!list.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="'+colCount+'">' +
+    body.innerHTML = '<tr class="empty-row"><td colspan="13">' +
       (equipment.filter(e=>e.category===activeCategory).length===0 ? 'No equipment yet — click "Add Equipment" to register the first item.' : 'No equipment matches your search.') + '</td></tr>';
     return;
   }
@@ -261,8 +364,11 @@ function render(){
     '<td class="mono">'+escapeHtml(e.serialNumber||'—')+'</td>' +
     '<td>'+escapeHtml(e.equipmentType||'—')+'</td>' +
     '<td>'+escapeHtml(e.purchasedFrom||'—')+'</td>' +
-    (activeCategory==='boccia' ? '<td class="mono">'+escapeHtml(e.purchaseDate||'—')+'</td>' : '') +
+    '<td class="mono">'+escapeHtml(e.purchaseDate||'—')+'</td>' +
     '<td class="price">'+(e.purchasePrice!=='' ? fmtMoney(e.purchasePrice) : '—')+'</td>' +
+    '<td class="price">'+(e.customDutyPaid!=='' ? fmtMoney(e.customDutyPaid) : '—')+'</td>' +
+    '<td>'+escapeHtml(e.chaDetail||'—')+'</td>' +
+    '<td>'+escapeHtml(e.transportCompany||'—')+'</td>' +
     '<td>'+(e.hasInvoice ? '<button class="file-pill" data-dl="'+e.id+'" style="cursor:pointer;border:none;">📎 View</button>' : '<span class="file-pill none">None</span>')+'</td>' +
     '<td><div class="row-actions"><button class="btn btn-sm" data-edit="'+e.id+'">Edit</button><button class="btn btn-sm btn-danger" data-del="'+e.id+'">Del</button></div></td>' +
   '</tr>').join('');
@@ -300,6 +406,9 @@ function openPanel(record){
   $('ef_purchasedFrom').value = record ? record.purchasedFrom : '';
   $('ef_purchaseDate').value = record ? record.purchaseDate : '';
   $('ef_purchasePrice').value = record ? record.purchasePrice : '';
+  $('ef_customDutyPaid').value = record ? record.customDutyPaid : '';
+  $('ef_chaDetail').value = record ? record.chaDetail : '';
+  $('ef_transportCompany').value = record ? record.transportCompany : '';
   resetInvoiceUI();
   if(record && record.hasInvoice) showInvoiceAttached(record.invoiceFileName || 'invoice file');
   $('eqOverlay').classList.add('open');
@@ -308,6 +417,7 @@ function openPanel(record){
 function closePanel(){ $('eqOverlay').classList.remove('open'); editingId = null; resetInvoiceUI(); }
 
 async function saveRecord(){
+  if(!activeCategory){ showToast('Create a category first', true); return; }
   const equipmentName = $('ef_equipmentName').value.trim();
   if(!equipmentName){ showToast('Equipment name is required', true); $('ef_equipmentName').focus(); return; }
   const data = {
@@ -315,8 +425,11 @@ async function saveRecord(){
     serialNumber: $('ef_serialNumber').value.trim(), equipmentType: $('ef_equipmentType').value.trim(),
     specification: $('ef_specification').value.trim(), otherSpecification: $('ef_otherSpecification').value.trim(),
     purchasedFrom: $('ef_purchasedFrom').value.trim(),
-    purchaseDate: activeCategory === 'boccia' ? $('ef_purchaseDate').value : '',
-    purchasePrice: $('ef_purchasePrice').value
+    purchaseDate: $('ef_purchaseDate').value,
+    purchasePrice: $('ef_purchasePrice').value,
+    customDutyPaid: $('ef_customDutyPaid').value,
+    chaDetail: $('ef_chaDetail').value.trim(),
+    transportCompany: $('ef_transportCompany').value.trim()
   };
   try{
     let record;
@@ -371,34 +484,40 @@ async function deleteRecord(id){
 }
 
 function exportExcel(){
+  if(!activeCategory) return;
   const list = equipment.filter(e => e.category === activeCategory);
   if(!list.length){ showToast('No data to export', true); return; }
-  const rows = list.map((e,i) => {
-    const row = {
-      'Sl.No': i+1, 'Equipment Name': e.equipmentName, 'Make': e.make, 'Serial Number': e.serialNumber,
-      'Equipment Type': e.equipmentType, 'Specification': e.specification, 'Other Specification': e.otherSpecification,
-      'Purchased From': e.purchasedFrom
-    };
-    if(activeCategory === 'boccia') row['Purchase Date'] = e.purchaseDate;
-    row['Purchase Price'] = e.purchasePrice;
-    row['Invoice Attached'] = e.hasInvoice ? 'Yes' : 'No';
-    return row;
-  });
+  const rows = list.map((e,i) => ({
+    'Sl.No': i+1, 'Equipment Name': e.equipmentName, 'Make': e.make, 'Serial Number': e.serialNumber,
+    'Equipment Type': e.equipmentType, 'Specification': e.specification, 'Other Specification': e.otherSpecification,
+    'Purchased From': e.purchasedFrom, 'Purchase Date': e.purchaseDate, 'Purchase Price': e.purchasePrice,
+    'Custom Duty Paid': e.customDutyPaid, 'CHA Detail': e.chaDetail, 'Transport Company': e.transportCompany,
+    'Invoice Attached': e.hasInvoice ? 'Yes' : 'No'
+  }));
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(Math.max(k.length, 14), 45) }));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, activeCategory === 'medical' ? 'Medical Equipment' : 'Boccia Equipment');
-  XLSX.writeFile(wb, (activeCategory === 'medical' ? 'medical-equipment' : 'boccia-equipment') + '-' + new Date().toISOString().slice(0,10) + '.xlsx');
+  const safeName = activeCategory.slice(0,31); // Excel sheet name limit
+  XLSX.utils.book_append_sheet(wb, ws, safeName);
+  const fileSlug = activeCategory.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+  XLSX.writeFile(wb, fileSlug + '-' + new Date().toISOString().slice(0,10) + '.xlsx');
 }
 
-document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchCategory(btn.dataset.cat)));
 $('eqSearch').addEventListener('input', render);
-$('eqAddBtn').addEventListener('click', () => openPanel(null));
+$('eqAddBtn').addEventListener('click', () => {
+  if(!activeCategory){ showToast('Create a category first', true); return; }
+  openPanel(null);
+});
 $('eqExportBtn').addEventListener('click', exportExcel);
+$('eqDeleteCategoryBtn').addEventListener('click', deleteCategory);
 $('eqPanelClose').addEventListener('click', closePanel);
 $('eqCancelBtn').addEventListener('click', closePanel);
 $('eqOverlay').addEventListener('click', e => { if(e.target.id==='eqOverlay') closePanel(); });
 $('eqSaveBtn').addEventListener('click', saveRecord);
+$('categoryPanelClose').addEventListener('click', closeCategoryPanel);
+$('categoryCancelBtn').addEventListener('click', closeCategoryPanel);
+$('categoryOverlay').addEventListener('click', e => { if(e.target.id==='categoryOverlay') closeCategoryPanel(); });
+$('categorySaveBtn').addEventListener('click', saveCategory);
 $('ef_chooseInvoiceBtn').addEventListener('click', () => $('ef_invoiceFile').click());
 $('ef_invoiceFile').addEventListener('change', e => {
   const file = e.target.files[0];
