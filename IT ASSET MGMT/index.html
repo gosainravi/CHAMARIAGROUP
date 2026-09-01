@@ -2841,6 +2841,42 @@ function warrantyStatus(end){
   if(days <= 30) return { label:'Expires in ' + days + 'd', cls:'wr-soon', days };
   return { label:'Active', cls:'wr-active', days };
 }
+/* ================= DEPRECIATION (Companies Act 2013, Schedule II — WDV method) ================= */
+// Category → depreciation class. Categories not listed (software, licenses, domains, AMC, email
+// solutions) are intangibles/services, not depreciable fixed assets, and are excluded.
+const DEPRECIATION_CLASS_BY_CATEGORY = {
+  'Desktop':'device', 'Laptop':'device', 'Mobile Phone':'device', 'Tablets':'device', 'iPad':'device', 'Monitor':'device', 'Components':'device',
+  'Servers':'network', 'Virtual Hosts':'network', 'Virtual Machines':'network', 'Networking Equipment':'network',
+  'Network Switches':'network', 'Routers':'network', 'Wifi Access Points':'network', 'Access Points':'network',
+  'Printers':'office', 'Projector':'office', 'Scanner':'office', 'UPS':'office', 'Batteries':'office'
+};
+// WDV rate per Schedule II Part C, derived from useful life to a 5% residual value.
+const DEPRECIATION_CLASSES = {
+  device:  { life: 3,  rate: 0.6316, label: 'End-user IT devices (useful life 3 yrs, Sch. II Part C)' },
+  network: { life: 6,  rate: 0.3930, label: 'Servers & networking equipment (useful life 6 yrs, Sch. II Part C)' },
+  office:  { life: 5,  rate: 0.4507, label: 'Office equipment (useful life 5 yrs, Sch. II Part C)' }
+};
+const DEPRECIATION_RESIDUAL_FLOOR = 0.05; // Schedule II mandates min. residual value = 5% of cost
+
+function getDepreciation(asset){
+  const cost = Number(asset.purchaseAmount) || 0;
+  if(!cost || !asset.purchaseDate) return { applicable:false, reason:'No purchase amount / date on record' };
+  const classKey = DEPRECIATION_CLASS_BY_CATEGORY[asset.category];
+  if(!classKey) return { applicable:false, reason:'"' + (asset.category||'Uncategorised') + '" is not a depreciable fixed-asset class (e.g. software/licenses/services are expensed or amortised separately)' };
+  const cls = DEPRECIATION_CLASSES[classKey];
+  const purchaseDate = new Date(asset.purchaseDate + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ageYears = Math.max(0, (today - purchaseDate) / (365.25 * 86400000));
+  const residualFloor = cost * DEPRECIATION_RESIDUAL_FLOOR;
+  const rawWdv = cost * Math.pow(1 - cls.rate, ageYears);
+  const depreciatedValue = Math.max(residualFloor, rawWdv);
+  const accumulatedDepreciation = cost - depreciatedValue;
+  return {
+    applicable: true, cost, ageYears, class: cls, classLabel: cls.label, rate: cls.rate,
+    depreciatedValue, accumulatedDepreciation, residualFloor, fullyDepreciated: depreciatedValue <= residualFloor + 0.5
+  };
+}
+
 function healthClass(h){
   switch((h||'').toLowerCase()){
     case 'good': return 'h-good';
@@ -5213,6 +5249,24 @@ function viewItem(label, value, mono){
   return '<div class="view-item"><span class="vl">'+label+'</span><span class="vv '+(mono?'mono':'')+' '+(has?'':'empty')+'">'+(has ? escapeHtml(value) : '—')+'</span></div>';
 }
 
+function renderDepreciationSection(asset){
+  const dep = getDepreciation(asset);
+  if(!dep.applicable){
+    return '<div class="view-section"><h4>Depreciation</h4><div class="mini-empty">' + escapeHtml(dep.reason) + '</div></div>';
+  }
+  return '<div class="view-section"><h4>Depreciation <span style="font-weight:400;font-size:11px;color:var(--ink-soft);">— Companies Act 2013, Schedule II (WDV method)</span></h4><div class="view-grid">' +
+    viewItem('Asset Class', dep.classLabel) +
+    viewItem('Annual WDV Rate', (dep.rate*100).toFixed(2) + '%') +
+    viewItem('Age', dep.ageYears < 1 ? Math.round(dep.ageYears*12) + ' months' : dep.ageYears.toFixed(1) + ' years') +
+    viewItem('Current Depreciated Value', fmtMoney(dep.depreciatedValue)) +
+    viewItem('Accumulated Depreciation', fmtMoney(dep.accumulatedDepreciation)) +
+    viewItem('Residual Value Floor (5%)', fmtMoney(dep.residualFloor)) +
+    '</div>' +
+    (dep.fullyDepreciated ? '<div class="mini-empty" style="margin-top:6px;">Fully depreciated — carried at residual value</div>' : '') +
+    '<div style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Approximate — computed continuously from purchase date to today. For statutory books, confirm fiscal-year proration with your accountant.</div>' +
+  '</div>';
+}
+
 function openAssetView(asset){
   $('avTitle').textContent = asset.category || 'Asset Details';
   $('avCode').textContent = asset.assetCode;
@@ -5242,6 +5296,7 @@ function openAssetView(asset){
       viewItem('Purchase Date', asset.purchaseDate, true) + viewItem('Purchase Amount', asset.purchaseAmount ? fmtMoney(asset.purchaseAmount) : '') +
       viewItem('Vendor', asset.vendor) + viewItem('Qty', asset.qty) +
     '</div></div>' +
+    renderDepreciationSection(asset) +
     '<div class="view-section"><h4>Purchase Order</h4><div class="view-grid">' +
       viewItem('PO Number', asset.poNumber, true) + viewItem('PO Date', asset.poDate, true) +
       viewItem('PO Qty', asset.poQty) + viewItem('PO Amount', asset.poAmount ? fmtMoney(asset.poAmount) : '') +
@@ -5434,12 +5489,16 @@ function exportAssetsCSV(){
   decorateAssets();
   const headers = ['Sl.No','Asset Code','Company','Category','Brand','Model','Serial No','Assigned To','Date Assigned','Department',
     'Authorised By','Location','Purchase Date','Purchase Amount','Vendor','Qty','PO Number','PO Date','PO Qty','PO Amount',
-    'Invoice Number','Invoice Date','Invoice Value','Invoice File','Warranty Start','Warranty Ends','Insurance Date','Asset Health','Remarks'];
-  const rows = assets.map((a,i)=>[
+    'Invoice Number','Invoice Date','Invoice Value','Invoice File','Warranty Start','Warranty Ends','Insurance Date','Asset Health',
+    'Depreciated Value','Depreciation Class','Remarks'];
+  const rows = assets.map((a,i)=>{
+    const dep = getDepreciation(a);
+    return [
     i+1, a.assetCode, a.companyName, a.category, a.brand, a.model, a.serialNo, a.assignedDisplayName, a.dateAssigned, a.department,
     a.authorisedBy, a.location, a.purchaseDate, a.purchaseAmount, a.vendor, a.qty, a.poNumber, a.poDate, a.poQty, a.poAmount,
-    a.invoiceNumber, a.invoiceDate, a.invoiceValue, (a.hasInvoice ? a.invoiceFileName : ''), a.warrantyStart, a.warrantyEnd, a.insuranceDate, a.assetHealth, a.remarks
-  ]);
+    a.invoiceNumber, a.invoiceDate, a.invoiceValue, (a.hasInvoice ? a.invoiceFileName : ''), a.warrantyStart, a.warrantyEnd, a.insuranceDate, a.assetHealth,
+    dep.applicable ? Math.round(dep.depreciatedValue) : '', dep.applicable ? dep.classLabel : (dep.reason||''), a.remarks
+  ];});
   const csv = [headers, ...rows].map(r => r.map(v=>{
     const s = String(v ?? '');
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
