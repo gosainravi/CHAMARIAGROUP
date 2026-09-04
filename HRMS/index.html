@@ -63,6 +63,8 @@
   #nav button{display:flex;align-items:center;width:100%;text-align:left;background:transparent;border:none;color:#fff;padding:9px 10px;border-radius:7px;font-size:13.5px;margin-bottom:2px;opacity:.8;}
   #nav button:hover{background:rgba(255,255,255,.08);opacity:1;}
   #nav button.active{background:var(--brand-red);opacity:1;}
+  #nav .nav-mode-toggle{display:flex;gap:4px;background:rgba(255,255,255,.08);border-radius:8px;padding:4px;margin-bottom:6px;}
+  #nav .nav-mode-toggle button{flex:1;text-align:center;justify-content:center;margin-bottom:0;font-weight:600;font-size:12px;}
   #sidebar .who{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:12.5px;}
   #sidebar .who .role-pill{display:inline-block;margin-top:4px;font-size:10px;background:rgba(255,255,255,.12);padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;}
   #sidebar .who button{margin-top:10px;width:100%;background:rgba(255,255,255,.08);border:none;color:#fff;padding:7px;border-radius:6px;font-size:12.5px;}
@@ -233,7 +235,9 @@ const S = {
   shiftsCache: [],
   departmentsCache: [],
   designationsCache: [],
+  attendanceRecordsCache: [],
   view: "dashboard",
+  navMode: "user",
 };
 
 const ROLE_LABEL = { employee:"Employee", senior:"Senior", hr_admin:"HR Admin", super_admin:"Super Admin" };
@@ -252,10 +256,6 @@ function fmtDate(d){
   if(typeof d === "string") return d;
   if(d.toDate) d = d.toDate();
   return new Date(d).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
-}
-function daysBetweenInclusive(fromStr, toStr){
-  const a = new Date(fromStr), b = new Date(toStr);
-  return Math.round((b - a) / 86400000) + 1;
 }
 function thisYear(){ return new Date().getFullYear(); }
 
@@ -321,25 +321,36 @@ async function preloadCaches(){
 }
 
 function companyName(id){ const c = S.companiesCache.find(c=>c.id===id); return c ? c.name : (id||"—"); }
+function companyById(id){ return S.companiesCache.find(c=>c.id===id) || { name: id||"—" }; }
+function companyLetterheadHtml(company){
+  const details = [company.address, company.phone, company.email].filter(Boolean).join(" · ");
+  return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><div style="width:32px;height:32px;border-radius:7px;background:#E8412C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">CG</div><b>${company.name}</b></div>
+    <div style="font-size:11px;color:#666;margin-bottom:24px;min-height:14px;">${details}</div>
+  `;
+}
 function employeeName(uid){ const e = S.employeesCache.find(e=>e.id===uid); return e ? e.name : uid; }
 function isHrOrAbove(){ return S.me && (S.me.role==="hr_admin" || S.me.role==="super_admin"); }
 function isSuperAdmin(){ return S.me && S.me.role==="super_admin"; }
+function isSeniorOf(employeeId){
+  const e = S.employeesCache.find(e=>e.id===employeeId);
+  return !!(S.me && e && e.reportsTo === S.me.id);
+}
 
 // ---------------- nav / shell ----------------
 function renderNav(){
-  const items = [
+  const userItems = [
     { id:"dashboard", label:"Dashboard", show:true },
     { id:"announcements", label:"Announcements", show:true },
     { id:"my-profile", label:"My Profile", show:true },
     { id:"directory", label:"Directory", show:true },
     { id:"my-leave", label:"My Leave", show:true },
     { id:"my-attendance", label:"My Attendance", show:true },
-    { id:"my-travel", label:"Travel", show:true },
-    { id:"my-tasks", label:"Tasks", show:true },
-    { id:"my-okrs", label:"OKRs", show:true },
-    { id:"performance", label:"Performance", show:true },
+    { id:"resignation", label:"Resignation", show:true },
     { id:"my-time", label:"Time Tracker", show:true },
+    { id:"hr-policy-booklet", label:"HR Policy Booklet", show:true },
     { id:"policies", label:"Policies", show:true },
+    { id:"holidays", label:"Holiday Calendar", show:true },
     { id:"my-salary", label:"My Salary", show:true },
     { id:"my-files", label:"My Documents", show:true },
     { id:"regularisation", label:"Regularisation", show:true },
@@ -347,21 +358,39 @@ function renderNav(){
   ];
   const approverItems = [
     { id:"approvals", label:"Approvals", show: S.me.role==="senior" || isHrOrAbove() },
+    { id:"offboarding", label:"Offboarding", show: S.me.role==="senior" || isHrOrAbove() },
   ];
   const adminItems = [
     { id:"employees", label:"Employees", show: isHrOrAbove() },
     { id:"departments", label:"Departments", show: isHrOrAbove() },
+    { id:"resignations-admin", label:"Resignations", show: isHrOrAbove() },
     { id:"onboarding", label:"Onboarding", show: isHrOrAbove() },
-    { id:"offboarding", label:"Offboarding", show: isHrOrAbove() },
     { id:"hr-letters", label:"HR Letters", show: isHrOrAbove() },
     { id:"leave-policy", label:"Leave Policy", show: isHrOrAbove() },
-    { id:"holidays", label:"Holiday Calendar", show:true },
     { id:"shifts", label:"Shifts", show: isHrOrAbove() },
+    { id:"attendance-records", label:"Attendance Records", show: isHrOrAbove() },
     { id:"attendance-import", label:"Attendance Import", show: isHrOrAbove() },
+    { id:"salary-import", label:"Salary Import", show: isHrOrAbove() },
     { id:"companies", label:"Companies", show: isSuperAdmin() },
   ];
   const nav = document.getElementById("nav");
   nav.innerHTML = "";
+
+  if(isHrOrAbove()){
+    const toggle = document.createElement("div");
+    toggle.className = "nav-mode-toggle";
+    const userBtn = document.createElement("button");
+    userBtn.textContent = "User Control";
+    userBtn.className = S.navMode!=="admin" ? "active" : "";
+    userBtn.onclick = ()=>{ S.navMode = "user"; renderNav(); navigateTo("dashboard"); };
+    const adminBtn = document.createElement("button");
+    adminBtn.textContent = "Admin Control";
+    adminBtn.className = S.navMode==="admin" ? "active" : "";
+    adminBtn.onclick = ()=>{ S.navMode = "admin"; renderNav(); navigateTo("employees"); };
+    toggle.appendChild(userBtn); toggle.appendChild(adminBtn);
+    nav.appendChild(toggle);
+  }
+
   function section(label, arr){
     const visible = arr.filter(i=>i.show);
     if(!visible.length) return;
@@ -374,12 +403,17 @@ function renderNav(){
       nav.appendChild(b);
     });
   }
-  section("Self service", items);
+
+  if(!isHrOrAbove() || S.navMode!=="admin"){
+    section("User Control", userItems);
+  }
   section("Approvals", approverItems);
-  section("Administration", adminItems);
+  if(isHrOrAbove() && S.navMode==="admin"){
+    section("Admin Control", adminItems);
+  }
 }
 function updateNavActive(){
-  document.querySelectorAll("#nav button").forEach(b=>{
+  document.querySelectorAll("#nav button[data-view]").forEach(b=>{
     b.classList.toggle("active", b.dataset.view===S.view);
   });
 }
@@ -391,12 +425,14 @@ const VIEW_TITLES = {
   "leave-policy":"Leave Policy", "holidays":"Holiday Calendar",
   "attendance-import":"Attendance Import", "companies":"Companies",
   "announcements":"Announcements", "directory":"Employee Directory",
-  "my-travel":"Travel", "my-tasks":"Tasks", "my-okrs":"OKRs",
-  "performance":"Performance", "my-files":"My Documents",
+  "my-files":"My Documents",
   "onboarding":"Onboarding", "offboarding":"Offboarding",
   "hr-letters":"HR Letters", "shifts":"Shifts",
   "my-time":"Time Tracker", "policies":"Policies",
   "my-profile":"My Profile", "departments":"Departments & Designations",
+  "hr-policy-booklet":"HR Policy Booklet", "resignation":"Resignation",
+  "resignations-admin":"Resignations", "attendance-records":"Attendance Records",
+  "salary-import":"Salary Import",
 };
 
 async function navigateTo(view){
@@ -455,14 +491,47 @@ async function renderDashboard(){
 }
 
 // ==================== MY LEAVE ====================
+function isWeekend(dateStr){ const d = new Date(dateStr).getDay(); return d===0 || d===6; }
+async function countLeaveDaysWithSandwich(fromStr, toStr, companyId){
+  const from = new Date(fromStr), to = new Date(toStr);
+  if(to < from) return { total:0, weekendHolidayDays:0 };
+  const holSnap = await getDocs(collection(db,"holidays"));
+  const holidays = holSnap.docs.map(d=>d.data()).filter(h=>h.companyId==="ALL"||h.companyId===companyId).map(h=>h.date);
+  let total = 0, wh = 0;
+  for(let d=new Date(from); d<=to; d.setDate(d.getDate()+1)){
+    const iso = d.toISOString().slice(0,10);
+    total++;
+    if(isWeekend(iso) || holidays.includes(iso)) wh++;
+  }
+  return { total, weekendHolidayDays: wh };
+}
+async function autoApproveStaleLeaveRequests(reqs){
+  const now = new Date();
+  for(const r of reqs){
+    if(r.status !== "pending") continue;
+    const createdMs = r.createdAt && r.createdAt.seconds ? r.createdAt.seconds*1000 : null;
+    const daysSinceApplied = createdMs ? (now - createdMs)/86400000 : 0;
+    const daysUntilLeave = (new Date(r.fromDate).getTime() - now.getTime())/86400000;
+    const shouldAutoApprove = daysSinceApplied >= 3 || (daysUntilLeave <= 1 && daysUntilLeave >= 0);
+    if(!shouldAutoApprove) continue;
+    const employeeId = r.employeeId || r.uid;
+    await updateDoc(doc(db,"leaveRequests", r.id), { status:"approved", approverComment:"Auto-approved (no manager response within SLA)", decidedAt: serverTimestamp() });
+    const balRef = doc(db,"employees", employeeId, "leaveBalances", `${r.typeCode}_${thisYear()}`);
+    const balSnap = await getDoc(balRef);
+    if(balSnap.exists()) await updateDoc(balRef, { used: balSnap.data().used + r.days });
+    sendEmail({ to_email: employeeEmail(employeeId), status:"approved (auto)", leave_type: r.typeCode });
+    r.status = "approved"; r.approverComment = "Auto-approved (no manager response within SLA)";
+  }
+}
 async function renderMyLeave(){
   document.getElementById("page-actions").innerHTML =
     '<button class="btn btn-primary" onclick="openApplyLeaveModal()">Apply for leave</button>';
   const balSnap = await getDocs(collection(db,"employees",S.me.id,"leaveBalances"));
   const bals = balSnap.docs.map(d=>d.data()).filter(b=>b.year===thisYear());
   const reqSnap = await getDocs(query(collection(db,"leaveRequests"), where("employeeId","==",S.me.id)));
-  const reqs = reqSnap.docs.map(d=>({id:d.id, ...d.data()}))
+  let reqs = reqSnap.docs.map(d=>({id:d.id, ...d.data()}))
     .sort((a,b)=> (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+  await autoApproveStaleLeaveRequests(reqs);
   return `
     <div class="grid grid-3" style="margin-bottom:20px;">
       ${bals.length ? bals.map(b=>`
@@ -494,14 +563,24 @@ window.openApplyLeaveModal = function(){
   const options = S.leaveTypesCache.map(t=>`<option value="${t.id}">${t.id} — ${t.name}</option>`).join("");
   openModal("Apply for leave", `
     <div class="field"><label>Leave type</label><select id="al-type">${options || '<option value="">No leave types configured</option>'}</select></div>
-    <div class="field"><label>From</label><input type="date" id="al-from"></div>
-    <div class="field"><label>To</label><input type="date" id="al-to"></div>
+    <div class="field"><label>From</label><input type="date" id="al-from" onchange="updateLeaveDaysPreview()"></div>
+    <div class="field"><label>To</label><input type="date" id="al-to" onchange="updateLeaveDaysPreview()"></div>
+    <div id="al-days-preview" class="muted" style="font-size:12px;margin:-6px 0 12px;"></div>
     <div class="field"><label>Reason</label><textarea id="al-reason" rows="3"></textarea></div>
     <div class="actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="submitApplyLeave()">Submit</button>
     </div>
   `);
+};
+window.updateLeaveDaysPreview = async function(){
+  const from = document.getElementById("al-from").value;
+  const to = document.getElementById("al-to").value;
+  const box = document.getElementById("al-days-preview");
+  if(!from || !to){ box.textContent=""; return; }
+  const { total, weekendHolidayDays } = await countLeaveDaysWithSandwich(from, to, S.me.companyId);
+  if(total<=0){ box.textContent = "'To' date must be on or after 'From' date"; return; }
+  box.textContent = `Total: ${total} day(s)` + (weekendHolidayDays ? ` — includes ${weekendHolidayDays} weekend/holiday day(s), counted per sandwich leave policy` : "");
 };
 
 window.submitApplyLeave = async function(){
@@ -510,7 +589,7 @@ window.submitApplyLeave = async function(){
   const to = document.getElementById("al-to").value;
   const reason = document.getElementById("al-reason").value.trim();
   if(!typeCode || !from || !to){ toast("Fill in leave type and dates", "error"); return; }
-  const days = daysBetweenInclusive(from, to);
+  const { total: days } = await countLeaveDaysWithSandwich(from, to, S.me.companyId);
   if(days <= 0){ toast("'To' date must be on or after 'from' date", "error"); return; }
   if(!S.me.reportsTo){ toast("You have no reporting Senior set — ask HR to fix this first", "error"); return; }
 
@@ -549,24 +628,24 @@ function employeeEmail(uid){
 
 // ==================== APPROVALS ====================
 async function renderApprovals(){
-  let leaveReqs = [], regReqs = [], travelReqs = [];
+  let leaveReqs = [], regReqs = [], salarySlipReqs = [];
   if(isHrOrAbove()){
     const lSnap = await getDocs(query(collection(db,"leaveRequests"), where("status","==","pending")));
     leaveReqs = lSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
     const rSnap = await getDocs(query(collection(db,"regularisations"), where("status","==","pending")));
     regReqs = rSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
-    const tSnap = await getDocs(query(collection(db,"travelRequests"), where("status","==","pending")));
-    travelReqs = tSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
+    const sSnap = await getDocs(query(collection(db,"salarySlipRequests"), where("status","==","pending")));
+    salarySlipReqs = sSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
   }else{
     const lSnap = await getDocs(query(collection(db,"leaveRequests"), where("approverId","==",S.me.id), where("status","==","pending")));
     leaveReqs = lSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
     const rSnap = await getDocs(query(collection(db,"regularisations"), where("approverId","==",S.me.id), where("status","==","pending")));
     regReqs = rSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
-    const tSnap = await getDocs(query(collection(db,"travelRequests"), where("approverId","==",S.me.id), where("status","==","pending")));
-    travelReqs = tSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
   }
+  await autoApproveStaleLeaveRequests(leaveReqs);
+  leaveReqs = leaveReqs.filter(r=>r.status==="pending");
   // fetch names for any uid not already cached (senior case)
-  for(const r of [...leaveReqs, ...regReqs, ...travelReqs]){
+  for(const r of [...leaveReqs, ...regReqs, ...salarySlipReqs]){
     if(!S.employeesCache.find(e=>e.id===r.uid)){
       const s = await getDoc(doc(db,"employees",r.uid));
       if(s.exists()) S.employeesCache.push({ id:r.uid, ...s.data() });
@@ -596,45 +675,48 @@ async function renderApprovals(){
       <div class="panel-head"><h3>Pending regularisation requests</h3></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Employee</th><th>Date</th><th>Reason</th><th></th></tr></thead>
+          <thead><tr><th>Employee</th><th>Date</th><th>In</th><th>Out</th><th>Reason</th><th>Remarks</th><th></th></tr></thead>
           <tbody>
             ${regReqs.length ? regReqs.map(r=>`
               <tr>
-                <td>${employeeName(r.uid)}</td><td>${fmtDate(r.attendanceDate)}</td><td class="muted">${r.reason||"—"}</td>
+                <td>${employeeName(r.uid)}</td><td>${fmtDate(r.attendanceDate)}</td><td>${r.inTime||"—"}</td><td>${r.outTime||"—"}</td><td class="muted">${r.reason||"—"}</td><td class="muted">${r.remarks||"—"}</td>
                 <td class="row-actions">
                   <button class="small-btn primary" onclick="decideRegularisation('${r.uid}','${r.id}','approved')">Approve</button>
                   <button class="small-btn danger" onclick="decideRegularisation('${r.uid}','${r.id}','rejected')">Reject</button>
                 </td>
-              </tr>`).join("") : '<tr><td colspan="4" class="empty-state">Nothing pending.</td></tr>'}
+              </tr>`).join("") : '<tr><td colspan="7" class="empty-state">Nothing pending.</td></tr>'}
           </tbody>
         </table>
       </div>
     </div>
+    ${isHrOrAbove() ? `
     <div class="panel" style="margin-top:20px;">
-      <div class="panel-head"><h3>Pending travel requests</h3></div>
+      <div class="panel-head"><h3>Pending salary slip requests</h3></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Employee</th><th>Destination</th><th>From</th><th>To</th><th>Purpose</th><th></th></tr></thead>
+          <thead><tr><th>Employee</th><th>Requested</th><th></th></tr></thead>
           <tbody>
-            ${travelReqs.length ? travelReqs.map(r=>`
+            ${salarySlipReqs.length ? salarySlipReqs.map(r=>`
               <tr>
-                <td>${employeeName(r.uid)}</td><td>${r.destination}</td><td>${fmtDate(r.fromDate)}</td><td>${fmtDate(r.toDate)}</td>
-                <td class="muted">${r.purpose||"—"}</td>
+                <td>${employeeName(r.uid)}</td><td>${fmtDate(r.requestedAt)}</td>
                 <td class="row-actions">
-                  <button class="small-btn primary" onclick="decideTravel('${r.uid}','${r.id}','approved')">Approve</button>
-                  <button class="small-btn danger" onclick="decideTravel('${r.uid}','${r.id}','rejected')">Reject</button>
+                  <button class="small-btn primary" onclick="decideSalarySlip('${r.uid}','${r.id}','approved')">Approve</button>
+                  <button class="small-btn danger" onclick="decideSalarySlip('${r.uid}','${r.id}','rejected')">Reject</button>
                 </td>
-              </tr>`).join("") : '<tr><td colspan="6" class="empty-state">Nothing pending.</td></tr>'}
+              </tr>`).join("") : '<tr><td colspan="3" class="empty-state">Nothing pending.</td></tr>'}
           </tbody>
         </table>
       </div>
-    </div>`;
+    </div>` : ""}`;
 }
 
-window.decideTravel = async function(uid, reqId, status){
+window.decideSalarySlip = async function(uid, reqId, status){
   const comment = status==="rejected" ? (prompt("Optional comment for the employee:") || "") : "";
-  await updateDoc(doc(db,"travelRequests",reqId), { status, approverComment: comment, decidedAt: serverTimestamp() });
-  toast(`Travel request ${status}`, "success");
+  await updateDoc(doc(db,"salarySlipRequests",reqId), { status, approverComment: comment, decidedAt: serverTimestamp(), decidedBy: S.me.id });
+  if(status==="approved"){
+    sendEmail({ to_email: employeeEmail(uid), employee_name: employeeName(uid), subject: "Your salary slip is ready" });
+  }
+  toast(`Salary slip request ${status}`, "success");
   navigateTo("approvals");
 };
 
@@ -660,24 +742,96 @@ window.decideRegularisation = async function(uid, reqId, status){
   navigateTo("approvals");
 };
 
+// ==================== ATTENDANCE (top-level collection: attendance/{employeeId_date}) ====================
+function hrAdminEmails(){
+  return S.employeesCache.filter(e=>e.role==="hr_admin"||e.role==="super_admin").map(e=>e.email).filter(Boolean);
+}
+function attendanceTableHtml(rows, opts){
+  opts = opts || {};
+  const editable = !!opts.editable;
+  const forSelf = !!opts.forSelf;
+  return `<table><thead><tr>
+    <th>Name</th><th>ID</th><th>First Entry</th><th>Last Exit</th><th>Recent Entry</th><th>Shift</th>
+    <th>Hours In</th><th>Hours Out</th><th>Total Hours</th><th>Status</th><th>Overtime (min.)</th><th>Remark</th><th>Employee Type</th><th></th>
+  </tr></thead><tbody id="att-table-body">
+  ${rows.length ? rows.map(r=>{
+    const emp = S.employeesCache.find(e=>e.id===r.employeeId);
+    const statusPill = r.status==="present" ? "approved" : (r.status==="absent" ? "rejected" : "pending");
+    return `<tr>
+      <td>${emp?emp.name:"—"}</td>
+      <td class="muted">${emp&&emp.employeeId?emp.employeeId:"—"}</td>
+      <td>${r.firstEntry||"—"}</td><td>${r.lastExit||"—"}</td><td>${r.recentEntry||r.lastExit||"—"}</td>
+      <td class="muted">${emp&&emp.shiftId?shiftName(emp.shiftId):"—"}</td>
+      <td>${r.hoursIn||"—"}</td><td>${r.hoursOut||"—"}</td><td>${r.totalHours||"—"}</td>
+      <td><span class="pill pill-${statusPill}">${r.status||"—"}</span></td>
+      <td>${r.overtimeMin||0}</td>
+      <td class="muted">${r.remark||"—"}</td>
+      <td class="muted">${emp?(emp.employmentType||"—"):"—"}</td>
+      <td>${editable?`<button class="small-btn" onclick="openEditAttendanceModal('${r.id}')">Edit</button>`:(forSelf?`<button class="small-btn" onclick="openRegularisationModal('${r.date}')">Regularise</button>`:"")}</td>
+    </tr>`;
+  }).join("") : '<tr><td colspan="14" class="empty-state">No attendance records.</td></tr>'}
+  </tbody></table>`;
+}
+
 // ==================== MY ATTENDANCE ====================
 async function renderMyAttendance(){
-  const snap = await getDocs(query(collection(db,"employees",S.me.id,"attendance"), orderBy("date","desc")));
-  const rows = snap.docs.map(d=>d.data());
+  const snap = await getDocs(query(collection(db,"attendance"), where("employeeId","==",S.me.id)));
+  const rows = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   return `
     <div class="panel">
-      <div class="panel-head"><h3>Attendance log</h3><span class="muted" style="font-size:12px;">${S.me.shiftId ? "Shift: "+shiftName(S.me.shiftId)+" · " : ""}Source: OptiSpaces export, imported by HR</span></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th></tr></thead>
-          <tbody>
-            ${rows.length ? rows.map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${r.inTime||"—"}</td><td>${r.outTime||"—"}</td><td>${r.status||"—"}</td></tr>`).join("")
-              : '<tr><td colspan="4" class="empty-state">No attendance records imported yet.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
+      <div class="panel-head"><h3>My attendance</h3><span class="muted" style="font-size:12px;">${S.me.shiftId ? "Shift: "+shiftName(S.me.shiftId)+" · " : ""}Source: OptiSpaces export, imported by HR</span></div>
+      <div class="table-wrap">${attendanceTableHtml(rows, { editable:false, forSelf:true })}</div>
     </div>`;
 }
+
+// ==================== ATTENDANCE RECORDS (HR/Admin — all employees) ====================
+async function renderAttendanceRecords(){
+  document.getElementById("page-actions").innerHTML =
+    '<input id="attrec-search" placeholder="Search employee name…" style="padding:7px 11px;border:1px solid var(--line);border-radius:7px;" oninput="filterAttendanceRecords()">';
+  const snap = await getDocs(collection(db,"attendance"));
+  S.attendanceRecordsCache = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  return `<div class="panel"><div class="panel-head"><h3>Attendance records (${S.attendanceRecordsCache.length})</h3></div>
+    <div class="table-wrap" id="attrec-table">${attendanceTableHtml(S.attendanceRecordsCache, { editable:true })}</div></div>`;
+}
+window.filterAttendanceRecords = function(){
+  const q = document.getElementById("attrec-search").value.toLowerCase();
+  const rows = S.attendanceRecordsCache.filter(r=>employeeName(r.employeeId).toLowerCase().includes(q));
+  document.getElementById("attrec-table").innerHTML = attendanceTableHtml(rows, { editable:true });
+};
+window.openEditAttendanceModal = async function(id){
+  const snap = await getDoc(doc(db,"attendance",id));
+  if(!snap.exists()) return;
+  const r = snap.data();
+  openModal("Edit attendance — " + fmtDate(r.date), `
+    <div class="field"><label>First entry</label><input id="ea-first" value="${r.firstEntry||""}" placeholder="09:32"></div>
+    <div class="field"><label>Last exit</label><input id="ea-last" value="${r.lastExit||""}" placeholder="18:10"></div>
+    <div class="field"><label>Recent entry</label><input id="ea-recent" value="${r.recentEntry||""}"></div>
+    <div class="field"><label>Hours in</label><input id="ea-hin" value="${r.hoursIn||""}"></div>
+    <div class="field"><label>Hours out</label><input id="ea-hout" value="${r.hoursOut||""}"></div>
+    <div class="field"><label>Total hours</label><input id="ea-total" value="${r.totalHours||""}"></div>
+    <div class="field"><label>Status</label><select id="ea-status">
+      ${selOpt("present","Present",r.status)}${selOpt("absent","Absent",r.status)}${selOpt("half_day","Half day",r.status)}${selOpt("on_leave","On leave",r.status)}${selOpt("holiday","Holiday",r.status)}
+    </select></div>
+    <div class="field"><label>Overtime (min.)</label><input type="number" id="ea-ot" value="${r.overtimeMin||0}"></div>
+    <div class="field"><label>Remark</label><input id="ea-remark" value="${r.remark||""}"></div>
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitEditAttendance('${id}')">Save</button></div>
+  `);
+};
+window.submitEditAttendance = async function(id){
+  const patch = {
+    firstEntry: document.getElementById("ea-first").value.trim(),
+    lastExit: document.getElementById("ea-last").value.trim(),
+    recentEntry: document.getElementById("ea-recent").value.trim(),
+    hoursIn: document.getElementById("ea-hin").value.trim(),
+    hoursOut: document.getElementById("ea-hout").value.trim(),
+    totalHours: document.getElementById("ea-total").value.trim(),
+    status: document.getElementById("ea-status").value,
+    overtimeMin: Number(document.getElementById("ea-ot").value)||0,
+    remark: document.getElementById("ea-remark").value.trim(),
+  };
+  await updateDoc(doc(db,"attendance",id), patch);
+  toast("Attendance updated","success"); closeModal(); navigateTo("attendance-records");
+};
 
 // ==================== ATTENDANCE IMPORT (HR) ====================
 async function renderAttendanceImport(){
@@ -685,9 +839,9 @@ async function renderAttendanceImport(){
     <div class="panel">
       <div class="panel-head"><h3>Import OptiSpaces attendance export</h3></div>
       <div class="panel-body">
-        <p class="muted">Paste CSV with header <code>email,date,inTime,outTime,status</code> (date as YYYY-MM-DD). Each row is matched to an employee by email.</p>
-        <div class="field"><textarea id="att-csv" rows="10" placeholder="email,date,inTime,outTime,status
-jane@chamariagroup.com,2026-09-01,09:32,18:10,present"></textarea></div>
+        <p class="muted">Paste CSV with header <code>email,date,firstEntry,lastExit,recentEntry,hoursIn,hoursOut,totalHours,status,overtimeMin,remark</code> (date as YYYY-MM-DD). Only <code>email</code> and <code>date</code> are required — everything else can be left blank. Each row is matched to an employee by email.</p>
+        <div class="field"><textarea id="att-csv" rows="10" placeholder="email,date,firstEntry,lastExit,recentEntry,hoursIn,hoursOut,totalHours,status,overtimeMin,remark
+jane@chamariagroup.com,2026-09-01,09:32,18:10,18:10,08:28,00:00,8.47,present,0,"></textarea></div>
         <button class="btn btn-primary" onclick="submitAttendanceImport()">Import</button>
         <div id="att-import-result" style="margin-top:14px;"></div>
       </div>
@@ -708,8 +862,13 @@ window.submitAttendanceImport = async function(){
     const match = S.employeesCache.find(e=>e.email.toLowerCase()===row.email.toLowerCase());
     if(!match){ fail++; failedEmails.push(row.email); continue; }
     try{
-      await setDoc(doc(db,"employees",match.id,"attendance",row.date), {
-        date: row.date, inTime: row.inTime||"", outTime: row.outTime||"", status: row.status||"present", source:"manual"
+      await setDoc(doc(db,"attendance",`${match.id}_${row.date}`), {
+        employeeId: match.id, date: row.date,
+        firstEntry: row.firstEntry||row.inTime||"", lastExit: row.lastExit||row.outTime||"",
+        recentEntry: row.recentEntry||row.lastExit||row.outTime||"",
+        hoursIn: row.hoursIn||"", hoursOut: row.hoursOut||"", totalHours: row.totalHours||"",
+        status: row.status||"present", overtimeMin: Number(row.overtimeMin)||0, remark: row.remark||"",
+        source:"manual"
       });
       ok++;
     }catch(e){ fail++; }
@@ -729,34 +888,100 @@ async function renderRegularisation(){
       <div class="panel-head"><h3>My regularisation requests</h3></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date</th><th>Reason</th><th>Status</th><th>Comment</th></tr></thead>
+          <thead><tr><th>Date</th><th>In</th><th>Out</th><th>Reason</th><th>Remarks</th><th>Status</th><th>Comment</th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(r=>`<tr><td>${fmtDate(r.attendanceDate)}</td><td>${r.reason}</td><td><span class="pill pill-${r.status}">${r.status}</span></td><td class="muted">${r.approverComment||"—"}</td></tr>`).join("")
-              : '<tr><td colspan="4" class="empty-state">No requests yet.</td></tr>'}
+            ${rows.length ? rows.map(r=>`<tr><td>${fmtDate(r.attendanceDate)}</td><td>${r.inTime||"—"}</td><td>${r.outTime||"—"}</td><td>${r.reason}</td><td class="muted">${r.remarks||"—"}</td><td><span class="pill pill-${r.status}">${r.status}</span></td><td class="muted">${r.approverComment||"—"}</td></tr>`).join("")
+              : '<tr><td colspan="7" class="empty-state">No requests yet.</td></tr>'}
           </tbody>
         </table>
       </div>
     </div>`;
 }
-window.openRegularisationModal = function(){
+window.openRegularisationModal = function(prefillDate){
   openModal("Raise a regularisation request", `
-    <div class="field"><label>Attendance date</label><input type="date" id="rg-date"></div>
-    <div class="field"><label>Reason</label><textarea id="rg-reason" rows="3"></textarea></div>
+    <div class="field"><label>Attendance date</label><input type="date" id="rg-date" value="${prefillDate||""}"></div>
+    <div class="field"><label>In time</label><input type="time" id="rg-intime"></div>
+    <div class="field"><label>Out time</label><input type="time" id="rg-outtime"></div>
+    <div class="field"><label>Reason</label><textarea id="rg-reason" rows="2"></textarea></div>
+    <div class="field"><label>Remarks (optional)</label><textarea id="rg-remarks" rows="2"></textarea></div>
     <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitRegularisation()">Submit</button></div>
   `);
 };
 window.submitRegularisation = async function(){
   const attendanceDate = document.getElementById("rg-date").value;
+  const inTime = document.getElementById("rg-intime").value;
+  const outTime = document.getElementById("rg-outtime").value;
   const reason = document.getElementById("rg-reason").value.trim();
-  if(!attendanceDate || !reason){ toast("Fill in both fields", "error"); return; }
+  const remarks = document.getElementById("rg-remarks").value.trim();
+  if(!attendanceDate || !reason){ toast("Fill in date and reason", "error"); return; }
   if(!S.me.reportsTo){ toast("You have no reporting Senior set — ask HR to fix this first", "error"); return; }
   await addDoc(collection(db,"regularisations"), {
-    employeeId: S.me.id, attendanceDate, reason, status:"pending", approverId:S.me.reportsTo, approverComment:"", createdAt: serverTimestamp()
+    employeeId: S.me.id, attendanceDate, inTime, outTime, reason, remarks, status:"pending", approverId:S.me.reportsTo, approverComment:"", createdAt: serverTimestamp()
   });
+  sendEmail({ to_email: employeeEmail(S.me.reportsTo), employee_name: S.me.name, attendance_date: attendanceDate, in_time: inTime, out_time: outTime, reason });
+  hrAdminEmails().forEach(email => sendEmail({ to_email: email, employee_name: S.me.name, attendance_date: attendanceDate, reason, note: "cc: regularisation request" }));
   toast("Regularisation request submitted", "success");
   closeModal();
   navigateTo("regularisation");
 };
+
+// ==================== RESIGNATION ====================
+async function renderResignation(){
+  const snap = await getDocs(query(collection(db,"resignations"), where("employeeId","==",S.me.id)));
+  const rows = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||0)-((a.createdAt&&a.createdAt.seconds)||0));
+  const hasActive = rows.some(r=>r.status==="pending"||r.status==="approved");
+  document.getElementById("page-actions").innerHTML = hasActive ? "" : '<button class="btn btn-primary" onclick="openResignationModal()">Submit resignation</button>';
+  return `<div class="panel"><div class="panel-head"><h3>My resignation</h3></div>
+    <div class="table-wrap"><table><thead><tr><th>Submitted</th><th>Last working day</th><th>Reason</th><th>Status</th><th>Comment</th></tr></thead>
+    <tbody>${rows.length?rows.map(r=>`<tr><td>${r.createdAt?fmtDate(r.createdAt):"—"}</td><td>${fmtDate(r.lastWorkingDay)}</td><td class="muted">${r.reason}</td><td><span class="pill pill-${r.status}">${r.status}</span></td><td class="muted">${r.approverComment||"—"}</td></tr>`).join(""):'<tr><td colspan="5" class="empty-state">No resignation submitted.</td></tr>'}</tbody></table></div></div>`;
+}
+window.openResignationModal = function(){
+  openModal("Submit resignation", `
+    <div class="field"><label>Proposed last working day</label><input type="date" id="rs-lwd"></div>
+    <div class="field"><label>Reason</label><textarea id="rs-reason" rows="3"></textarea></div>
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitResignation()">Submit</button></div>
+  `);
+};
+window.submitResignation = async function(){
+  const lastWorkingDay = document.getElementById("rs-lwd").value;
+  const reason = document.getElementById("rs-reason").value.trim();
+  if(!lastWorkingDay || !reason){ toast("Fill in last working day and reason","error"); return; }
+  if(!S.me.reportsTo){ toast("You have no reporting Senior set — ask HR to fix this first","error"); return; }
+  await addDoc(collection(db,"resignations"), { employeeId:S.me.id, lastWorkingDay, reason, status:"pending", approverId:S.me.reportsTo, approverComment:"", createdAt: serverTimestamp() });
+  await updateDoc(doc(db,"employees",S.me.id), { status:"notice_period" });
+  S.me.status = "notice_period";
+  const idx = S.employeesCache.findIndex(e=>e.id===S.me.id); if(idx>-1) S.employeesCache[idx].status = "notice_period";
+  sendEmail({ to_email: employeeEmail(S.me.reportsTo), employee_name:S.me.name, last_working_day:lastWorkingDay, reason });
+  toast("Resignation submitted","success"); closeModal(); navigateTo("resignation");
+};
+
+async function renderResignationsAdmin(){
+  const snap = await getDocs(collection(db,"resignations"));
+  const rows = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||0)-((a.createdAt&&a.createdAt.seconds)||0));
+  return `<div class="panel"><div class="panel-head"><h3>Resignations (${rows.length})</h3></div>
+    <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Submitted</th><th>Last working day</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows.length?rows.map(r=>`<tr><td>${employeeName(r.employeeId)}</td><td>${r.createdAt?fmtDate(r.createdAt):"—"}</td><td>${fmtDate(r.lastWorkingDay)}</td><td class="muted">${r.reason}</td><td><span class="pill pill-${r.status}">${r.status}</span></td>
+    <td class="row-actions">${r.status==="pending"?`<button class="small-btn primary" onclick="decideResignation('${r.id}','${r.employeeId}','approved','${r.lastWorkingDay}')">Approve</button><button class="small-btn danger" onclick="decideResignation('${r.id}','${r.employeeId}','rejected','${r.lastWorkingDay}')">Reject</button>`:"—"}</td></tr>`).join(""):'<tr><td colspan="6" class="empty-state">No resignations submitted.</td></tr>'}</tbody></table></div></div>`;
+}
+window.decideResignation = async function(id, employeeId, status, lastWorkingDay){
+  const comment = status==="rejected" ? (prompt("Optional comment:")||"") : "";
+  await updateDoc(doc(db,"resignations",id), { status, approverComment:comment, decidedAt: serverTimestamp() });
+  if(status==="approved"){
+    await updateDoc(doc(db,"employees",employeeId), { dateOfExit: lastWorkingDay });
+    const idx = S.employeesCache.findIndex(e=>e.id===employeeId); if(idx>-1) S.employeesCache[idx].dateOfExit = lastWorkingDay;
+  }else{
+    await updateDoc(doc(db,"employees",employeeId), { status:"active" });
+    const idx = S.employeesCache.findIndex(e=>e.id===employeeId); if(idx>-1) S.employeesCache[idx].status = "active";
+  }
+  sendEmail({ to_email: employeeEmail(employeeId), status });
+  toast(`Resignation ${status}`,"success"); navigateTo("resignations-admin");
+};
+
+// ==================== HR POLICY BOOKLET ====================
+async function renderHrPolicyBooklet(){
+  return `<div class="panel"><div class="panel-head"><h3>HR Policy Booklet</h3></div>
+    <div class="panel-body"><p class="muted">The official Chamaria Group HR Policy Booklet will be published here. Check back soon, or contact HR for the current policy documents.</p></div></div>`;
+}
 
 // ==================== OTHER REQUESTS ====================
 async function renderRequests(){
@@ -796,25 +1021,153 @@ window.submitGenericRequest = async function(){
 };
 
 // ==================== MY SALARY ====================
+function fmtInr(n){ return (n===undefined||n===null||n==="") ? "—" : "₹"+Number(n).toLocaleString("en-IN"); }
+function isSalaryHighlightRow(label){ return /GROSS SALARY|TAKE HOME/i.test(label||""); }
 async function renderMySalary(){
   const snap = await getDocs(collection(db,"employees",S.me.id,"salaryComponents"));
-  const rows = snap.docs.map(d=>d.data());
-  const total = rows.reduce((s,r)=>s+(r.amount||0),0);
+  const rows = snap.docs.map(d=>d.data()).sort((a,b)=>(a.order||0)-(b.order||0));
+  const ctcRows = rows.filter(r=>r.section!=="flexi");
+  const flexiRows = rows.filter(r=>r.section==="flexi");
+  const flexiTotal = flexiRows.reduce((s,r)=>s+(Number(r.pm)||0),0);
+
+  const reqSnap = await getDocs(query(collection(db,"salarySlipRequests"), where("employeeId","==",S.me.id)));
+  const myRequests = reqSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.requestedAt&&b.requestedAt.seconds)||0)-((a.requestedAt&&a.requestedAt.seconds)||0));
+  const hasPending = myRequests.some(r=>r.status==="pending");
+
+  document.getElementById("page-actions").innerHTML = ctcRows.length
+    ? (hasPending ? "" : '<button class="btn btn-primary" onclick="submitSalarySlipRequest()">Apply for salary slip</button>')
+    : "";
+
+  if(!ctcRows.length){
+    return '<div class="card muted">HR has not entered a salary structure yet.</div>';
+  }
+
   return `
-    <div class="panel">
-      <div class="panel-head"><h3>Salary structure</h3></div>
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="panel-head"><h3>CTC Structure</h3><span class="muted" style="font-size:12px;">${S.me.name} · ${companyName(S.me.companyId)}</span></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Component</th><th>Amount (₹/month)</th></tr></thead>
+          <thead><tr><th>Components</th><th>PM</th><th>PA</th><th>Remarks</th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(r=>`<tr><td>${r.name}</td><td>${r.amount.toLocaleString("en-IN")}</td></tr>`).join("")
-              : '<tr><td colspan="2" class="empty-state">HR has not entered a salary structure yet.</td></tr>'}
-            ${rows.length ? `<tr><td><b>Total</b></td><td><b>${total.toLocaleString("en-IN")}</b></td></tr>` : ""}
+            ${ctcRows.map(r=>`<tr${isSalaryHighlightRow(r.label)?' style="font-weight:700;background:rgba(232,65,44,.06);"':''}><td>${r.label}</td><td>${fmtInr(r.pm)}</td><td>${fmtInr(r.pa)}</td><td class="muted" style="font-weight:400;">${r.remark||"—"}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    ${flexiRows.length ? `
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="panel-head"><h3>Components of Flexi Pay</h3></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Heads</th><th>Monthly Amt</th><th>Maximum Eligibility</th></tr></thead>
+          <tbody>
+            ${flexiRows.map(r=>`<tr><td>${r.label}</td><td>${fmtInr(r.pm)}</td><td class="muted">${r.maxEligibility||"—"}</td></tr>`).join("")}
+            <tr style="font-weight:700;"><td>Total</td><td>${fmtInr(flexiTotal)}</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>` : ""}
+    <div class="panel">
+      <div class="panel-head"><h3>My salary slip requests</h3></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Requested</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            ${myRequests.length ? myRequests.map(r=>`<tr><td>${fmtDate(r.requestedAt)}</td><td><span class="pill pill-${r.status}">${r.status}</span></td>
+              <td>${r.status==="approved" ? `<button class="small-btn primary" onclick="viewSalarySlip('${r.id}')">View slip</button>` : "—"}</td></tr>`).join("")
+              : '<tr><td colspan="3" class="empty-state">No requests yet.</td></tr>'}
           </tbody>
         </table>
       </div>
     </div>`;
 }
+window.submitSalarySlipRequest = async function(){
+  await addDoc(collection(db,"salarySlipRequests"), { employeeId: S.me.id, status:"pending", requestedAt: serverTimestamp() });
+  toast("Salary slip request submitted to HR", "success");
+  navigateTo("my-salary");
+};
+window.viewSalarySlip = async function(reqId){
+  const reqSnap = await getDoc(doc(db,"salarySlipRequests",reqId));
+  if(!reqSnap.exists()) return;
+  const req = reqSnap.data();
+  const uid = req.employeeId;
+  let emp = S.employeesCache.find(e=>e.id===uid);
+  if(!emp){ const s = await getDoc(doc(db,"employees",uid)); emp = { id:uid, ...s.data() }; }
+  const compSnap = await getDocs(collection(db,"employees",uid,"salaryComponents"));
+  const ctcRows = compSnap.docs.map(d=>d.data()).filter(r=>r.section!=="flexi").sort((a,b)=>(a.order||0)-(b.order||0));
+  const company = companyById(emp.companyId);
+  const today = fmtDate(new Date().toISOString().slice(0,10));
+  const decidedDate = req.decidedAt ? fmtDate(req.decidedAt) : today;
+  const html = `
+    <div id="salary-slip-doc" style="border:1px solid #ccc;border-radius:8px;padding:32px;background:#fff;color:#111;max-width:640px;">
+      ${companyLetterheadHtml(company)}
+      <p style="text-align:right;">${decidedDate}</p>
+      <h3>Salary Slip</h3>
+      <p>This is to certify the following salary structure for <b>${emp.name}</b>${emp.designationId?", "+desigName(emp.designationId):""}${emp.departmentId?" — "+deptName(emp.departmentId)+" department":""}.</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:14px;">
+        <thead><tr><th style="text-align:left;border-bottom:1px solid #ccc;padding:4px;">Component</th><th style="text-align:right;border-bottom:1px solid #ccc;padding:4px;">Monthly</th><th style="text-align:right;border-bottom:1px solid #ccc;padding:4px;">Annual</th></tr></thead>
+        <tbody>${ctcRows.map(r=>`<tr><td style="padding:4px;">${r.label}</td><td style="text-align:right;padding:4px;">${fmtInr(r.pm)}</td><td style="text-align:right;padding:4px;">${fmtInr(r.pa)}</td></tr>`).join("")}</tbody>
+      </table>
+      <p style="margin-top:40px;">For ${company.name},</p>
+      <p style="margin-top:40px;">Authorised Signatory <i>(digitally approved via HRMS on ${decidedDate})</i></p>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="printSalarySlip()">Print / Save as PDF</button>
+  `;
+  openModal("Salary Slip — " + emp.name, html + '<div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>');
+};
+window.printSalarySlip = function(){
+  const html = document.getElementById("salary-slip-doc").outerHTML;
+  const w = window.open("", "_blank");
+  w.document.write("<html><head><title>Salary Slip</title></head><body>" + html + "</body></html>");
+  w.document.close();
+  w.print();
+};
+
+// ==================== SALARY IMPORT (HR) ====================
+async function renderSalaryImport(){
+  return `
+    <div class="panel">
+      <div class="panel-head"><h3>Import salary structure</h3></div>
+      <div class="panel-body">
+        <p class="muted">Paste CSV with header <code>email,section,label,pm,pa,remark,maxEligibility,order</code> — one row per line item (matches the CTC Structure / Flexi Pay sheet). <code>section</code> is <code>ctc</code> or <code>flexi</code>. Numbers only, no commas or ₹ symbols. <code>order</code> controls row sequence (optional).</p>
+        <div class="field"><textarea id="sal-csv" rows="12" placeholder="email,section,label,pm,pa,remark,maxEligibility,order
+jane@chamariagroup.com,ctc,Basic Pay,97976,1175712,46.15% of Gross Salary,,1
+jane@chamariagroup.com,ctc,GROSS SALARY (A+B),212300,2547600,,,7
+jane@chamariagroup.com,ctc,TAKE HOME Salary (pm),161475,1937700,Deductions from CTC,,9
+jane@chamariagroup.com,flexi,HRA,45000,,,50% of Basic,1"></textarea></div>
+        <button class="btn btn-primary" onclick="submitSalaryImport()">Import</button>
+        <div id="sal-import-result" style="margin-top:14px;"></div>
+      </div>
+    </div>`;
+}
+window.submitSalaryImport = async function(){
+  const raw = document.getElementById("sal-csv").value.trim();
+  const resultBox = document.getElementById("sal-import-result");
+  if(!raw){ toast("Paste some CSV first", "error"); return; }
+  const lines = raw.split("\n").map(l=>l.trim()).filter(Boolean);
+  const header = lines[0].split(",").map(h=>h.trim());
+  let ok=0, fail=0; const failedEmails=[];
+  for(const line of lines.slice(1)){
+    const cols = line.split(",").map(c=>c.trim());
+    const row = {}; header.forEach((h,i)=>row[h]=cols[i]);
+    if(!row.email || !row.label){ fail++; continue; }
+    const match = S.employeesCache.find(e=>e.email.toLowerCase()===row.email.toLowerCase());
+    if(!match){ fail++; failedEmails.push(row.email); continue; }
+    try{
+      await addDoc(collection(db,"employees",match.id,"salaryComponents"), {
+        section: row.section==="flexi" ? "flexi" : "ctc",
+        label: row.label,
+        pm: row.pm ? Number(row.pm) : null,
+        pa: row.pa ? Number(row.pa) : null,
+        remark: row.remark || "",
+        maxEligibility: row.maxEligibility || "",
+        order: row.order ? Number(row.order) : 0,
+      });
+      ok++;
+    }catch(e){ fail++; }
+  }
+  resultBox.innerHTML = `<div class="${fail? 'err-msg':'ok-msg'}">Imported ${ok} row(s), ${fail} failed${failedEmails.length? ' (unmatched: '+failedEmails.join(", ")+')':''}.</div>`;
+};
 
 // ==================== EMPLOYEES (HR/Admin) ====================
 async function renderEmployees(){
@@ -1178,29 +1531,87 @@ async function renderCompanies(){
       <div class="panel-head"><h3>Companies</h3></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Payroll active</th></tr></thead>
+          <thead><tr><th>Name</th><th>GST Number</th><th>City</th><th>State</th><th>Phone</th><th>Email</th><th>Payroll active</th><th></th></tr></thead>
           <tbody>
-            ${S.companiesCache.map(c=>`<tr><td>${c.name}</td><td>${c.payrollActive? '<span class="pill pill-approved">Active</span>' : '<span class="pill pill-pending">Not yet</span>'}</td></tr>`).join("")}
+            ${S.companiesCache.map(c=>`<tr>
+              <td>${c.name}</td>
+              <td class="muted">${c.gstNumber||"—"}</td>
+              <td class="muted">${c.city||"—"}</td>
+              <td class="muted">${c.state||"—"}</td>
+              <td class="muted">${c.phone||"—"}</td>
+              <td class="muted">${c.email||"—"}</td>
+              <td>${c.payrollActive? '<span class="pill pill-approved">Active</span>' : '<span class="pill pill-pending">Not yet</span>'}</td>
+              <td class="row-actions"><button class="small-btn" onclick="openEditCompanyModal('${c.id}')">Edit</button><button class="small-btn danger" onclick="deleteCompany('${c.id}')">Delete</button></td>
+            </tr>`).join("")}
           </tbody>
         </table>
       </div>
     </div>`;
 }
+function companyFormFields(c){
+  c = c || {};
+  return `
+    <div class="field"><label>Name</label><input id="co-name" value="${c.name||""}"></div>
+    <div class="field"><label>Address</label><textarea id="co-address" rows="2">${c.address||""}</textarea></div>
+    <div class="field"><label>GST Number</label><input id="co-gst" value="${c.gstNumber||""}"></div>
+    <div class="field"><label>City</label><input id="co-city" value="${c.city||""}"></div>
+    <div class="field"><label>State</label><input id="co-state" value="${c.state||""}"></div>
+    <div class="field"><label>Pincode</label><input id="co-pincode" value="${c.pincode||""}"></div>
+    <div class="field"><label>Phone</label><input id="co-phone" value="${c.phone||""}"></div>
+    <div class="field"><label>Email</label><input type="email" id="co-email" value="${c.email||""}"></div>
+    <div class="field"><label>Payroll active now?</label><select id="co-active">
+      ${selOpt("true","Yes", c.payrollActive?"true":"false")}${selOpt("false","Not yet", c.payrollActive?"true":"false")}
+    </select></div>`;
+}
+function companyFormData(){
+  return {
+    name: document.getElementById("co-name").value.trim(),
+    address: document.getElementById("co-address").value.trim(),
+    gstNumber: document.getElementById("co-gst").value.trim(),
+    city: document.getElementById("co-city").value.trim(),
+    state: document.getElementById("co-state").value.trim(),
+    pincode: document.getElementById("co-pincode").value.trim(),
+    phone: document.getElementById("co-phone").value.trim(),
+    email: document.getElementById("co-email").value.trim(),
+    payrollActive: document.getElementById("co-active").value === "true",
+  };
+}
 window.openAddCompanyModal = function(){
-  openModal("Add company", `
-    <div class="field"><label>Name</label><input id="co-name"></div>
-    <div class="field"><label>Payroll active now?</label><select id="co-active"><option value="true">Yes</option><option value="false">Not yet</option></select></div>
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitAddCompany()">Save</button></div>
-  `);
+  openModal("Add company", companyFormFields() +
+    '<div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitAddCompany()">Save</button></div>');
 };
 window.submitAddCompany = async function(){
-  const name = document.getElementById("co-name").value.trim();
-  const payrollActive = document.getElementById("co-active").value === "true";
-  if(!name){ toast("Name is required", "error"); return; }
-  const ref = await addDoc(collection(db,"companies"), { name, payrollActive });
-  S.companiesCache.push({ id:ref.id, name, payrollActive });
+  const data = companyFormData();
+  if(!data.name){ toast("Name is required", "error"); return; }
+  const ref = await addDoc(collection(db,"companies"), data);
+  S.companiesCache.push({ id:ref.id, ...data });
   toast("Company added", "success");
   closeModal();
+  navigateTo("companies");
+};
+window.openEditCompanyModal = function(id){
+  const c = S.companiesCache.find(c=>c.id===id);
+  openModal("Edit company", companyFormFields(c) +
+    `<div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitEditCompany('${id}')">Save</button></div>`);
+};
+window.submitEditCompany = async function(id){
+  const data = companyFormData();
+  if(!data.name){ toast("Name is required", "error"); return; }
+  await updateDoc(doc(db,"companies",id), data);
+  const idx = S.companiesCache.findIndex(c=>c.id===id);
+  if(idx>-1) S.companiesCache[idx] = { id, ...data };
+  toast("Company updated", "success");
+  closeModal();
+  navigateTo("companies");
+};
+window.deleteCompany = async function(id){
+  if(S.employeesCache.some(e=>e.companyId===id)){
+    toast("Cannot delete — employees are still assigned to this company", "error");
+    return;
+  }
+  if(!confirm("Delete this company?")) return;
+  await deleteDoc(doc(db,"companies",id));
+  S.companiesCache = S.companiesCache.filter(c=>c.id!==id);
   navigateTo("companies");
 };
 
@@ -1236,14 +1647,40 @@ async function renderAnnouncements(){
           <span class="muted" style="font-size:12px;flex:none;">${fmtDate(a.createdAt)}</span>
         </div>
         <p style="margin:8px 0 0;color:var(--ink-soft);font-size:13.5px;white-space:pre-wrap;">${a.body}</p>
+        ${a.photoUrl?`<img src="${a.photoUrl}" style="max-width:100%;border-radius:8px;margin-top:10px;display:block;">`:""}
         ${isHrOrAbove()?`<div style="margin-top:10px;"><button class="small-btn danger" onclick="deleteAnnouncement('${a.id}')">Delete</button></div>`:""}
       </div>`).join("") : '<div class="card muted">No announcements yet.</div>'}
   </div>`;
+}
+function resizeImageFile(file, maxDim, quality){
+  maxDim = maxDim || 900; quality = quality || 0.72;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width*scale); height = Math.round(height*scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 window.openAddAnnouncementModal = function(){
   openModal("Post announcement", `
     <div class="field"><label>Title</label><input id="an-title"></div>
     <div class="field"><label>Message</label><textarea id="an-body" rows="4"></textarea></div>
+    <div class="field"><label>Photo (optional)</label><input type="file" id="an-photo" accept="image/*"></div>
     <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitAnnouncement()">Post</button></div>
   `);
 };
@@ -1251,225 +1688,19 @@ window.submitAnnouncement = async function(){
   const title = document.getElementById("an-title").value.trim();
   const body = document.getElementById("an-body").value.trim();
   if(!title || !body){ toast("Fill in both fields","error"); return; }
-  await addDoc(collection(db,"announcements"), { title, body, postedBy: S.me.id, createdAt: serverTimestamp() });
+  const fileInput = document.getElementById("an-photo");
+  let photoUrl = null;
+  if(fileInput.files && fileInput.files[0]){
+    try{ photoUrl = await resizeImageFile(fileInput.files[0]); }
+    catch(e){ toast("Could not process the photo — posting without it","error"); }
+  }
+  await addDoc(collection(db,"announcements"), { title, body, photoUrl, postedBy: S.me.id, createdAt: serverTimestamp() });
   toast("Announcement posted","success"); closeModal(); navigateTo("announcements");
 };
 window.deleteAnnouncement = async function(id){
   if(!confirm("Delete this announcement?")) return;
   await deleteDoc(doc(db,"announcements",id));
   navigateTo("announcements");
-};
-
-// ==================== TRAVEL ====================
-async function renderMyTravel(){
-  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="openTravelModal()">Request travel</button>';
-  const snap = await getDocs(query(collection(db,"travelRequests"), where("employeeId","==",S.me.id)));
-  const rows = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||0)-((a.createdAt&&a.createdAt.seconds)||0));
-  return `<div class="panel"><div class="panel-head"><h3>My travel requests</h3></div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Destination</th><th>From</th><th>To</th><th>Purpose</th><th>Est. cost</th><th>Status</th><th>Comment</th></tr></thead>
-      <tbody>${rows.length?rows.map(r=>`<tr><td>${r.destination}</td><td>${fmtDate(r.fromDate)}</td><td>${fmtDate(r.toDate)}</td><td class="muted">${r.purpose}</td><td>${r.estimatedCost?('₹'+Number(r.estimatedCost).toLocaleString("en-IN")):"—"}</td><td><span class="pill pill-${r.status}">${r.status}</span></td><td class="muted">${r.approverComment||"—"}</td></tr>`).join(""):'<tr><td colspan="7" class="empty-state">No travel requests yet.</td></tr>'}</tbody>
-    </table></div></div>`;
-}
-window.openTravelModal = function(){
-  openModal("Request travel", `
-    <div class="field"><label>Destination</label><input id="tv-dest"></div>
-    <div class="field"><label>From</label><input type="date" id="tv-from"></div>
-    <div class="field"><label>To</label><input type="date" id="tv-to"></div>
-    <div class="field"><label>Purpose</label><textarea id="tv-purpose" rows="2"></textarea></div>
-    <div class="field"><label>Estimated cost (₹, optional)</label><input type="number" id="tv-cost"></div>
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitTravel()">Submit</button></div>
-  `);
-};
-window.submitTravel = async function(){
-  const destination = document.getElementById("tv-dest").value.trim();
-  const fromDate = document.getElementById("tv-from").value;
-  const toDate = document.getElementById("tv-to").value;
-  const purpose = document.getElementById("tv-purpose").value.trim();
-  const estimatedCost = document.getElementById("tv-cost").value || null;
-  if(!destination || !fromDate || !toDate || !purpose){ toast("Fill in destination, dates and purpose","error"); return; }
-  if(!S.me.reportsTo){ toast("You have no reporting Senior set — ask HR to fix this first","error"); return; }
-  await addDoc(collection(db,"travelRequests"), { employeeId:S.me.id, destination, fromDate, toDate, purpose, estimatedCost, status:"pending", approverId:S.me.reportsTo, approverComment:"", createdAt: serverTimestamp() });
-  toast("Travel request submitted","success"); closeModal(); navigateTo("my-travel");
-};
-
-// ==================== TASKS ====================
-async function renderMyTasks(){
-  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="openTaskModal()">Assign task</button>';
-  const mineSnap = await getDocs(query(collection(db,"tasks"), where("assignedTo","==",S.me.id)));
-  const byMeSnap = await getDocs(query(collection(db,"tasks"), where("assignedBy","==",S.me.id)));
-  const mine = mineSnap.docs.map(d=>({id:d.id,...d.data()}));
-  const byMe = byMeSnap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>t.assignedTo!==S.me.id);
-  function rows(list, isMine){
-    return list.length ? list.map(t=>`
-      <tr><td>${t.title}</td><td class="muted">${employeeName(isMine?t.assignedBy:t.assignedTo)}</td><td>${t.dueDate?fmtDate(t.dueDate):"—"}</td>
-      <td><span class="pill pill-${t.status==='done'?'approved':'pending'}">${t.status}</span></td>
-      <td>${isMine && t.status!=='done' ? `<button class="small-btn primary" onclick="markTaskDone('${t.id}')">Mark done</button>` : (!isMine?`<button class="small-btn danger" onclick="deleteTask('${t.id}')">Delete</button>`:"")}</td></tr>`).join("")
-      : `<tr><td colspan="5" class="empty-state">Nothing here.</td></tr>`;
-  }
-  return `
-    <div class="panel" style="margin-bottom:20px;"><div class="panel-head"><h3>Assigned to me</h3></div>
-    <div class="table-wrap"><table><thead><tr><th>Task</th><th>From</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${rows(mine,true)}</tbody></table></div></div>
-    <div class="panel"><div class="panel-head"><h3>Assigned by me</h3></div>
-    <div class="table-wrap"><table><thead><tr><th>Task</th><th>To</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${rows(byMe,false)}</tbody></table></div></div>`;
-}
-window.openTaskModal = function(){
-  openModal("Assign task", `
-    <div class="field"><label>Assign to</label><select id="tk-to">${employeeOptions()}</select></div>
-    <div class="field"><label>Title</label><input id="tk-title"></div>
-    <div class="field"><label>Description</label><textarea id="tk-desc" rows="2"></textarea></div>
-    <div class="field"><label>Due date (optional)</label><input type="date" id="tk-due"></div>
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitTask()">Assign</button></div>
-  `);
-};
-window.submitTask = async function(){
-  const assignedTo = document.getElementById("tk-to").value;
-  const title = document.getElementById("tk-title").value.trim();
-  const description = document.getElementById("tk-desc").value.trim();
-  const dueDate = document.getElementById("tk-due").value || null;
-  if(!assignedTo || !title){ toast("Pick an assignee and a title","error"); return; }
-  await addDoc(collection(db,"tasks"), { assignedTo, assignedBy:S.me.id, title, description, dueDate, status:"open", createdAt: serverTimestamp() });
-  toast("Task assigned","success"); closeModal(); navigateTo("my-tasks");
-};
-window.markTaskDone = async function(id){
-  await updateDoc(doc(db,"tasks",id), { status:"done" });
-  navigateTo("my-tasks");
-};
-window.deleteTask = async function(id){
-  if(!confirm("Delete this task?")) return;
-  await deleteDoc(doc(db,"tasks",id));
-  navigateTo("my-tasks");
-};
-
-// ==================== OKRs ====================
-function okrTable(list, showOwner){
-  return `<table><thead><tr>${showOwner?"<th>Employee</th>":""}<th>Period</th><th>Objective</th><th>Key results</th><th>Progress</th>${showOwner?"":"<th></th>"}</tr></thead>
-  <tbody>${list.length?list.map(o=>{
-    const krs = o.keyResults||[];
-    const avg = krs.length ? Math.round(krs.reduce((s,k)=>s+(k.progress||0),0)/krs.length) : 0;
-    return `<tr>${showOwner?`<td>${employeeName(o.employeeId)}</td>`:""}<td>${o.period}</td><td>${o.objective}</td>
-    <td class="muted">${krs.map(k=>`${k.text} (${k.progress||0}%)`).join("<br>")}</td>
-    <td><b>${avg}%</b></td>${showOwner?"":`<td><button class="small-btn" onclick="openOkrProgressModal('${o.id}')">Update</button></td>`}</tr>`;
-  }).join(""):`<tr><td colspan="${showOwner?4:5}" class="empty-state">None yet.</td></tr>`}</tbody></table>`;
-}
-window.openOkrProgressModal = async function(id){
-  const snap = await getDoc(doc(db,"okrs",id));
-  if(!snap.exists()) return;
-  const o = snap.data();
-  const krs = o.keyResults||[];
-  openModal("Update progress — " + o.objective, `
-    ${krs.map((k,i)=>`
-      <div class="field">
-        <label>${k.text}</label>
-        <input type="range" id="krp-${i}" min="0" max="100" step="5" value="${k.progress||0}" oninput="document.getElementById('krp-val-${i}').textContent=this.value+'%'" style="width:100%;">
-        <span id="krp-val-${i}" class="muted" style="font-size:12px;">${k.progress||0}%</span>
-      </div>`).join("") || '<p class="muted">No key results were added for this objective.</p>'}
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitOkrProgress('${id}',${krs.length})">Save</button></div>
-  `);
-};
-window.submitOkrProgress = async function(id, count){
-  const snap = await getDoc(doc(db,"okrs",id));
-  const krs = snap.data().keyResults||[];
-  for(let i=0;i<count;i++){
-    krs[i].progress = Number(document.getElementById(`krp-${i}`).value)||0;
-  }
-  await updateDoc(doc(db,"okrs",id), { keyResults: krs });
-  toast("Progress updated","success"); closeModal(); navigateTo("my-okrs");
-};
-async function renderMyOkrs(){
-  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="openOkrModal()">New objective</button>';
-  const mineSnap = await getDocs(query(collection(db,"okrs"), where("employeeId","==",S.me.id)));
-  const mine = mineSnap.docs.map(d=>({id:d.id,...d.data()}));
-  let teamHtml = "";
-  if(S.me.role==="senior" || isHrOrAbove()){
-    const teamSnap = await getDocs(query(collection(db,"okrs"), where("reviewerId","==",S.me.id)));
-    const team = teamSnap.docs.map(d=>({id:d.id,...d.data()}));
-    teamHtml = `<div class="panel" style="margin-top:20px;"><div class="panel-head"><h3>My reports OKRs</h3></div>
-      <div class="table-wrap">${okrTable(team,true)}</div></div>`;
-  }
-  return `<div class="panel"><div class="panel-head"><h3>My objectives</h3></div><div class="table-wrap">${okrTable(mine,false)}</div></div>${teamHtml}`;
-}
-window.openOkrModal = function(){
-  openModal("New objective", `
-    <div class="field"><label>Period (e.g. Q3 2026)</label><input id="okr-period" value="Q${Math.ceil((new Date().getMonth()+1)/3)} ${thisYear()}"></div>
-    <div class="field"><label>Objective</label><input id="okr-objective"></div>
-    <div class="field"><label>Key results (one per line, e.g. "Close 10 new accounts — 0")</label><textarea id="okr-krs" rows="3"></textarea></div>
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitOkr()">Save</button></div>
-  `);
-};
-window.submitOkr = async function(){
-  const period = document.getElementById("okr-period").value.trim();
-  const objective = document.getElementById("okr-objective").value.trim();
-  const krLines = document.getElementById("okr-krs").value.split("\n").map(l=>l.trim()).filter(Boolean);
-  if(!period || !objective){ toast("Fill in period and objective","error"); return; }
-  const keyResults = krLines.map(l=>({ text: l, progress: 0 }));
-  await addDoc(collection(db,"okrs"), { employeeId:S.me.id, reviewerId:S.me.reportsTo||null, period, objective, keyResults, createdAt: serverTimestamp() });
-  toast("Objective saved","success"); closeModal(); navigateTo("my-okrs");
-};
-
-// ==================== PERFORMANCE ====================
-async function renderPerformance(){
-  if(isHrOrAbove()){
-    document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="openReviewModal()">Start review cycle</button>';
-  }
-  const mineSnap = await getDocs(query(collection(db,"performanceReviews"), where("employeeId","==",S.me.id)));
-  const mine = mineSnap.docs.map(d=>({id:d.id,...d.data()}));
-  let teamHtml = "";
-  if(S.me.role==="senior" || isHrOrAbove()){
-    const teamSnap = await getDocs(query(collection(db,"performanceReviews"), where("reviewerId","==",S.me.id)));
-    const team = teamSnap.docs.map(d=>({id:d.id,...d.data()}));
-    teamHtml = `<div class="panel" style="margin-top:20px;"><div class="panel-head"><h3>Reviews I need to complete</h3></div>
-      <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Period</th><th>Self rating</th><th>Manager rating</th><th>Status</th><th></th></tr></thead>
-      <tbody>${team.length?team.map(r=>`<tr><td>${employeeName(r.employeeId)}</td><td>${r.period}</td><td>${r.selfRating||"—"}</td><td>${r.managerRating||"—"}</td><td><span class="pill pill-${r.status==='completed'?'approved':'pending'}">${r.status}</span></td>
-      <td><button class="small-btn" onclick="openRateReviewModal('${r.id}')">Rate</button></td></tr>`).join(""):'<tr><td colspan="6" class="empty-state">None pending.</td></tr>'}</tbody></table></div></div>`;
-  }
-  return `<div class="panel"><div class="panel-head"><h3>My reviews</h3></div>
-    <div class="table-wrap"><table><thead><tr><th>Period</th><th>My rating</th><th>Manager rating</th><th>Status</th><th></th></tr></thead>
-    <tbody>${mine.length?mine.map(r=>`<tr><td>${r.period}</td><td>${r.selfRating||"—"}</td><td>${r.managerRating||"—"}</td><td><span class="pill pill-${r.status==='completed'?'approved':'pending'}">${r.status}</span></td>
-    <td>${!r.selfRating?`<button class="small-btn" onclick="openSelfReviewModal('${r.id}')">Self-assess</button>`:"—"}</td></tr>`).join(""):'<tr><td colspan="5" class="empty-state">No review cycles yet.</td></tr>'}</tbody></table></div></div>${teamHtml}`;
-}
-window.openReviewModal = function(){
-  openModal("Start review cycle", `
-    <div class="field"><label>Employee</label><select id="rv-emp">${employeeOptions()}</select></div>
-    <div class="field"><label>Period (e.g. H1 2026)</label><input id="rv-period"></div>
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitReview()">Start</button></div>
-  `);
-};
-window.submitReview = async function(){
-  const employeeId = document.getElementById("rv-emp").value;
-  const period = document.getElementById("rv-period").value.trim();
-  if(!employeeId || !period){ toast("Pick an employee and a period","error"); return; }
-  const emp = S.employeesCache.find(e=>e.id===employeeId);
-  await addDoc(collection(db,"performanceReviews"), { employeeId, reviewerId: (emp&&emp.reportsTo)||S.me.id, period, selfRating:null, selfComments:"", managerRating:null, managerComments:"", status:"pending_self", createdAt: serverTimestamp() });
-  toast("Review cycle started","success"); closeModal(); navigateTo("performance");
-};
-window.openSelfReviewModal = function(id){
-  openModal("Self-assessment", `
-    <div class="field"><label>Self rating (1-5)</label><input type="number" id="sr-rating" min="1" max="5"></div>
-    <div class="field"><label>Comments</label><textarea id="sr-comments" rows="4"></textarea></div>
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitSelfReview('${id}')">Submit</button></div>
-  `);
-};
-window.submitSelfReview = async function(id){
-  const selfRating = Number(document.getElementById("sr-rating").value)||null;
-  const selfComments = document.getElementById("sr-comments").value.trim();
-  if(!selfRating){ toast("Give a rating from 1 to 5","error"); return; }
-  await updateDoc(doc(db,"performanceReviews",id), { selfRating, selfComments, status:"pending_manager" });
-  toast("Self-assessment submitted","success"); closeModal(); navigateTo("performance");
-};
-window.openRateReviewModal = function(id){
-  openModal("Manager rating", `
-    <div class="field"><label>Manager rating (1-5)</label><input type="number" id="mr-rating" min="1" max="5"></div>
-    <div class="field"><label>Comments</label><textarea id="mr-comments" rows="4"></textarea></div>
-    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitManagerReview('${id}')">Complete review</button></div>
-  `);
-};
-window.submitManagerReview = async function(id){
-  const managerRating = Number(document.getElementById("mr-rating").value)||null;
-  const managerComments = document.getElementById("mr-comments").value.trim();
-  if(!managerRating){ toast("Give a rating from 1 to 5","error"); return; }
-  await updateDoc(doc(db,"performanceReviews",id), { managerRating, managerComments, status:"completed" });
-  toast("Review completed","success"); closeModal(); navigateTo("performance");
 };
 
 // ==================== MY FILES / DOCUMENTS (HR-managed metadata) ====================
@@ -1541,31 +1772,70 @@ window.deleteOnboardingTask = async function(id){
   navigateTo("onboarding");
 };
 
-async function renderOffboarding(){
-  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="openAddOffboardingModal()">Add checklist item</button>';
-  const snap = await getDocs(collection(db,"offboardingTasks"));
-  const rows = snap.docs.map(d=>({id:d.id,...d.data()}));
-  return `<div class="panel"><div class="panel-head"><h3>Offboarding checklists</h3></div>
-    <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Item</th><th>Due</th><th>Status</th><th></th></tr></thead>
-    <tbody>${rows.length?rows.map(r=>`<tr><td>${employeeName(r.employeeId)}</td><td>${r.title}</td><td>${r.dueDate?fmtDate(r.dueDate):"—"}</td>
-    <td><span class="pill pill-${r.done?'approved':'pending'}">${r.done?'done':'pending'}</span></td>
-    <td><button class="small-btn danger" onclick="deleteOffboardingTask('${r.id}')">Delete</button></td></tr>`).join(""):'<tr><td colspan="5" class="empty-state">No offboarding items yet.</td></tr>'}</tbody></table></div></div>`;
+function offboardingStageUnlocked(r, stage){
+  if(stage==="it") return true;
+  if(stage==="hr") return r.itStatus==="approved";
+  if(stage==="manager") return r.hrStatus==="approved";
+  return false;
 }
+function offboardingCanAct(r, stage){
+  if(stage==="manager") return isSeniorOf(r.employeeId) || isHrOrAbove();
+  return isHrOrAbove();
+}
+function offboardingOverallStatus(r){
+  if(r.itStatus==="rejected"||r.hrStatus==="rejected"||r.managerStatus==="rejected") return "rejected";
+  if(r.itStatus==="approved"&&r.hrStatus==="approved"&&r.managerStatus==="approved") return "cleared";
+  return "pending";
+}
+function offboardingStageCell(stage, r){
+  const status = r[stage+"Status"]||"pending";
+  if(status==="approved") return `<span class="pill pill-approved">Cleared</span>`;
+  if(status==="rejected") return `<span class="pill pill-rejected">Rejected</span>`;
+  if(!offboardingStageUnlocked(r, stage)) return `<span class="pill pill-pending">Waiting</span>`;
+  if(offboardingCanAct(r, stage)){
+    return `<button class="small-btn primary" onclick="decideOffboardingStage('${r.id}','${stage}','approved')">Approve</button> <button class="small-btn danger" onclick="decideOffboardingStage('${r.id}','${stage}','rejected')">Reject</button>`;
+  }
+  return `<span class="pill pill-pending">Pending</span>`;
+}
+async function renderOffboarding(){
+  if(isHrOrAbove()){
+    document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="openAddOffboardingModal()">Add return item</button>';
+  }
+  const snap = await getDocs(collection(db,"offboardingTasks"));
+  let rows = snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(!isHrOrAbove()){
+    rows = rows.filter(r=>r.employeeId===S.me.id || isSeniorOf(r.employeeId));
+  }
+  return `<div class="panel"><div class="panel-head"><h3>Offboarding — item return approvals</h3><span class="muted" style="font-size:12px;">Sequence: IT → HR → Reporting Manager</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Item</th><th>IT</th><th>HR</th><th>Reporting Manager</th><th>Overall</th>${isHrOrAbove()?"<th></th>":""}</tr></thead>
+    <tbody>${rows.length?rows.map(r=>{
+      const overall = offboardingOverallStatus(r);
+      return `<tr>
+        <td>${employeeName(r.employeeId)}</td><td>${r.title}</td>
+        <td>${offboardingStageCell("it",r)}</td><td>${offboardingStageCell("hr",r)}</td><td>${offboardingStageCell("manager",r)}</td>
+        <td><span class="pill pill-${overall==='cleared'?'approved':(overall==='rejected'?'rejected':'pending')}">${overall}</span></td>
+        ${isHrOrAbove()?`<td><button class="small-btn danger" onclick="deleteOffboardingTask('${r.id}')">Delete</button></td>`:""}
+      </tr>`;
+    }).join(""):`<tr><td colspan="${isHrOrAbove()?7:6}" class="empty-state">No offboarding items yet.</td></tr>`}</tbody></table></div></div>`;
+}
+window.decideOffboardingStage = async function(id, stage, status){
+  await updateDoc(doc(db,"offboardingTasks",id), { [stage+"Status"]: status, [stage+"By"]: S.me.id, [stage+"At"]: serverTimestamp() });
+  toast(`${stage.toUpperCase()} ${status==="approved"?"cleared":"rejected"}`,"success");
+  navigateTo("offboarding");
+};
 window.openAddOffboardingModal = function(){
-  openModal("Add offboarding checklist item", `
+  openModal("Add offboarding return item", `
     <div class="field"><label>Employee</label><select id="of-emp">${employeeOptions()}</select></div>
-    <div class="field"><label>Item</label><input id="of-title" placeholder="Return laptop"></div>
-    <div class="field"><label>Due date (optional)</label><input type="date" id="of-due"></div>
+    <div class="field"><label>Item</label><input id="of-title" placeholder="Laptop, ID card, access card…"></div>
     <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitOffboardingTask()">Add</button></div>
   `);
 };
 window.submitOffboardingTask = async function(){
   const employeeId = document.getElementById("of-emp").value;
   const title = document.getElementById("of-title").value.trim();
-  const dueDate = document.getElementById("of-due").value || null;
   if(!employeeId || !title){ toast("Pick an employee and an item","error"); return; }
-  await addDoc(collection(db,"offboardingTasks"), { employeeId, title, dueDate, done:false, createdAt: serverTimestamp() });
-  toast("Checklist item added","success"); closeModal(); navigateTo("offboarding");
+  await addDoc(collection(db,"offboardingTasks"), { employeeId, title, itStatus:"pending", hrStatus:"pending", managerStatus:"pending", createdAt: serverTimestamp() });
+  toast("Return item added","success"); closeModal(); navigateTo("offboarding");
 };
 window.deleteOffboardingTask = async function(id){
   if(!confirm("Delete this item?")) return;
@@ -1594,23 +1864,25 @@ window.generateLetter = async function(){
   const emp = S.employeesCache.find(e=>e.id===uid);
   if(!emp){ toast("Pick an employee","error"); return; }
   const salSnap = await getDocs(collection(db,"employees",uid,"salaryComponents"));
-  const total = salSnap.docs.reduce((s,d)=>s+(d.data().amount||0),0);
+  const salRows = salSnap.docs.map(d=>d.data());
+  const grossRow = salRows.find(r=>/gross salary/i.test(r.label||""));
+  const total = grossRow ? (Number(grossRow.pm)||0) : salRows.reduce((s,r)=>s+(r.section!=="flexi" && !/take home/i.test(r.label||"") ? (Number(r.pm)||0) : 0),0);
   const today = fmtDate(new Date().toISOString().slice(0,10));
-  const company = companyName(emp.companyId);
+  const company = companyById(emp.companyId);
   const titles = { offer:"Offer Letter", experience:"Experience Letter", relieving:"Relieving Letter", salary:"Salary Certificate" };
   const bodies = {
-    offer: `<p>Dear ${emp.name},</p><p>We are pleased to offer you employment with ${company}, part of Chamaria Group, effective ${fmtDate(emp.doj)}. We look forward to having you on the team.</p>`,
-    experience: `<p>This is to certify that ${emp.name} has been employed with ${company} since ${fmtDate(emp.doj)} and continues to serve in good standing.</p>`,
-    relieving: `<p>This is to certify that ${emp.name} was relieved from their duties at ${company}. We wish them well in their future endeavours.</p>`,
-    salary: `<p>This is to certify that ${emp.name} is employed with ${company} with a total monthly compensation of ₹${total.toLocaleString("en-IN")}.</p>`,
+    offer: `<p>Dear ${emp.name},</p><p>We are pleased to offer you employment with ${company.name}, part of Chamaria Group, effective ${fmtDate(emp.doj)}. We look forward to having you on the team.</p>`,
+    experience: `<p>This is to certify that ${emp.name} has been employed with ${company.name} since ${fmtDate(emp.doj)} and continues to serve in good standing.</p>`,
+    relieving: `<p>This is to certify that ${emp.name} was relieved from their duties at ${company.name}. We wish them well in their future endeavours.</p>`,
+    salary: `<p>This is to certify that ${emp.name} is employed with ${company.name} with a total monthly compensation of ${fmtInr(total)}.</p>`,
   };
   document.getElementById("letter-preview").innerHTML = `
     <div id="letter-doc" style="border:1px solid var(--line);border-radius:8px;padding:32px;background:#fff;color:#111;max-width:640px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;"><div style="width:32px;height:32px;border-radius:7px;background:#E8412C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">CG</div><b>${company}</b></div>
+      ${companyLetterheadHtml(company)}
       <p style="text-align:right;">${today}</p>
       <h3>${titles[type]}</h3>
       ${bodies[type]}
-      <p style="margin-top:40px;">For ${company},</p>
+      <p style="margin-top:40px;">For ${company.name},</p>
       <p style="margin-top:40px;">Authorised Signatory</p>
     </div>
     <button class="btn btn-primary" style="margin-top:14px;" onclick="printLetter()">Print / Save as PDF</button>
@@ -1626,10 +1898,12 @@ window.printLetter = function(){
 
 // ==================== SHIFTS ====================
 async function renderShifts(){
-  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="openAddShiftModal()">Add shift</button>';
+  document.getElementById("page-actions").innerHTML =
+    '<button class="btn btn-ghost" onclick="openBulkAssignShiftModal()" style="margin-right:8px;">Bulk assign</button>' +
+    '<button class="btn btn-primary" onclick="openAddShiftModal()">Add shift</button>';
   return `<div class="panel"><div class="panel-head"><h3>Shifts</h3></div>
     <div class="table-wrap"><table><thead><tr><th>Name</th><th>Start</th><th>End</th><th></th></tr></thead>
-    <tbody>${S.shiftsCache.length?S.shiftsCache.map(s=>`<tr><td>${s.name}</td><td>${s.startTime}</td><td>${s.endTime}</td><td><button class="small-btn danger" onclick="deleteShift('${s.id}')">Delete</button></td></tr>`).join(""):'<tr><td colspan="4" class="empty-state">No shifts defined yet.</td></tr>'}</tbody></table></div></div>`;
+    <tbody>${S.shiftsCache.length?S.shiftsCache.map(s=>`<tr><td>${s.name}</td><td>${s.startTime}</td><td>${s.endTime}</td><td class="row-actions"><button class="small-btn" onclick="openEditShiftModal('${s.id}')">Edit</button><button class="small-btn danger" onclick="deleteShift('${s.id}')">Delete</button></td></tr>`).join(""):'<tr><td colspan="4" class="empty-state">No shifts defined yet.</td></tr>'}</tbody></table></div></div>`;
 }
 window.openAddShiftModal = function(){
   openModal("Add shift", `
@@ -1648,11 +1922,58 @@ window.submitShift = async function(){
   S.shiftsCache.push({ id:ref.id, name, startTime, endTime });
   toast("Shift added","success"); closeModal(); navigateTo("shifts");
 };
+window.openEditShiftModal = function(id){
+  const s = S.shiftsCache.find(s=>s.id===id);
+  openModal("Edit shift", `
+    <div class="field"><label>Name</label><input id="esh-name" value="${s.name}"></div>
+    <div class="field"><label>Start time</label><input type="time" id="esh-start" value="${s.startTime}"></div>
+    <div class="field"><label>End time</label><input type="time" id="esh-end" value="${s.endTime}"></div>
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitEditShift('${id}')">Save</button></div>
+  `);
+};
+window.submitEditShift = async function(id){
+  const name = document.getElementById("esh-name").value.trim();
+  const startTime = document.getElementById("esh-start").value;
+  const endTime = document.getElementById("esh-end").value;
+  if(!name){ toast("Give the shift a name","error"); return; }
+  await updateDoc(doc(db,"shifts",id), { name, startTime, endTime });
+  const idx = S.shiftsCache.findIndex(s=>s.id===id);
+  if(idx>-1) S.shiftsCache[idx] = { id, name, startTime, endTime };
+  toast("Shift updated","success"); closeModal(); navigateTo("shifts");
+};
 window.deleteShift = async function(id){
   if(!confirm("Delete this shift?")) return;
   await deleteDoc(doc(db,"shifts",id));
   S.shiftsCache = S.shiftsCache.filter(s=>s.id!==id);
   navigateTo("shifts");
+};
+window.openBulkAssignShiftModal = function(){
+  openModal("Bulk assign shift", `
+    <div class="field"><label>Shift</label><select id="bas-shift">${shiftOptions()}</select></div>
+    <div class="field"><label>Apply to</label><select id="bas-scope" onchange="document.getElementById('bas-emp-wrap').style.display=this.value==='selected'?'block':'none'">
+      <option value="all">All employees</option>
+      <option value="selected">Selected employees</option>
+    </select></div>
+    <div id="bas-emp-wrap" style="display:none;max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px;">
+      ${S.employeesCache.map(e=>`<label style="display:block;font-size:13px;padding:3px 0;"><input type="checkbox" class="bas-emp-cb" value="${e.id}"> ${e.name}</label>`).join("")}
+    </div>
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitBulkAssignShift()">Apply</button></div>
+  `);
+};
+window.submitBulkAssignShift = async function(){
+  const shiftId = document.getElementById("bas-shift").value;
+  const scope = document.getElementById("bas-scope").value;
+  if(!shiftId){ toast("Pick a shift","error"); return; }
+  const targets = scope==="all"
+    ? S.employeesCache.map(e=>e.id)
+    : [...document.querySelectorAll(".bas-emp-cb:checked")].map(cb=>cb.value);
+  if(!targets.length){ toast("No employees selected","error"); return; }
+  for(const uid of targets){
+    await updateDoc(doc(db,"employees",uid), { shiftId });
+    const idx = S.employeesCache.findIndex(e=>e.id===uid);
+    if(idx>-1) S.employeesCache[idx].shiftId = shiftId;
+  }
+  toast(`Shift applied to ${targets.length} employee(s)`,"success"); closeModal(); navigateTo("shifts");
 };
 
 // ==================== TIME TRACKER ====================
@@ -1675,13 +1996,10 @@ async function renderMyTime(){
     <div class="table-wrap"><table><thead><tr><th>Date</th><th>Hours</th><th>Task</th><th>Notes</th><th></th></tr></thead>
     <tbody>${mine.length?mine.map(t=>`<tr><td>${fmtDate(t.date)}</td><td>${t.hours}</td><td class="muted">${t.taskTitle||"—"}</td><td class="muted">${t.notes||"—"}</td><td><button class="small-btn danger" onclick="deleteTimeLog('${t.id}')">Delete</button></td></tr>`).join(""):'<tr><td colspan="5" class="empty-state">No time logged yet.</td></tr>'}</tbody></table></div></div>${teamHtml}`;
 }
-window.openTimeLogModal = async function(){
-  const myTasksSnap = await getDocs(query(collection(db,"tasks"), where("assignedTo","==",S.me.id)));
-  const myTasks = myTasksSnap.docs.map(d=>({id:d.id,...d.data()}));
+window.openTimeLogModal = function(){
   openModal("Log time", `
     <div class="field"><label>Date</label><input type="date" id="tl-date" value="${new Date().toISOString().slice(0,10)}"></div>
     <div class="field"><label>Hours</label><input type="number" id="tl-hours" step="0.5" min="0" max="24"></div>
-    <div class="field"><label>Related task (optional)</label><select id="tl-task"><option value="">— none —</option>${myTasks.map(t=>`<option value="${t.id}" data-title="${t.title}">${t.title}</option>`).join("")}</select></div>
     <div class="field"><label>Notes</label><textarea id="tl-notes" rows="2"></textarea></div>
     <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitTimeLog()">Save</button></div>
   `);
@@ -1689,12 +2007,9 @@ window.openTimeLogModal = async function(){
 window.submitTimeLog = async function(){
   const date = document.getElementById("tl-date").value;
   const hours = Number(document.getElementById("tl-hours").value)||0;
-  const taskSel = document.getElementById("tl-task");
-  const taskId = taskSel.value || null;
-  const taskTitle = taskId ? taskSel.selectedOptions[0].dataset.title : "";
   const notes = document.getElementById("tl-notes").value.trim();
   if(!date || hours<=0){ toast("Pick a date and enter hours greater than 0","error"); return; }
-  await addDoc(collection(db,"timeLogs"), { employeeId:S.me.id, date, hours, taskId, taskTitle, notes, createdAt: serverTimestamp() });
+  await addDoc(collection(db,"timeLogs"), { employeeId:S.me.id, date, hours, notes, createdAt: serverTimestamp() });
   toast("Time logged","success"); closeModal(); navigateTo("my-time");
 };
 window.deleteTimeLog = async function(id){
@@ -1843,9 +2158,15 @@ function profileReadonlyHtml(e){
       <div style="margin-top:10px;"><div class="muted" style="font-size:12px;">About Me</div><div style="white-space:pre-wrap;">${e.aboutMe||"—"}</div></div>
     </div></div>`;
 }
-window.openViewProfileModal = function(uid){
+window.openViewProfileModal = async function(uid){
   const e = S.employeesCache.find(e=>e.id===uid);
-  openModal("Profile — " + e.name, `<div style="max-height:60vh;overflow-y:auto;">${profileReadonlyHtml(e)}</div><div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+  const reqSnap = await getDocs(query(collection(db,"leaveRequests"), where("employeeId","==",uid)));
+  const leaveRows = reqSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||0)-((a.createdAt&&a.createdAt.seconds)||0));
+  openModal("Profile — " + e.name, `<div style="max-height:60vh;overflow-y:auto;">${profileReadonlyHtml(e)}
+    <div class="panel" style="margin-top:16px;"><div class="panel-head"><h3>Leave history</h3></div>
+    <div class="table-wrap"><table><thead><tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr></thead>
+    <tbody>${leaveRows.length?leaveRows.map(r=>`<tr><td>${r.typeCode}</td><td>${fmtDate(r.fromDate)}</td><td>${fmtDate(r.toDate)}</td><td>${r.days}</td><td><span class="pill pill-${r.status}">${r.status}</span></td></tr>`).join(""):'<tr><td colspan="5" class="empty-state">No leave requests.</td></tr>'}</tbody></table></div></div>
+  </div><div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
 };
 
 async function renderMyProfile(){
@@ -1927,10 +2248,6 @@ const RENDERERS = {
   "companies": renderCompanies,
   "directory": renderDirectory,
   "announcements": renderAnnouncements,
-  "my-travel": renderMyTravel,
-  "my-tasks": renderMyTasks,
-  "my-okrs": renderMyOkrs,
-  "performance": renderPerformance,
   "my-files": renderMyFiles,
   "onboarding": renderOnboarding,
   "offboarding": renderOffboarding,
@@ -1940,6 +2257,11 @@ const RENDERERS = {
   "policies": renderPolicies,
   "my-profile": renderMyProfile,
   "departments": renderDepartments,
+  "hr-policy-booklet": renderHrPolicyBooklet,
+  "resignation": renderResignation,
+  "resignations-admin": renderResignationsAdmin,
+  "attendance-records": renderAttendanceRecords,
+  "salary-import": renderSalaryImport,
 };
 </script>
 </body>
