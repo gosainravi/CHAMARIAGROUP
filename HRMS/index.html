@@ -231,6 +231,8 @@ const S = {
   companiesCache: [],
   leaveTypesCache: [],
   shiftsCache: [],
+  departmentsCache: [],
+  designationsCache: [],
   view: "dashboard",
 };
 
@@ -312,6 +314,10 @@ async function preloadCaches(){
   S.employeesCache = empSnap.docs.map(d=>({ id:d.id, ...d.data() }));
   const shSnap = await getDocs(collection(db,"shifts"));
   S.shiftsCache = shSnap.docs.map(d=>({ id:d.id, ...d.data() }));
+  const depSnap = await getDocs(collection(db,"departments"));
+  S.departmentsCache = depSnap.docs.map(d=>({ id:d.id, ...d.data() }));
+  const desSnap = await getDocs(collection(db,"designations"));
+  S.designationsCache = desSnap.docs.map(d=>({ id:d.id, ...d.data() }));
 }
 
 function companyName(id){ const c = S.companiesCache.find(c=>c.id===id); return c ? c.name : (id||"—"); }
@@ -324,6 +330,7 @@ function renderNav(){
   const items = [
     { id:"dashboard", label:"Dashboard", show:true },
     { id:"announcements", label:"Announcements", show:true },
+    { id:"my-profile", label:"My Profile", show:true },
     { id:"directory", label:"Directory", show:true },
     { id:"my-leave", label:"My Leave", show:true },
     { id:"my-attendance", label:"My Attendance", show:true },
@@ -343,6 +350,7 @@ function renderNav(){
   ];
   const adminItems = [
     { id:"employees", label:"Employees", show: isHrOrAbove() },
+    { id:"departments", label:"Departments", show: isHrOrAbove() },
     { id:"onboarding", label:"Onboarding", show: isHrOrAbove() },
     { id:"offboarding", label:"Offboarding", show: isHrOrAbove() },
     { id:"hr-letters", label:"HR Letters", show: isHrOrAbove() },
@@ -388,6 +396,7 @@ const VIEW_TITLES = {
   "onboarding":"Onboarding", "offboarding":"Offboarding",
   "hr-letters":"HR Letters", "shifts":"Shifts",
   "my-time":"Time Tracker", "policies":"Policies",
+  "my-profile":"My Profile", "departments":"Departments & Designations",
 };
 
 async function navigateTo(view){
@@ -817,16 +826,19 @@ async function renderEmployees(){
       <div class="panel-head"><h3>Employees (${S.employeesCache.length})</h3></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Reports to</th><th>Shift</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Emp ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Department</th><th>Designation</th><th>Role</th><th>Reports to</th><th>Shift</th><th>Status</th><th></th></tr></thead>
           <tbody>
             ${S.employeesCache.map(e=>`
               <tr>
+                <td class="muted">${e.employeeId||"—"}</td>
                 <td>${e.name}</td><td>${e.email}</td><td class="muted">${e.phone||"—"}</td><td>${companyName(e.companyId)}</td>
+                <td class="muted">${e.departmentId?deptName(e.departmentId):"—"}</td>
+                <td class="muted">${e.designationId?desigName(e.designationId):"—"}</td>
                 <td><span class="pill pill-role">${ROLE_LABEL[e.role]||e.role}</span></td>
                 <td>${e.reportsTo ? employeeName(e.reportsTo) : "—"}</td>
                 <td class="muted">${e.shiftId ? shiftName(e.shiftId) : "—"}</td>
                 <td>${e.status||"active"}</td>
-                <td class="row-actions"><button class="small-btn" onclick="openEditEmployeeModal('${e.id}')">Edit</button><button class="small-btn" onclick="openDocsModal('${e.id}')">Docs</button></td>
+                <td class="row-actions"><button class="small-btn" onclick="openViewProfileModal('${e.id}')">View</button><button class="small-btn" onclick="openEditEmployeeModal('${e.id}')">Edit</button><button class="small-btn" onclick="openDocsModal('${e.id}')">Docs</button></td>
               </tr>`).join("")}
           </tbody>
         </table>
@@ -850,6 +862,27 @@ function shiftName(id){
   const s = S.shiftsCache.find(s=>s.id===id);
   return s ? s.name : "—";
 }
+function departmentOptions(){
+  return S.departmentsCache.map(d=>`<option value="${d.id}">${d.name}</option>`).join("");
+}
+function designationOptions(){
+  return S.designationsCache.map(d=>`<option value="${d.id}">${d.name}</option>`).join("");
+}
+function deptName(id){ const d = S.departmentsCache.find(d=>d.id===id); return d ? d.name : "—"; }
+function desigName(id){ const d = S.designationsCache.find(d=>d.id===id); return d ? d.name : "—"; }
+function computeYearsMonths(fromISO, toISO){
+  if(!fromISO) return null;
+  const from = new Date(fromISO);
+  const to = toISO ? new Date(toISO) : new Date();
+  let months = (to.getFullYear()-from.getFullYear())*12 + (to.getMonth()-from.getMonth());
+  if(to.getDate() < from.getDate()) months--;
+  if(months < 0) return null;
+  const years = Math.floor(months/12);
+  const rem = months%12;
+  return `${years} year(s) ${rem} month(s)`;
+}
+function computeAge(dob){ return computeYearsMonths(dob); }
+function selOpt(value, label, current){ return `<option value="${value}"${(current||"")===value?" selected":""}>${label}</option>`; }
 
 window.openAddEmployeeModal = function(){
   openModal("Add employee", `
@@ -984,16 +1017,32 @@ window.submitBulkImport = async function(){
 window.openEditEmployeeModal = function(uid){
   const e = S.employeesCache.find(e=>e.id===uid);
   openModal("Edit employee", `
+    <p class="muted" style="margin-top:0;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Basic &amp; work information</p>
     <div class="field"><label>Full name</label><input id="ee-name" value="${e.name}"></div>
+    <div class="field"><label>Employee ID</label><input id="ee-empid" value="${e.employeeId||""}" placeholder="e.g. CHM-001"></div>
     <div class="field"><label>Phone</label><input id="ee-phone" value="${e.phone||""}"></div>
     <div class="field"><label>Company (payroll)</label><select id="ee-company">${companyOptions()}</select></div>
-    <div class="field"><label>Role</label><select id="ee-role">${roleOptions()}</select></div>
+    <div class="field"><label>Department</label><select id="ee-department"><option value="">— none —</option>${departmentOptions()}</select></div>
+    <div class="field"><label>Designation</label><select id="ee-designation"><option value="">— none —</option>${designationOptions()}</select></div>
+    <div class="field"><label>Employment Type</label><select id="ee-emptype">
+      <option value="Permanent">Permanent</option><option value="Contract">Contract</option>
+      <option value="Intern">Intern</option><option value="Consultant">Consultant</option></select></div>
+    <div class="field"><label>Source of Hire</label><input id="ee-sourceofhire" value="${e.sourceOfHire||""}" placeholder="Referral / Job portal / Campus…"></div>
+    <div class="field"><label>Role (system access)</label><select id="ee-role">${roleOptions()}</select></div>
     <div class="field"><label>Reports to</label><select id="ee-reportsto"><option value="">— none —</option>${employeeOptions(uid)}</select></div>
     <div class="field"><label>Shift</label><select id="ee-shift"><option value="">— none —</option>${shiftOptions()}</select></div>
-    <div class="field"><label>Status</label><select id="ee-status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+    <div class="field"><label>Work phone extension</label><input id="ee-ext" value="${e.workPhoneExt||""}"></div>
+    <div class="field"><label>Seating location</label><input id="ee-seating" value="${e.seatingLocation||""}"></div>
+    <div class="field"><label>Employee Status</label><select id="ee-status">
+      <option value="active">Active</option><option value="probation">Probation</option>
+      <option value="notice_period">Notice Period</option><option value="inactive">Inactive</option></select></div>
+    <div class="field"><label>Date of Exit (only if separated)</label><input type="date" id="ee-exit" value="${e.dateOfExit||""}"></div>
     <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitEditEmployee('${uid}')">Save</button></div>
   `);
   document.getElementById("ee-company").value = e.companyId||"";
+  document.getElementById("ee-department").value = e.departmentId||"";
+  document.getElementById("ee-designation").value = e.designationId||"";
+  document.getElementById("ee-emptype").value = e.employmentType||"Permanent";
   document.getElementById("ee-role").value = e.role;
   document.getElementById("ee-reportsto").value = e.reportsTo||"";
   document.getElementById("ee-shift").value = e.shiftId||"";
@@ -1001,15 +1050,24 @@ window.openEditEmployeeModal = function(uid){
 };
 window.submitEditEmployee = async function(uid){
   const name = document.getElementById("ee-name").value.trim();
+  const employeeId = document.getElementById("ee-empid").value.trim();
   const phone = document.getElementById("ee-phone").value.trim();
   const companyId = document.getElementById("ee-company").value;
+  const departmentId = document.getElementById("ee-department").value || null;
+  const designationId = document.getElementById("ee-designation").value || null;
+  const employmentType = document.getElementById("ee-emptype").value;
+  const sourceOfHire = document.getElementById("ee-sourceofhire").value.trim();
   const role = document.getElementById("ee-role").value;
   const reportsTo = document.getElementById("ee-reportsto").value || null;
   const shiftId = document.getElementById("ee-shift").value || null;
+  const workPhoneExt = document.getElementById("ee-ext").value.trim();
+  const seatingLocation = document.getElementById("ee-seating").value.trim();
   const status = document.getElementById("ee-status").value;
-  await updateDoc(doc(db,"employees",uid), { name, phone, companyId, role, reportsTo, shiftId, status });
+  const dateOfExit = document.getElementById("ee-exit").value || null;
+  const patch = { name, employeeId, phone, companyId, departmentId, designationId, employmentType, sourceOfHire, role, reportsTo, shiftId, workPhoneExt, seatingLocation, status, dateOfExit };
+  await updateDoc(doc(db,"employees",uid), patch);
   const idx = S.employeesCache.findIndex(e=>e.id===uid);
-  S.employeesCache[idx] = { ...S.employeesCache[idx], name, phone, companyId, role, reportsTo, shiftId, status };
+  S.employeesCache[idx] = { ...S.employeesCache[idx], ...patch };
   toast("Employee updated", "success");
   closeModal();
   navigateTo("employees");
@@ -1148,8 +1206,8 @@ window.submitAddCompany = async function(){
 
 // ==================== DIRECTORY ====================
 function directoryRowsHtml(rows){
-  return `<table><thead><tr><th>Name</th><th>Company</th><th>Role</th><th>Reports to</th><th>Shift</th><th>Email</th><th>Phone</th></tr></thead>
-  <tbody>${rows.map(e=>`<tr><td>${e.name}</td><td>${companyName(e.companyId)}</td><td><span class="pill pill-role">${ROLE_LABEL[e.role]||e.role}</span></td><td>${e.reportsTo?employeeName(e.reportsTo):"—"}</td><td class="muted">${e.shiftId?shiftName(e.shiftId):"—"}</td><td>${e.email}</td><td class="muted">${e.phone||"—"}</td></tr>`).join("") || '<tr><td colspan="7" class="empty-state">No employees yet.</td></tr>'}</tbody></table>`;
+  return `<table><thead><tr><th>Name</th><th>Company</th><th>Department</th><th>Designation</th><th>Role</th><th>Reports to</th><th>Shift</th><th>Email</th><th>Phone</th></tr></thead>
+  <tbody>${rows.map(e=>`<tr><td>${e.name}</td><td>${companyName(e.companyId)}</td><td class="muted">${e.departmentId?deptName(e.departmentId):"—"}</td><td class="muted">${e.designationId?desigName(e.designationId):"—"}</td><td><span class="pill pill-role">${ROLE_LABEL[e.role]||e.role}</span></td><td>${e.reportsTo?employeeName(e.reportsTo):"—"}</td><td class="muted">${e.shiftId?shiftName(e.shiftId):"—"}</td><td>${e.email}</td><td class="muted">${e.phone||"—"}</td></tr>`).join("") || '<tr><td colspan="9" class="empty-state">No employees yet.</td></tr>'}</tbody></table>`;
 }
 async function renderDirectory(){
   document.getElementById("page-actions").innerHTML =
@@ -1686,6 +1744,174 @@ window.deletePolicy = async function(id){
   navigateTo("policies");
 };
 
+// ==================== DEPARTMENTS & DESIGNATIONS ====================
+async function renderDepartments(){
+  return `
+    <div class="grid grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>Departments</h3><button class="small-btn primary" onclick="openAddDeptModal()">Add</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Name</th><th></th></tr></thead>
+        <tbody>${S.departmentsCache.length?S.departmentsCache.map(d=>`<tr><td>${d.name}</td><td><button class="small-btn danger" onclick="deleteDept('${d.id}')">Delete</button></td></tr>`).join(""):'<tr><td colspan="2" class="empty-state">None yet.</td></tr>'}</tbody></table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Designations</h3><button class="small-btn primary" onclick="openAddDesigModal()">Add</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Name</th><th></th></tr></thead>
+        <tbody>${S.designationsCache.length?S.designationsCache.map(d=>`<tr><td>${d.name}</td><td><button class="small-btn danger" onclick="deleteDesig('${d.id}')">Delete</button></td></tr>`).join(""):'<tr><td colspan="2" class="empty-state">None yet.</td></tr>'}</tbody></table></div>
+      </div>
+    </div>`;
+}
+window.openAddDeptModal = function(){
+  openModal("Add department", `
+    <div class="field"><label>Name</label><input id="dep-name" placeholder="IT"></div>
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitAddDept()">Save</button></div>
+  `);
+};
+window.submitAddDept = async function(){
+  const name = document.getElementById("dep-name").value.trim();
+  if(!name){ toast("Give it a name","error"); return; }
+  const ref = await addDoc(collection(db,"departments"), { name });
+  S.departmentsCache.push({ id:ref.id, name });
+  toast("Department added","success"); closeModal(); navigateTo("departments");
+};
+window.deleteDept = async function(id){
+  if(!confirm("Delete this department?")) return;
+  await deleteDoc(doc(db,"departments",id));
+  S.departmentsCache = S.departmentsCache.filter(d=>d.id!==id);
+  navigateTo("departments");
+};
+window.openAddDesigModal = function(){
+  openModal("Add designation", `
+    <div class="field"><label>Name</label><input id="des-name" placeholder="Team Member"></div>
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitAddDesig()">Save</button></div>
+  `);
+};
+window.submitAddDesig = async function(){
+  const name = document.getElementById("des-name").value.trim();
+  if(!name){ toast("Give it a name","error"); return; }
+  const ref = await addDoc(collection(db,"designations"), { name });
+  S.designationsCache.push({ id:ref.id, name });
+  toast("Designation added","success"); closeModal(); navigateTo("departments");
+};
+window.deleteDesig = async function(id){
+  if(!confirm("Delete this designation?")) return;
+  await deleteDoc(doc(db,"designations",id));
+  S.designationsCache = S.designationsCache.filter(d=>d.id!==id);
+  navigateTo("departments");
+};
+
+// ==================== PROFILE (shared read-only builder + My Profile + Admin View) ====================
+function profileReadonlyHtml(e){
+  const currentExp = computeYearsMonths(e.doj, e.dateOfExit);
+  const totalExp = e.priorExperience ? `${e.priorExperience} + ${currentExp||"0 year(s) 0 month(s)"} here` : (currentExp||"—");
+  const age = e.dob ? computeAge(e.dob) : "—";
+  return `
+    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><h3>Work information</h3></div><div class="panel-body">
+      <div class="grid grid-3">
+        <div><div class="muted" style="font-size:12px;">Employee ID</div><div>${e.employeeId||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Company</div><div>${companyName(e.companyId)}</div></div>
+        <div><div class="muted" style="font-size:12px;">Department</div><div>${e.departmentId?deptName(e.departmentId):"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Designation</div><div>${e.designationId?desigName(e.designationId):"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Employment Type</div><div>${e.employmentType||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Employee Status</div><div>${e.status||"active"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Source of Hire</div><div>${e.sourceOfHire||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Date of Joining</div><div>${fmtDate(e.doj)}</div></div>
+        <div><div class="muted" style="font-size:12px;">Current Experience</div><div>${currentExp||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Prior Experience</div><div>${e.priorExperience||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Reporting Manager</div><div>${e.reportsTo?employeeName(e.reportsTo):"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Shift</div><div>${e.shiftId?shiftName(e.shiftId):"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Work Phone Ext.</div><div>${e.workPhoneExt||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Seating Location</div><div>${e.seatingLocation||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Date of Exit</div><div>${e.dateOfExit?fmtDate(e.dateOfExit):"—"}</div></div>
+      </div>
+    </div></div>
+    <div class="panel"><div class="panel-head"><h3>Personal information</h3></div><div class="panel-body">
+      <div class="grid grid-3">
+        <div><div class="muted" style="font-size:12px;">Date of Birth</div><div>${e.dob?fmtDate(e.dob):"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Age</div><div>${age}</div></div>
+        <div><div class="muted" style="font-size:12px;">Gender</div><div>${e.gender||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Marital Status</div><div>${e.maritalStatus||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Core Skills</div><div>${e.coreSkills||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Personal Email</div><div>${e.personalEmail||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Personal Mobile</div><div>${e.phone||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">PAN</div><div>${e.pan||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">UAN</div><div>${e.uan||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Insurance Policy No.</div><div>${e.insurancePolicyNumber||"—"}</div></div>
+        <div><div class="muted" style="font-size:12px;">Insurance From</div><div>${e.insuranceFrom||"—"}</div></div>
+      </div>
+      <div style="margin-top:14px;"><div class="muted" style="font-size:12px;">Present Address</div><div style="white-space:pre-wrap;">${e.presentAddress||"—"}</div></div>
+      <div style="margin-top:10px;"><div class="muted" style="font-size:12px;">Permanent Address</div><div style="white-space:pre-wrap;">${e.permanentAddress||"—"}</div></div>
+      <div style="margin-top:10px;"><div class="muted" style="font-size:12px;">About Me</div><div style="white-space:pre-wrap;">${e.aboutMe||"—"}</div></div>
+    </div></div>`;
+}
+window.openViewProfileModal = function(uid){
+  const e = S.employeesCache.find(e=>e.id===uid);
+  openModal("Profile — " + e.name, `<div style="max-height:60vh;overflow-y:auto;">${profileReadonlyHtml(e)}</div><div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+};
+
+async function renderMyProfile(){
+  const e = S.me;
+  let onboardingHtml = "";
+  const obSnap = await getDocs(query(collection(db,"onboardingTasks"), where("employeeId","==",e.id)));
+  const obTasks = obSnap.docs.map(d=>d.data());
+  if(obTasks.length){
+    const done = obTasks.filter(t=>t.done).length;
+    onboardingHtml = `<div class="card stat-card" style="margin-bottom:16px;"><div class="stat-label">Onboarding status</div><div class="stat-value" style="font-size:18px;">${done} / ${obTasks.length} done</div></div>`;
+  }
+  return `
+    ${onboardingHtml}
+    ${profileReadonlyHtml(e)}
+    <div class="panel" style="margin-top:16px;"><div class="panel-head"><h3>Edit my details</h3><span class="muted" style="font-size:12px;">Work info above is set by HR — contact them to change it</span></div>
+      <div class="panel-body">
+        <div class="grid grid-2">
+          <div class="field"><label>Nick name</label><input id="mp-nick" value="${e.nickName||""}"></div>
+          <div class="field"><label>Personal mobile</label><input id="mp-phone" value="${e.phone||""}"></div>
+          <div class="field"><label>Date of birth</label><input type="date" id="mp-dob" value="${e.dob||""}"></div>
+          <div class="field"><label>Gender</label><select id="mp-gender">
+            ${selOpt("", "— not set —", e.gender)}${selOpt("Male","Male",e.gender)}${selOpt("Female","Female",e.gender)}${selOpt("Other","Other",e.gender)}${selOpt("Prefer not to say","Prefer not to say",e.gender)}</select></div>
+          <div class="field"><label>Marital status</label><select id="mp-marital">
+            ${selOpt("", "— not set —", e.maritalStatus)}${selOpt("Single","Single",e.maritalStatus)}${selOpt("Married","Married",e.maritalStatus)}${selOpt("Other","Other",e.maritalStatus)}</select></div>
+          <div class="field"><label>Prior experience (before joining)</label><input id="mp-priorexp" value="${e.priorExperience||""}" placeholder="e.g. 5 year(s) 2 month(s)"></div>
+          <div class="field"><label>Core skills</label><input id="mp-skills" value="${e.coreSkills||""}" placeholder="comma separated"></div>
+          <div class="field"><label>Personal email</label><input type="email" id="mp-pemail" value="${e.personalEmail||""}"></div>
+          <div class="field"><label>PAN</label><input id="mp-pan" value="${e.pan||""}"></div>
+          <div class="field"><label>UAN</label><input id="mp-uan" value="${e.uan||""}"></div>
+          <div class="field"><label>Insurance policy number</label><input id="mp-insno" value="${e.insurancePolicyNumber||""}"></div>
+          <div class="field"><label>Insurance from</label><select id="mp-insfrom">
+            ${selOpt("", "— not set —", e.insuranceFrom)}${selOpt("Company","Company",e.insuranceFrom)}${selOpt("Personal","Personal",e.insuranceFrom)}${selOpt("None","None",e.insuranceFrom)}</select></div>
+        </div>
+        <div class="field"><label>Present address</label><textarea id="mp-present" rows="2">${e.presentAddress||""}</textarea></div>
+        <div class="field"><label>Permanent address</label><textarea id="mp-permanent" rows="2">${e.permanentAddress||""}</textarea></div>
+        <div class="field"><label>About me</label><textarea id="mp-about" rows="2">${e.aboutMe||""}</textarea></div>
+        <button class="btn btn-primary" onclick="submitMyProfile()">Save my details</button>
+      </div>
+    </div>`;
+}
+window.submitMyProfile = async function(){
+  const patch = {
+    nickName: document.getElementById("mp-nick").value.trim(),
+    phone: document.getElementById("mp-phone").value.trim(),
+    dob: document.getElementById("mp-dob").value || null,
+    gender: document.getElementById("mp-gender").value,
+    maritalStatus: document.getElementById("mp-marital").value,
+    priorExperience: document.getElementById("mp-priorexp").value.trim(),
+    coreSkills: document.getElementById("mp-skills").value.trim(),
+    personalEmail: document.getElementById("mp-pemail").value.trim(),
+    pan: document.getElementById("mp-pan").value.trim(),
+    uan: document.getElementById("mp-uan").value.trim(),
+    insurancePolicyNumber: document.getElementById("mp-insno").value.trim(),
+    insuranceFrom: document.getElementById("mp-insfrom").value,
+    presentAddress: document.getElementById("mp-present").value.trim(),
+    permanentAddress: document.getElementById("mp-permanent").value.trim(),
+    aboutMe: document.getElementById("mp-about").value.trim(),
+  };
+  await updateDoc(doc(db,"employees",S.me.id), patch);
+  S.me = { ...S.me, ...patch };
+  const meIdx = S.employeesCache.findIndex(e=>e.id===S.me.id);
+  if(meIdx > -1) S.employeesCache[meIdx] = { ...S.employeesCache[meIdx], ...patch };
+  toast("Profile updated","success");
+  navigateTo("my-profile");
+};
+
 const RENDERERS = {
   "dashboard": renderDashboard,
   "my-leave": renderMyLeave,
@@ -1712,6 +1938,8 @@ const RENDERERS = {
   "shifts": renderShifts,
   "my-time": renderMyTime,
   "policies": renderPolicies,
+  "my-profile": renderMyProfile,
+  "departments": renderDepartments,
 };
 </script>
 </body>
