@@ -32,7 +32,7 @@
   #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--ink);}
   .login-card{background:var(--surface);border-radius:12px;padding:40px 36px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
   .login-logo{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  .login-logo .mark{width:34px;height:34px;border-radius:8px;background:var(--brand-red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;}
+  .login-logo .brand-logo{width:38px;height:38px;flex:none;}
   .login-logo .name{font-weight:700;font-size:16px;}
   .login-logo .name small{display:block;font-weight:400;font-size:11px;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;}
   .login-card h1{font-size:18px;margin:18px 0 4px;}
@@ -54,10 +54,12 @@
   #app-shell{display:none;min-height:100vh;}
   #app-shell.active{display:flex;}
   #sidebar{width:220px;flex:none;background:var(--ink);color:#fff;display:flex;flex-direction:column;}
-  #sidebar .brand{display:flex;align-items:center;gap:10px;padding:18px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
-  #sidebar .brand .mark{width:30px;height:30px;border-radius:7px;background:var(--brand-red);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;}
-  #sidebar .brand .name{font-weight:700;font-size:14px;line-height:1.2;}
-  #sidebar .brand .name small{display:block;font-weight:400;font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.05em;}
+  #sidebar .brand{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:22px 16px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
+  #sidebar .brand .brand-logo{width:64px;height:64px;flex:none;margin-bottom:4px;}
+  #sidebar .brand .brand-name{font-weight:800;font-size:15px;letter-spacing:.01em;}
+  #sidebar .brand .brand-name .grp{font-weight:400;opacity:.7;margin-left:3px;}
+  #sidebar .brand .brand-sub{display:flex;align-items:center;gap:5px;font-size:10.5px;opacity:.65;text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+  #sidebar .brand .brand-sub svg{width:13px;height:13px;flex:none;}
   #nav{flex:1;padding:10px;overflow-y:auto;}
   #nav .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.07em;opacity:.45;padding:14px 10px 6px;}
   #nav button{display:flex;align-items:center;width:100%;text-align:left;background:transparent;border:none;color:#fff;padding:9px 10px;border-radius:7px;font-size:13.5px;margin-bottom:2px;opacity:.8;}
@@ -65,6 +67,9 @@
   #nav button.active{background:var(--brand-red);opacity:1;}
   #nav .nav-mode-toggle{display:flex;gap:4px;background:rgba(255,255,255,.08);border-radius:8px;padding:4px;margin-bottom:6px;}
   #nav .nav-mode-toggle button{flex:1;text-align:center;justify-content:center;margin-bottom:0;font-weight:600;font-size:12px;}
+  #nav .nav-quicklinks{display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.06);border-radius:8px;padding:5px;margin:2px 0 10px;}
+  #nav .nav-quicklinks button{margin-bottom:0;justify-content:center;text-align:center;font-size:12px;font-weight:600;border-radius:6px;}
+  #nav .nav-quicklinks button.active{background:var(--brand-red);}
   #sidebar .who{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:12.5px;}
   #sidebar .who .role-pill{display:inline-block;margin-top:4px;font-size:10px;background:rgba(255,255,255,.12);padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;}
   #sidebar .who button{margin-top:10px;width:100%;background:rgba(255,255,255,.08);border:none;color:#fff;padding:7px;border-radius:6px;font-size:12.5px;}
@@ -129,7 +134,11 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">
-      <div class="mark">CG</div>
+      <svg class="brand-logo" viewBox="0 0 106 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M 64.2 68.4 A 32 32 0 1 1 64.2 31.6" fill="none" stroke="#E8412C" stroke-width="13" stroke-linecap="round"/>
+        <path d="M 41.8 31.6 A 32 32 0 1 1 41.8 68.4" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"/>
+        <rect x="41.8" y="62" width="30" height="13" fill="currentColor"/>
+      </svg>
       <div class="name">Chamaria Group<small>HRMS Portal</small></div>
     </div>
     <h1>Sign in</h1>
@@ -150,7 +159,14 @@
 </div>
 
 <div id="no-profile-screen" style="display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
-  <div class="login-logo"><div class="mark">CG</div><div class="name">Chamaria Group<small>HRMS Portal</small></div></div>
+  <div class="login-logo">
+    <svg class="brand-logo" viewBox="0 0 106 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M 64.2 68.4 A 32 32 0 1 1 64.2 31.6" fill="none" stroke="#E8412C" stroke-width="13" stroke-linecap="round"/>
+      <path d="M 41.8 31.6 A 32 32 0 1 1 41.8 68.4" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"/>
+      <rect x="54" y="43.5" width="18" height="13" fill="currentColor"/>
+    </svg>
+    <div class="name">Chamaria Group<small>HRMS Portal</small></div>
+  </div>
   <p class="muted" style="max-width:340px;text-align:center;">Your login works, but no employee profile is set up for this account yet. Contact HR to finish provisioning your access.</p>
   <button class="btn btn-ghost" onclick="doSignOut()">Sign out</button>
 </div>
@@ -158,8 +174,16 @@
 <div id="app-shell">
   <div id="sidebar">
     <div class="brand">
-      <div class="mark">CG</div>
-      <div class="name">Chamaria Group<small>HRMS Portal</small></div>
+      <svg class="brand-logo" viewBox="0 0 106 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M 64.2 68.4 A 32 32 0 1 1 64.2 31.6" fill="none" stroke="#E8412C" stroke-width="13" stroke-linecap="round"/>
+        <path d="M 41.8 31.6 A 32 32 0 1 1 41.8 68.4" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"/>
+        <rect x="41.8" y="62" width="30" height="13" fill="currentColor"/>
+      </svg>
+      <div class="brand-name">CHAMARIA<span class="grp">GROUP</span></div>
+      <div class="brand-sub">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M5 16c0-2 2-3 4-3s4 1 4 3"/><path d="M14 9h5M14 13h5"/></svg>
+        HRMS Portal
+      </div>
     </div>
     <div id="nav"></div>
     <div class="who">
@@ -259,6 +283,19 @@ function fmtDate(d){
   return new Date(d).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 }
 function thisYear(){ return new Date().getFullYear(); }
+function escapeHtml(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+function fileToDataUri(file, maxBytes){
+  maxBytes = maxBytes || 900000;
+  return new Promise((resolve, reject) => {
+    if(file.size > maxBytes){ reject(new Error(`File too large (max ${Math.round(maxBytes/1024)}KB)`)); return; }
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
 
 // ---------------- auth ----------------
 document.getElementById("login-form").addEventListener("submit", async (e) => {
@@ -342,14 +379,12 @@ function isSeniorOf(employeeId){
 function renderNav(){
   const userItems = [
     { id:"dashboard", label:"Dashboard", show:true },
-    { id:"announcements", label:"Announcements", show:true },
     { id:"my-profile", label:"My Profile", show:true },
     { id:"directory", label:"Directory", show:true },
     { id:"my-leave", label:"My Leave", show:true },
     { id:"my-attendance", label:"My Attendance", show:true },
     { id:"resignation", label:"Resignation", show:true },
     { id:"my-time", label:"Time Tracker", show:true },
-    { id:"hr-policy-booklet", label:"HR Policy Booklet", show:true },
     { id:"policies", label:"Policies", show:true },
     { id:"holidays", label:"Holiday Calendar", show:true },
     { id:"my-salary", label:"My Salary", show:true },
@@ -406,7 +441,33 @@ function renderNav(){
   }
 
   if(!isHrOrAbove() || S.navMode!=="admin"){
-    section("User Control", userItems);
+    const h = document.createElement("div"); h.className="nav-section"; h.textContent="User Control";
+    nav.appendChild(h);
+    const dashBtn = document.createElement("button");
+    dashBtn.textContent = "Dashboard"; dashBtn.dataset.view = "dashboard";
+    dashBtn.onclick = ()=>navigateTo("dashboard");
+    nav.appendChild(dashBtn);
+
+    const quick = document.createElement("div");
+    quick.className = "nav-quicklinks";
+    [
+      { id:"chairman-message", label:"Chairman's Message" },
+      { id:"announcements", label:"Announcements" },
+      { id:"hr-policy-booklet", label:"HR Policy Booklet" },
+    ].forEach(i=>{
+      const b = document.createElement("button");
+      b.textContent = i.label; b.dataset.view = i.id;
+      b.onclick = ()=>navigateTo(i.id);
+      quick.appendChild(b);
+    });
+    nav.appendChild(quick);
+
+    userItems.filter(i=>i.id!=="dashboard" && i.show).forEach(i=>{
+      const b = document.createElement("button");
+      b.textContent = i.label; b.dataset.view = i.id;
+      b.onclick = ()=>navigateTo(i.id);
+      nav.appendChild(b);
+    });
   }
   section("Approvals", approverItems);
   if(isHrOrAbove() && S.navMode==="admin"){
@@ -431,7 +492,7 @@ const VIEW_TITLES = {
   "hr-letters":"HR Letters", "shifts":"Shifts",
   "my-time":"Time Tracker", "policies":"Policies",
   "my-profile":"My Profile", "departments":"Departments & Designations",
-  "hr-policy-booklet":"HR Policy Booklet", "resignation":"Resignation",
+  "hr-policy-booklet":"HR Policy Booklet", "chairman-message":"Chairman's Message", "resignation":"Resignation",
   "resignations-admin":"Resignations", "attendance-records":"Attendance Records",
   "salary-import":"Salary Import",
 };
@@ -630,7 +691,7 @@ function employeeEmail(uid){
 
 // ==================== APPROVALS ====================
 async function renderApprovals(){
-  let leaveReqs = [], regReqs = [], salarySlipReqs = [];
+  let leaveReqs = [], regReqs = [], salarySlipReqs = [], resignReqs = [];
   if(isHrOrAbove()){
     const lSnap = await getDocs(query(collection(db,"leaveRequests"), where("status","==","pending")));
     leaveReqs = lSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
@@ -638,16 +699,20 @@ async function renderApprovals(){
     regReqs = rSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
     const sSnap = await getDocs(query(collection(db,"salarySlipRequests"), where("status","==","pending")));
     salarySlipReqs = sSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
+    const rgSnap = await getDocs(query(collection(db,"resignations"), where("status","==","pending")));
+    resignReqs = rgSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
   }else{
     const lSnap = await getDocs(query(collection(db,"leaveRequests"), where("approverId","==",S.me.id), where("status","==","pending")));
     leaveReqs = lSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
     const rSnap = await getDocs(query(collection(db,"regularisations"), where("approverId","==",S.me.id), where("status","==","pending")));
     regReqs = rSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
+    const rgSnap = await getDocs(query(collection(db,"resignations"), where("approverId","==",S.me.id), where("status","==","pending")));
+    resignReqs = rgSnap.docs.map(d=>({ id:d.id, uid:d.data().employeeId, ...d.data() }));
   }
   await autoApproveStaleLeaveRequests(leaveReqs);
   leaveReqs = leaveReqs.filter(r=>r.status==="pending");
   // fetch names for any uid not already cached (senior case)
-  for(const r of [...leaveReqs, ...regReqs, ...salarySlipReqs]){
+  for(const r of [...leaveReqs, ...regReqs, ...salarySlipReqs, ...resignReqs]){
     if(!S.employeesCache.find(e=>e.id===r.uid)){
       const s = await getDoc(doc(db,"employees",r.uid));
       if(s.exists()) S.employeesCache.push({ id:r.uid, ...s.data() });
@@ -687,6 +752,26 @@ async function renderApprovals(){
                   <button class="small-btn danger" onclick="decideRegularisation('${r.uid}','${r.id}','rejected')">Reject</button>
                 </td>
               </tr>`).join("") : '<tr><td colspan="7" class="empty-state">Nothing pending.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:20px;">
+      <div class="panel-head"><h3>Pending resignations</h3></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Employee</th><th>Date of apply</th><th>Date of resignation</th><th>Reason</th><th>Letter</th><th></th></tr></thead>
+          <tbody>
+            ${resignReqs.length ? resignReqs.map(r=>`
+              <tr>
+                <td>${employeeName(r.uid)}</td><td>${fmtDate(r.dateOfApply||r.createdAt)}</td><td>${fmtDate(r.dateOfResignation||r.lastWorkingDay)}</td>
+                <td class="muted">${escapeHtml(r.reason||"—")}</td>
+                <td>${r.letterUrl?`<a href="${r.letterUrl}" target="_blank" rel="noopener">${escapeHtml(r.letterName||"View letter")}</a>`:"—"}</td>
+                <td class="row-actions">
+                  <button class="small-btn primary" onclick="decideResignation('${r.id}','${r.uid}','approved','${r.dateOfResignation||r.lastWorkingDay}')">Approve</button>
+                  <button class="small-btn danger" onclick="decideResignation('${r.id}','${r.uid}','rejected','${r.dateOfResignation||r.lastWorkingDay}')">Reject</button>
+                </td>
+              </tr>`).join("") : '<tr><td colspan="6" class="empty-state">Nothing pending.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -993,26 +1078,36 @@ async function renderResignation(){
   const hasActive = rows.some(r=>r.status==="pending"||r.status==="approved");
   document.getElementById("page-actions").innerHTML = hasActive ? "" : '<button class="btn btn-primary" onclick="openResignationModal()">Submit resignation</button>';
   return `<div class="panel"><div class="panel-head"><h3>My resignation</h3></div>
-    <div class="table-wrap"><table><thead><tr><th>Submitted</th><th>Last working day</th><th>Reason</th><th>Status</th><th>Comment</th></tr></thead>
-    <tbody>${rows.length?rows.map(r=>`<tr><td>${r.createdAt?fmtDate(r.createdAt):"—"}</td><td>${fmtDate(r.lastWorkingDay)}</td><td class="muted">${r.reason}</td><td><span class="pill pill-${r.status}">${r.status}</span></td><td class="muted">${r.approverComment||"—"}</td></tr>`).join(""):'<tr><td colspan="5" class="empty-state">No resignation submitted.</td></tr>'}</tbody></table></div></div>`;
+    <div class="table-wrap"><table><thead><tr><th>Date of apply</th><th>Date of resignation</th><th>Reason</th><th>Letter</th><th>Status</th><th>Comment</th></tr></thead>
+    <tbody>${rows.length?rows.map(r=>`<tr><td>${fmtDate(r.dateOfApply||r.createdAt)}</td><td>${fmtDate(r.dateOfResignation||r.lastWorkingDay)}</td><td class="muted">${escapeHtml(r.reason)}</td><td>${r.letterUrl?`<a href="${r.letterUrl}" target="_blank" rel="noopener">${escapeHtml(r.letterName||"View letter")}</a>`:"—"}</td><td><span class="pill pill-${r.status}">${r.status}</span></td><td class="muted">${escapeHtml(r.approverComment||"—")}</td></tr>`).join(""):'<tr><td colspan="6" class="empty-state">No resignation submitted.</td></tr>'}</tbody></table></div></div>`;
 }
 window.openResignationModal = function(){
+  const today = new Date().toISOString().slice(0,10);
   openModal("Submit resignation", `
-    <div class="field"><label>Proposed last working day</label><input type="date" id="rs-lwd"></div>
-    <div class="field"><label>Reason</label><textarea id="rs-reason" rows="3"></textarea></div>
+    <div class="field"><label>Date of apply</label><input type="date" id="rs-apply" value="${today}" disabled></div>
+    <div class="field"><label>Date of resignation</label><input type="date" id="rs-dor"></div>
+    <div class="field"><label>Reason</label><textarea id="rs-reason" rows="8" style="width:100%;font-family:inherit;"></textarea></div>
+    <div class="field"><label>Attach resignation letter (optional, PDF/image, max 900KB)</label><input type="file" id="rs-letter" accept=".pdf,image/*"></div>
     <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitResignation()">Submit</button></div>
   `);
 };
 window.submitResignation = async function(){
-  const lastWorkingDay = document.getElementById("rs-lwd").value;
+  const dateOfApply = document.getElementById("rs-apply").value;
+  const dateOfResignation = document.getElementById("rs-dor").value;
   const reason = document.getElementById("rs-reason").value.trim();
-  if(!lastWorkingDay || !reason){ toast("Fill in last working day and reason","error"); return; }
+  if(!dateOfResignation || !reason){ toast("Fill in the date of resignation and reason","error"); return; }
   if(!S.me.reportsTo){ toast("You have no reporting Senior set — ask HR to fix this first","error"); return; }
-  await addDoc(collection(db,"resignations"), { employeeId:S.me.id, lastWorkingDay, reason, status:"pending", approverId:S.me.reportsTo, approverComment:"", createdAt: serverTimestamp() });
+  const fileInput = document.getElementById("rs-letter");
+  let letterUrl = null, letterName = null;
+  if(fileInput.files && fileInput.files[0]){
+    try{ letterUrl = await fileToDataUri(fileInput.files[0]); letterName = fileInput.files[0].name; }
+    catch(e){ toast(e.message || "Could not attach the letter","error"); return; }
+  }
+  await addDoc(collection(db,"resignations"), { employeeId:S.me.id, dateOfApply, dateOfResignation, reason, letterUrl, letterName, status:"pending", approverId:S.me.reportsTo, approverComment:"", createdAt: serverTimestamp() });
   await updateDoc(doc(db,"employees",S.me.id), { status:"notice_period" });
   S.me.status = "notice_period";
   const idx = S.employeesCache.findIndex(e=>e.id===S.me.id); if(idx>-1) S.employeesCache[idx].status = "notice_period";
-  sendEmail({ to_email: employeeEmail(S.me.reportsTo), employee_name:S.me.name, last_working_day:lastWorkingDay, reason });
+  sendEmail({ to_email: employeeEmail(S.me.reportsTo), employee_name:S.me.name, date_of_resignation:dateOfResignation, reason, message:`${S.me.name} has submitted their resignation, effective ${dateOfResignation}. Please review and approve it in the HRMS portal.` });
   toast("Resignation submitted","success"); closeModal(); navigateTo("resignation");
 };
 
@@ -1020,29 +1115,52 @@ async function renderResignationsAdmin(){
   const snap = await getDocs(collection(db,"resignations"));
   const rows = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||0)-((a.createdAt&&a.createdAt.seconds)||0));
   return `<div class="panel"><div class="panel-head"><h3>Resignations (${rows.length})</h3></div>
-    <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Submitted</th><th>Last working day</th><th>Reason</th><th>Status</th><th></th></tr></thead>
-    <tbody>${rows.length?rows.map(r=>`<tr><td>${employeeName(r.employeeId)}</td><td>${r.createdAt?fmtDate(r.createdAt):"—"}</td><td>${fmtDate(r.lastWorkingDay)}</td><td class="muted">${r.reason}</td><td><span class="pill pill-${r.status}">${r.status}</span></td>
-    <td class="row-actions">${r.status==="pending"?`<button class="small-btn primary" onclick="decideResignation('${r.id}','${r.employeeId}','approved','${r.lastWorkingDay}')">Approve</button><button class="small-btn danger" onclick="decideResignation('${r.id}','${r.employeeId}','rejected','${r.lastWorkingDay}')">Reject</button>`:"—"}</td></tr>`).join(""):'<tr><td colspan="6" class="empty-state">No resignations submitted.</td></tr>'}</tbody></table></div></div>`;
+    <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Date of apply</th><th>Date of resignation</th><th>Reason</th><th>Letter</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows.length?rows.map(r=>`<tr><td>${employeeName(r.employeeId)}</td><td>${fmtDate(r.dateOfApply||r.createdAt)}</td><td>${fmtDate(r.dateOfResignation||r.lastWorkingDay)}</td><td class="muted">${escapeHtml(r.reason)}</td><td>${r.letterUrl?`<a href="${r.letterUrl}" target="_blank" rel="noopener">${escapeHtml(r.letterName||"View letter")}</a>`:"—"}</td><td><span class="pill pill-${r.status}">${r.status}</span></td>
+    <td class="row-actions">${r.status==="pending"?`<button class="small-btn primary" onclick="decideResignation('${r.id}','${r.employeeId}','approved','${r.dateOfResignation||r.lastWorkingDay}')">Approve</button><button class="small-btn danger" onclick="decideResignation('${r.id}','${r.employeeId}','rejected','${r.dateOfResignation||r.lastWorkingDay}')">Reject</button>`:"—"}</td></tr>`).join(""):'<tr><td colspan="7" class="empty-state">No resignations submitted.</td></tr>'}</tbody></table></div></div>`;
 }
-window.decideResignation = async function(id, employeeId, status, lastWorkingDay){
+window.decideResignation = async function(id, employeeId, status, dateOfResignation){
   const comment = status==="rejected" ? (prompt("Optional comment:")||"") : "";
   await updateDoc(doc(db,"resignations",id), { status, approverComment:comment, decidedAt: serverTimestamp() });
   if(status==="approved"){
-    await updateDoc(doc(db,"employees",employeeId), { dateOfExit: lastWorkingDay });
-    const idx = S.employeesCache.findIndex(e=>e.id===employeeId); if(idx>-1) S.employeesCache[idx].dateOfExit = lastWorkingDay;
+    await updateDoc(doc(db,"employees",employeeId), { dateOfExit: dateOfResignation });
+    const idx = S.employeesCache.findIndex(e=>e.id===employeeId); if(idx>-1) S.employeesCache[idx].dateOfExit = dateOfResignation;
   }else{
     await updateDoc(doc(db,"employees",employeeId), { status:"active" });
     const idx = S.employeesCache.findIndex(e=>e.id===employeeId); if(idx>-1) S.employeesCache[idx].status = "active";
   }
-  sendEmail({ to_email: employeeEmail(employeeId), status });
-  toast(`Resignation ${status}`,"success"); navigateTo("resignations-admin");
+  sendEmail({ to_email: employeeEmail(employeeId), status, message:`Your resignation has been ${status}${comment?` — ${comment}`:""}.` });
+  toast(`Resignation ${status}`,"success"); navigateTo(S.view);
 };
 
-// ==================== HR POLICY BOOKLET ====================
-async function renderHrPolicyBooklet(){
-  return `<div class="panel"><div class="panel-head"><h3>HR Policy Booklet</h3></div>
-    <div class="panel-body"><p class="muted">The official Chamaria Group HR Policy Booklet will be published here. Check back soon, or contact HR for the current policy documents.</p></div></div>`;
+// ==================== HR POLICY BOOKLET / CHAIRMAN'S MESSAGE (siteContent) ====================
+async function renderSiteContentPage(id, title, emptyMsg){
+  const snap = await getDoc(doc(db,"siteContent",id));
+  const text = snap.exists() ? (snap.data().text||"") : "";
+  document.getElementById("page-actions").innerHTML = isHrOrAbove()
+    ? `<button class="btn btn-primary" onclick="openEditSiteContentModal('${id}','${title.replace(/'/g,"\\'")}')">Edit</button>` : "";
+  return `<div class="panel"><div class="panel-head"><h3>${title}</h3></div>
+    <div class="panel-body"><div style="white-space:pre-wrap;line-height:1.7;font-size:14.5px;">${text ? escapeHtml(text) : `<p class="muted">${emptyMsg}</p>`}</div></div></div>`;
 }
+async function renderHrPolicyBooklet(){
+  return renderSiteContentPage("hrPolicyBooklet", "HR Policy Booklet", "The official Chamaria Group HR Policy Booklet will be published here. Check back soon, or contact HR for the current policy documents.");
+}
+async function renderChairmanMessage(){
+  return renderSiteContentPage("chairmanMessage", "Chairman's Message", "The Chairman's message will be published here soon.");
+}
+window.openEditSiteContentModal = async function(id, title){
+  const snap = await getDoc(doc(db,"siteContent",id));
+  const text = snap.exists() ? (snap.data().text||"") : "";
+  openModal(`Edit ${title}`, `
+    <div class="field"><label>${title}</label><textarea id="sc-text" rows="18" style="width:100%;font-family:inherit;font-size:14px;">${escapeHtml(text)}</textarea></div>
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSiteContent('${id}')">Save</button></div>
+  `);
+};
+window.saveSiteContent = async function(id){
+  const text = document.getElementById("sc-text").value;
+  await setDoc(doc(db,"siteContent",id), { text, updatedAt: serverTimestamp(), updatedBy: S.me.id });
+  toast("Saved","success"); closeModal(); navigateTo(id==="chairmanMessage" ? "chairman-message" : "hr-policy-booklet");
+};
 
 // ==================== OTHER REQUESTS ====================
 async function renderRequests(){
@@ -2447,6 +2565,7 @@ const RENDERERS = {
   "my-profile": renderMyProfile,
   "departments": renderDepartments,
   "hr-policy-booklet": renderHrPolicyBooklet,
+  "chairman-message": renderChairmanMessage,
   "resignation": renderResignation,
   "resignations-admin": renderResignationsAdmin,
   "attendance-records": renderAttendanceRecords,
