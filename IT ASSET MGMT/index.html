@@ -462,6 +462,71 @@
     font-family:var(--mono);letter-spacing:0.02em;border-top:1px solid var(--line);
   }
 
+  /* ================= HEALTH MONITORING ================= */
+  .hm-hero{
+    display:grid;grid-template-columns:auto 1fr;gap:30px;align-items:center;
+    background:var(--paper);border:1px solid var(--line);border-radius:18px;
+    padding:24px 28px;margin-bottom:16px;
+  }
+  .hm-ring{position:relative;width:136px;height:136px;border-radius:50%;flex-shrink:0;}
+  .hm-ring-inner{
+    position:absolute;inset:13px;border-radius:50%;background:var(--paper);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .hm-score{font-family:var(--mono);font-size:35px;font-weight:700;line-height:1;}
+  .hm-score-lbl{font-size:9.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.12em;margin-top:5px;}
+  .hm-verdict{font-size:19px;font-weight:700;margin-bottom:5px;}
+  .hm-sub{font-size:12.5px;color:var(--ink-soft);line-height:1.55;margin-bottom:16px;}
+  .hm-bars{display:grid;gap:9px;}
+  .hm-bar-row{display:grid;grid-template-columns:200px 1fr 84px;gap:12px;align-items:center;font-size:12px;}
+  .hm-bar-lbl{color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hm-bar-track{height:7px;border-radius:6px;background:rgba(255,255,255,0.07);overflow:hidden;}
+  .hm-bar-fill{height:100%;border-radius:6px;transition:width .4s ease;}
+  .hm-bar-val{font-family:var(--mono);font-size:11px;text-align:right;color:var(--ink-soft);}
+
+  .hm-group{background:var(--paper);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden;}
+  .hm-group-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .hm-group-title{font-size:14px;font-weight:700;flex:1;min-width:160px;}
+  .hm-find{padding:13px 18px;border-bottom:1px solid var(--line-soft);}
+  .hm-find:last-child{border-bottom:none;}
+  .hm-find-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .hm-find.has-items .hm-find-top{cursor:pointer;}
+  .hm-sev{
+    font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;
+    padding:3px 9px;border-radius:20px;flex-shrink:0;
+  }
+  .hm-sev.crit{background:var(--danger-soft);color:var(--danger);}
+  .hm-sev.warn{background:var(--warn-soft);color:var(--warn);}
+  .hm-sev.info{background:var(--accent-soft);color:var(--accent);}
+  .hm-sev.ok{background:var(--success-soft);color:var(--success);}
+  .hm-find-title{font-size:13px;font-weight:600;flex:1;min-width:180px;}
+  .hm-count{font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:20px;background:var(--surface);border:1px solid var(--line);color:var(--ink-soft);}
+  .hm-caret{font-size:10px;color:var(--ink-soft);width:12px;text-align:center;}
+  .hm-find-why{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.55;}
+  .hm-items{margin-top:10px;display:none;border-top:1px solid var(--line-soft);}
+  .hm-items.open{display:block;}
+  .hm-item{
+    font-family:var(--mono);font-size:11px;color:var(--ink-soft);
+    padding:6px 0;border-bottom:1px solid var(--line-soft);
+    display:flex;gap:12px;justify-content:space-between;align-items:baseline;
+  }
+  .hm-item:last-child{border-bottom:none;}
+  .hm-item-main{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hm-item-meta{flex-shrink:0;}
+  .hm-more{font-size:11px;color:var(--ink-soft);padding-top:8px;font-style:italic;}
+  .hm-note{
+    font-size:11.5px;color:var(--ink-soft);line-height:1.65;padding:16px 18px;
+    background:var(--paper);border:1px solid var(--line);border-radius:14px;margin-top:4px;
+  }
+  .hm-note strong{color:var(--ink);}
+  .hm-clean{padding:22px 18px;text-align:center;font-size:12.5px;color:var(--success);}
+
+  @media (max-width:760px){
+    .hm-hero{grid-template-columns:1fr;gap:20px;justify-items:center;text-align:center;}
+    .hm-bars{width:100%;}
+    .hm-bar-row{grid-template-columns:130px 1fr 70px;text-align:left;}
+  }
+
   @media (max-width:900px){
     .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:60;width:70px;}
     .sidebar .nav-txt, .sidebar .sidebar-brand-text, .sidebar .sidebar-section-label, .sidebar .sidebar-summary-card, .sidebar .sidebar-promo{display:none;}
@@ -546,6 +611,7 @@
     <nav class="sidebar-nav">
       <div class="sidebar-section-label">Main</div>
       <button class="tab-btn active" data-tab="dashboard"><span class="nav-ic">▤</span><span class="nav-txt">Dashboard</span></button>
+      <button class="tab-btn" data-tab="health"><span class="nav-ic">🩺</span><span class="nav-txt">Health Monitoring</span></button>
       <button class="tab-btn" data-tab="assets"><span class="nav-ic">▮</span><span class="nav-txt">Assets</span></button>
       <button class="tab-btn" data-tab="companies"><span class="nav-ic">▦</span><span class="nav-txt">Companies</span></button>
       <button class="tab-btn" data-tab="employees"><span class="nav-ic">◔</span><span class="nav-txt">User</span></button>
@@ -591,6 +657,9 @@
         <input id="globalSearch" type="text" placeholder="Search assets, companies, employees…">
       </div>
       <button class="notif-bell" id="notifBell" title="Warranty alerts">🔔<span class="notif-badge" id="notifBadge" style="display:none;">0</span></button>
+      <button class="btn btn-sm" id="healthQuickBtn" title="Health Monitoring — fleet health checks" style="display:flex;align-items:center;gap:6px;font-weight:600;">
+        🩺 Health <span id="healthQuickBadge" style="background:var(--danger);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;display:none;">0</span>
+      </button>
       <button class="btn btn-sm" id="projQuickBtn" title="IT Projects" style="display:flex;align-items:center;gap:6px;font-weight:600;">
         📋 IT Projects <span id="projActiveBadge" style="background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;display:none;">0</span>
       </button>
@@ -685,6 +754,45 @@
       <h3>Renewals &amp; Expiries — Assets, Domains &amp; Network</h3>
       <table class="mini-table"><thead><tr><th>Item</th><th>Type</th><th>Company</th><th>Expires</th><th>Status</th></tr></thead>
         <tbody id="dashWarrantyTable"></tbody></table>
+    </div>
+  </section>
+
+  <!-- ================= HEALTH MONITORING ================= -->
+  <section id="tab-health" class="tab-panel section">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <h3 style="margin:0;">🩺 Health Monitoring</h3>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="healthExportBtn">⬇ Export Report</button>
+        <button class="btn" id="healthRefreshBtn">↻ Re-run Checks</button>
+      </div>
+    </div>
+
+    <div class="hm-hero">
+      <div class="hm-ring" id="healthRing">
+        <div class="hm-ring-inner">
+          <div class="hm-score" id="healthScoreVal">–</div>
+          <div class="hm-score-lbl">Score</div>
+        </div>
+      </div>
+      <div>
+        <div class="hm-verdict" id="healthVerdict">Running checks…</div>
+        <div class="hm-sub" id="healthSub">Reading your assets, services, network devices and agent scans.</div>
+        <div class="hm-bars" id="healthCatBars"></div>
+      </div>
+    </div>
+
+    <div class="card-row" id="healthStatsRow"></div>
+
+    <div id="healthGroups"></div>
+
+    <div class="hm-note">
+      <strong>How this works.</strong> Every check runs in your browser against data already in this portal —
+      assets, IT services, network devices and agent scans. Nothing is pinged or probed over the network, so a
+      finding here means <em>the record says so</em>, not that a device was contacted. The score is a weighted
+      average of the categories above; a category with no data to judge is skipped rather than counted as a pass.
+      <span id="healthScannedAt"></span>
     </div>
   </section>
 
@@ -2963,6 +3071,7 @@ async function loadAll(){
   }
   populateDropdowns();
   renderDashboard();
+  try{ updateHealthBadge(computeHealth()); }catch(e){ console.warn('Health badge skipped:', e); }
   renderAssets();
   renderCompanies();
   renderEmployees();
@@ -5044,6 +5153,16 @@ $('projectViewClose').addEventListener('click', closeProjectView);
 $('projectViewCloseBtn').addEventListener('click', closeProjectView);
 $('projectViewOverlay').addEventListener('click', e => { if(e.target.id==='projectViewOverlay') closeProjectView(); });
 $('projQuickBtn').addEventListener('click', () => switchTab('projects'));
+$('healthQuickBtn').addEventListener('click', () => switchTab('health'));
+$('healthExportBtn').addEventListener('click', exportHealthCSV);
+$('healthRefreshBtn').addEventListener('click', async () => {
+  const btn = $('healthRefreshBtn');
+  btn.disabled = true; btn.textContent = '↻ Re-running…';
+  try{ await loadDiscovery(); }catch(e){ console.warn('Discovery refresh skipped:', e); }
+  renderHealth();
+  btn.disabled = false; btn.textContent = '↻ Re-run Checks';
+  showToast('Health checks re-run');
+});
 
 // Office Network dropdown
 function renderNetworkDropdown(){
@@ -7031,12 +7150,400 @@ async function saveBranding(){
 }
 
 /* ================= TAB SWITCHING ================= */
+/* ================= HEALTH MONITORING =================
+   Every check below reads data already loaded into this page — assets, IT services,
+   network devices, agent scans and tickets. Nothing is pinged or probed over the
+   network (a browser on a public page can't reach internal IPs anyway), so a finding
+   here means "the record says so", not "the device was contacted and answered".
+   Each category returns a 0-100 score plus its findings; a category with nothing to
+   judge returns null and is dropped from the weighting rather than counted as a pass. */
+
+const HM_EOL_NOTE = 'Windows 10 reached Microsoft end-of-support on 14 Oct 2025 — no further security patches unless the PC runs an LTSC/IoT edition or is enrolled in Extended Security Updates (ESU).';
+
+function hmDaysUntil(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(String(dateStr).slice(0,10) + 'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  return Math.round((d - t) / 86400000);
+}
+function hmDaysSince(ts){
+  if(!ts) return null;
+  const d = new Date(ts);
+  if(isNaN(d.getTime())) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function hmNum(v){
+  const m = String(v ?? '').replace(/,/g,'').match(/([\d.]+)/);
+  return m ? parseFloat(m[1]) : null;
+}
+// Agent writes free_space as "C: 45GB free of 237GB | D: 10GB free of 100GB"
+function hmDisks(freeSpace){
+  const out = [];
+  const re = /([A-Za-z]:)\s*([\d.,]+)\s*GB free of\s*([\d.,]+)\s*GB/gi;
+  let m;
+  while((m = re.exec(String(freeSpace || ''))) !== null){
+    const free = parseFloat(m[2].replace(/,/g,''));
+    const total = parseFloat(m[3].replace(/,/g,''));
+    if(total > 0 && !isNaN(free)) out.push({ drive:m[1], free, total, pct: free/total });
+  }
+  return out;
+}
+function hmUnsupportedOS(osName){
+  const s = String(osName || '').toLowerCase();
+  if(!s) return false;
+  if(s.includes('windows 11')) return false;
+  if(s.includes('server')) return false;   // server lifecycles differ — don't flag blindly
+  return /windows\s*(10|8\.1|8|7|vista|xp)\b/.test(s);
+}
+function hmEsc(s){
+  return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+function hmLabelOf(a){
+  return (a.assetCode ? a.assetCode + ' — ' : '') + ([a.brand, a.model].filter(Boolean).join(' ') || a.category || 'Asset');
+}
+
+function computeHealth(){
+  const cats = [];
+
+  /* ---------- 1. Renewals & contracts (weight 20) ---------- */
+  (function(){
+    const findings = [], pool = [];
+    assets.forEach(a=>{
+      if(!a.warrantyEnd || a.assetHealth === 'Retired') return;
+      pool.push({ days: hmDaysUntil(a.warrantyEnd), main: hmLabelOf(a), when: a.warrantyEnd, group:'Warranty' });
+    });
+    itServices.forEach(s=>{
+      if(!s.expiryDate) return;
+      pool.push({ days: hmDaysUntil(s.expiryDate), main: (s.domainName || s.serviceType || 'IT service'), when: s.expiryDate, group:'Service' });
+    });
+    networkDevices.forEach(n=>{
+      if(!n.subExpiry) return;
+      pool.push({ days: hmDaysUntil(n.subExpiry),
+        main: ([n.brand, n.model].filter(Boolean).join(' ') || n.deviceType || 'Network device'), when: n.subExpiry, group:'Subscription' });
+    });
+    const valid   = pool.filter(p => p.days !== null);
+    const expired = valid.filter(p => p.days < 0).sort((a,b)=>a.days-b.days);
+    const soon    = valid.filter(p => p.days >= 0 && p.days <= 30).sort((a,b)=>a.days-b.days);
+    const near    = valid.filter(p => p.days > 30 && p.days <= 90).sort((a,b)=>a.days-b.days);
+
+    if(expired.length) findings.push({ sev:'crit', title:'Expired warranty or subscription', count:expired.length,
+      why:'Cover has already lapsed. A failure now is billable, and the vendor may decline to support the case at all.',
+      items: expired.map(p=>({ main:p.main, meta: p.group + ' · lapsed ' + Math.abs(p.days) + 'd ago (' + p.when + ')' })) });
+    if(soon.length) findings.push({ sev:'warn', title:'Renewal due within 30 days', count:soon.length,
+      why:'Start the renewal now — quotes and PO approval usually take longer than the time left.',
+      items: soon.map(p=>({ main:p.main, meta: p.group + ' · ' + p.days + 'd left (' + p.when + ')' })) });
+    if(near.length) findings.push({ sev:'info', title:'Renewal due in 31–90 days', count:near.length,
+      why:'Far enough out to budget for, close enough to put on the next review.',
+      items: near.map(p=>({ main:p.main, meta: p.group + ' · ' + p.days + 'd left (' + p.when + ')' })) });
+    if(!findings.length && valid.length) findings.push({ sev:'ok', title:'Every tracked warranty and subscription is current', count:valid.length, why:'', items:[] });
+
+    const score = valid.length
+      ? Math.max(0, Math.round(100 * (valid.length - expired.length - 0.5 * soon.length) / valid.length))
+      : null;
+    cats.push({ key:'renewals', label:'Renewals & contracts', weight:20, score, findings,
+      basis: valid.length ? valid.length + ' dated records' : 'no expiry dates recorded' });
+  })();
+
+  /* ---------- 2. OS support & patch exposure (weight 25) ---------- */
+  (function(){
+    const findings = [];
+    const scanned = discoveryItems.filter(d => d.os_name);
+    const eol     = scanned.filter(d => hmUnsupportedOS(d.os_name));
+    const ok      = scanned.filter(d => !hmUnsupportedOS(d.os_name));
+
+    if(eol.length) findings.push({ sev:'crit', title:'PCs on an operating system past end-of-support', count:eol.length,
+      why: HM_EOL_NOTE + ' These machines stop receiving security fixes, so any new vulnerability stays open permanently.',
+      items: eol.map(d=>({ main:(d.computer_name || 'Unknown PC') + (d.username ? ' · ' + d.username : ''), meta: d.os_name })) });
+    if(ok.length && !eol.length) findings.push({ sev:'ok', title:'Every scanned PC is on a supported Windows build', count:ok.length, why:'', items:[] });
+    if(!scanned.length) findings.push({ sev:'info', title:'No agent scans recorded yet', count:0,
+      why:'Run the Chamaria IT Agent on your PCs — until then there is no OS data to judge, so this category is left out of the score.', items:[] });
+
+    const score = scanned.length ? Math.round(100 * ok.length / scanned.length) : null;
+    cats.push({ key:'os', label:'OS support & patch exposure', weight:25, score, findings,
+      basis: scanned.length ? scanned.length + ' scanned PCs' : 'no scans yet' });
+  })();
+
+  /* ---------- 3. Agent coverage & check-ins (weight 15) ---------- */
+  (function(){
+    const findings = [];
+    const withTs = discoveryItems.filter(d => hmDaysSince(d.scan_timestamp) !== null);
+    const aged   = withTs.map(d => ({ d, age: hmDaysSince(d.scan_timestamp) }));
+    const dormant = aged.filter(x => x.age > 90).sort((a,b)=>b.age-a.age);
+    const stale   = aged.filter(x => x.age > 30 && x.age <= 90).sort((a,b)=>b.age-a.age);
+    const fresh   = aged.filter(x => x.age <= 30);
+
+    if(dormant.length) findings.push({ sev:'crit', title:'PCs that have not reported in over 90 days', count:dormant.length,
+      why:'Either the agent stopped running, the PC was retired without being removed here, or it never reaches the portal. Whatever this page says about those machines is now months out of date.',
+      items: dormant.map(x=>({ main:(x.d.computer_name || 'Unknown PC') + (x.d.username ? ' · ' + x.d.username : ''), meta:'last seen ' + x.age + 'd ago' })) });
+    if(stale.length) findings.push({ sev:'warn', title:'PCs last seen 30–90 days ago', count:stale.length,
+      why:'Worth a check that the agent still runs on these — they are drifting out of date.',
+      items: stale.map(x=>({ main:(x.d.computer_name || 'Unknown PC') + (x.d.username ? ' · ' + x.d.username : ''), meta:'last seen ' + x.age + 'd ago' })) });
+
+    // Computer-type assets never matched to a scan — unmanaged endpoints
+    const COMPUTER_CATS = ['Desktop','Laptop','Servers','Virtual Machines','Virtual Hosts'];
+    const seen = new Set();
+    discoveryItems.forEach(d=>{
+      if(d.computer_name) seen.add(String(d.computer_name).trim().toLowerCase());
+      if(d.serial_number) seen.add(String(d.serial_number).trim().toLowerCase());
+    });
+    const unmanaged = assets.filter(a=>{
+      if(!COMPUTER_CATS.includes(a.category) || a.assetHealth === 'Retired') return false;
+      const byName   = a.computerName && seen.has(String(a.computerName).trim().toLowerCase());
+      const bySerial = a.serialNo && seen.has(String(a.serialNo).trim().toLowerCase());
+      const byTag    = a.serviceTag && seen.has(String(a.serviceTag).trim().toLowerCase());
+      return !(byName || bySerial || byTag);
+    });
+    if(unmanaged.length) findings.push({ sev:'warn', title:'Computer assets never matched to an agent scan', count:unmanaged.length,
+      why:'These are on the books as PCs but no scan matches their computer name, serial or service tag — so their specs, software and disk state here are whatever was typed in by hand.',
+      items: unmanaged.map(a=>({ main: hmLabelOf(a), meta: (a.assignedDisplayName || 'unassigned') + ' · ' + (a.companyName || '—') })) });
+
+    if(!findings.length && fresh.length) findings.push({ sev:'ok', title:'All agent scans are current', count:fresh.length, why:'', items:[] });
+
+    const score = withTs.length
+      ? Math.max(0, Math.round(100 * (withTs.length - dormant.length - 0.5 * stale.length) / withTs.length))
+      : null;
+    cats.push({ key:'agent', label:'Agent coverage & check-ins', weight:15, score, findings,
+      basis: withTs.length ? withTs.length + ' reporting PCs' : 'no scans yet' });
+  })();
+
+  /* ---------- 4. Hardware condition (weight 20) ---------- */
+  (function(){
+    const findings = [];
+    const live = assets.filter(a => a.assetHealth && a.assetHealth !== 'Retired');
+    const poor   = live.filter(a => a.assetHealth === 'Poor');
+    const repair = live.filter(a => a.assetHealth === 'Under Repair');
+    const fair   = live.filter(a => a.assetHealth === 'Fair');
+
+    if(poor.length) findings.push({ sev:'crit', title:'Assets marked "Poor"', count:poor.length,
+      why:'Flagged as failing by whoever last inspected them — plan replacement before they strand a user.',
+      items: poor.map(a=>({ main:hmLabelOf(a), meta:(a.assignedDisplayName || 'unassigned') + ' · ' + (a.companyName || '—') })) });
+    if(repair.length) findings.push({ sev:'warn', title:'Assets sitting in "Under Repair"', count:repair.length,
+      why:'Each of these is a user without their kit. Worth confirming none have been parked here and forgotten.',
+      items: repair.map(a=>({ main:hmLabelOf(a), meta:(a.assignedDisplayName || 'unassigned') + ' · ' + (a.companyName || '—') })) });
+    if(fair.length) findings.push({ sev:'info', title:'Assets marked "Fair"', count:fair.length,
+      why:'Still working, but ageing — useful input for next year\'s replacement budget.',
+      items: fair.map(a=>({ main:hmLabelOf(a), meta:(a.assignedDisplayName || 'unassigned') + ' · ' + (a.companyName || '—') })) });
+
+    // Signals straight from the agent scans
+    const lowDisk = [], lowRam = [], spinning = [];
+    discoveryItems.forEach(d=>{
+      hmDisks(d.free_space).forEach(disk=>{
+        if(disk.pct < 0.10) lowDisk.push({ main:(d.computer_name || 'Unknown PC') + ' · ' + disk.drive,
+          meta: Math.round(disk.free) + 'GB free of ' + Math.round(disk.total) + 'GB (' + Math.round(disk.pct*100) + '%)' });
+      });
+      const ram = hmNum(d.ram_gb);
+      if(ram !== null && ram < 8) lowRam.push({ main:(d.computer_name || 'Unknown PC') + (d.username ? ' · ' + d.username : ''), meta: d.ram_gb });
+      const st = String(d.storage || '');
+      if(st && /\(HDD/i.test(st) && !/SSD/i.test(st)) spinning.push({ main:(d.computer_name || 'Unknown PC') + (d.username ? ' · ' + d.username : ''), meta: st.slice(0,60) });
+    });
+    if(lowDisk.length) findings.push({ sev:'crit', title:'Drives under 10% free space', count:lowDisk.length,
+      why:'Windows starts failing updates and misbehaving below this line, and the user usually notices before you do.', items:lowDisk });
+    if(lowRam.length) findings.push({ sev:'warn', title:'PCs with less than 8 GB RAM', count:lowRam.length,
+      why:'Below what Windows 11 plus Office and a browser comfortably need — these are the machines users call "slow".', items:lowRam });
+    if(spinning.length) findings.push({ sev:'warn', title:'PCs still on a mechanical hard disk', count:spinning.length,
+      why:'An SSD upgrade is the cheapest speed fix available, and spinning disks fail more often as they age.', items:spinning });
+
+    if(!findings.length) findings.push({ sev:'ok', title:'No hardware condition flags', count:0, why:'', items:[] });
+
+    const judged = live.length + discoveryItems.length;
+    const penalty = poor.length + lowDisk.length + 0.5 * (repair.length + lowRam.length + spinning.length) + 0.25 * fair.length;
+    const score = judged ? Math.max(0, Math.round(100 * (judged - penalty) / judged)) : null;
+    cats.push({ key:'hardware', label:'Hardware condition', weight:20, score, findings,
+      basis: judged ? live.length + ' rated assets, ' + discoveryItems.length + ' scans' : 'nothing rated yet' });
+  })();
+
+  /* ---------- 5. Record hygiene (weight 10) ---------- */
+  (function(){
+    const findings = [];
+    const live = assets.filter(a => a.assetHealth !== 'Retired');
+    const noSerial  = live.filter(a => !a.serialNo);
+    const noCompany = live.filter(a => !a.companyId);
+    const noPurchase= live.filter(a => !a.purchaseDate || !Number(a.purchaseAmount));
+    const noWarranty= live.filter(a => !a.warrantyEnd);
+
+    if(noSerial.length) findings.push({ sev:'warn', title:'Assets with no serial number', count:noSerial.length,
+      why:'Without a serial you cannot claim warranty, match an agent scan, or prove which unit is which in an audit.',
+      items: noSerial.map(a=>({ main:hmLabelOf(a), meta:(a.companyName || '—') })) });
+    if(noCompany.length) findings.push({ sev:'warn', title:'Assets not linked to a company', count:noCompany.length,
+      why:'These fall out of every per-company value, depreciation and renewal figure in this portal.',
+      items: noCompany.map(a=>({ main:hmLabelOf(a), meta:(a.assignedDisplayName || 'unassigned') })) });
+    if(noPurchase.length) findings.push({ sev:'info', title:'Assets missing purchase date or amount', count:noPurchase.length,
+      why:'Depreciation cannot be computed for these, so fleet value is understated.',
+      items: noPurchase.map(a=>({ main:hmLabelOf(a), meta:(a.companyName || '—') })) });
+    if(noWarranty.length) findings.push({ sev:'info', title:'Assets with no warranty end date', count:noWarranty.length,
+      why:'They never appear in renewal alerts — cover could lapse silently.',
+      items: noWarranty.map(a=>({ main:hmLabelOf(a), meta:(a.companyName || '—') })) });
+    if(!findings.length && live.length) findings.push({ sev:'ok', title:'Asset records are complete', count:live.length, why:'', items:[] });
+
+    const fields = live.length * 4;
+    const missing = noSerial.length + noCompany.length + noPurchase.length + noWarranty.length;
+    const score = fields ? Math.max(0, Math.round(100 * (fields - missing) / fields)) : null;
+    cats.push({ key:'hygiene', label:'Record hygiene', weight:10, score, findings,
+      basis: live.length ? live.length + ' active assets' : 'no assets yet' });
+  })();
+
+  /* ---------- 6. Service desk (weight 10) ---------- */
+  (function(){
+    const findings = [];
+    const open = tickets.filter(t => t.status === 'Open' || t.status === 'In Progress');
+    const aged = open.map(t => ({ t, age: hmDaysSince(t.created_at) ?? 0 }));
+    const veryOld = aged.filter(x => x.age > 30).sort((a,b)=>b.age-a.age);
+    const old     = aged.filter(x => x.age > 7 && x.age <= 30).sort((a,b)=>b.age-a.age);
+
+    if(veryOld.length) findings.push({ sev:'crit', title:'Tickets open longer than 30 days', count:veryOld.length,
+      why:'Someone raised these over a month ago and is still waiting. Close them or tell the user why they are parked.',
+      items: veryOld.map(x=>({ main:(x.t.subject || 'Ticket ' + (x.t.id || '')), meta:(x.t.submitted_by_name || x.t.submitted_by_email || '—') + ' · ' + x.age + 'd old' })) });
+    if(old.length) findings.push({ sev:'warn', title:'Tickets open longer than 7 days', count:old.length,
+      why:'Past the point where a user expects an update, even if the work itself is still in progress.',
+      items: old.map(x=>({ main:(x.t.subject || 'Ticket ' + (x.t.id || '')), meta:(x.t.submitted_by_name || x.t.submitted_by_email || '—') + ' · ' + x.age + 'd old' })) });
+    if(!findings.length) findings.push({ sev:'ok', title: open.length ? 'No ticket is ageing past a week' : 'No open tickets', count:open.length, why:'', items:[] });
+
+    const score = tickets.length ? Math.max(0, Math.round(100 * (tickets.length - veryOld.length - 0.5 * old.length) / tickets.length)) : null;
+    cats.push({ key:'servicedesk', label:'Service desk', weight:10, score, findings,
+      basis: tickets.length ? open.length + ' open of ' + tickets.length : 'no tickets yet' });
+  })();
+
+  /* ---------- Weighted score ---------- */
+  const scored = cats.filter(c => c.score !== null);
+  const totalW = scored.reduce((s,c)=> s + c.weight, 0);
+  const score  = totalW ? Math.round(scored.reduce((s,c)=> s + c.score * c.weight, 0) / totalW) : null;
+
+  let crit = 0, warn = 0, info = 0;
+  cats.forEach(c => c.findings.forEach(f=>{
+    if(f.sev === 'crit') crit += (f.count || 1);
+    else if(f.sev === 'warn') warn += (f.count || 1);
+    else if(f.sev === 'info') info += (f.count || 1);
+  }));
+
+  return { score, cats, counts:{ crit, warn, info }, skipped: cats.length - scored.length, at: new Date() };
+}
+
+function hmTone(score){
+  if(score === null) return { color:'#8B8A9C', verdict:'Not enough data yet', sub:'Add assets and run the discovery agent on a few PCs — the checks need something to read before they can score anything.' };
+  if(score >= 90) return { color:'#34D399', verdict:'Healthy', sub:'Nothing here needs you today. Worth a glance at the informational items when you have a quiet hour.' };
+  if(score >= 75) return { color:'#34D399', verdict:'Mostly healthy', sub:'A handful of things to tidy, none of them on fire. Work top-down — the critical items first.' };
+  if(score >= 60) return { color:'#FFC24B', verdict:'Needs attention', sub:'Enough has drifted that some of it will bite soon. The critical findings below are the ones worth this week.' };
+  return { color:'#F0475A', verdict:'At risk', sub:'Several things are already past the point of being a warning. Start at the top of the critical list.' };
+}
+
+let hmLast = null;
+
+function renderHealth(){
+  const h = computeHealth();
+  hmLast = h;
+  const tone = hmTone(h.score);
+
+  const pct = h.score === null ? 0 : h.score;
+  $('healthRing').style.background = 'conic-gradient(' + tone.color + ' 0% ' + pct + '%, rgba(255,255,255,0.07) ' + pct + '% 100%)';
+  $('healthScoreVal').textContent = h.score === null ? '–' : h.score;
+  $('healthScoreVal').style.color = tone.color;
+  $('healthVerdict').textContent = tone.verdict;
+  $('healthVerdict').style.color = tone.color;
+  $('healthSub').textContent = tone.sub;
+
+  $('healthCatBars').innerHTML = h.cats.map(c=>{
+    const cs = c.score;
+    const col = cs === null ? '#8B8A9C' : (cs >= 85 ? '#34D399' : cs >= 65 ? '#FFC24B' : '#F0475A');
+    const w = cs === null ? 0 : cs;
+    return '<div class="hm-bar-row">' +
+      '<div class="hm-bar-lbl" title="' + hmEsc(c.label + ' — ' + c.basis) + '">' + hmEsc(c.label) + '</div>' +
+      '<div class="hm-bar-track"><div class="hm-bar-fill" style="width:' + w + '%;background:' + col + ';"></div></div>' +
+      '<div class="hm-bar-val">' + (cs === null ? 'n/a' : cs + '%') + ' <span style="opacity:.5;">·' + c.weight + '</span></div>' +
+    '</div>';
+  }).join('');
+
+  $('healthStatsRow').innerHTML =
+    '<div class="stat-card ' + (h.counts.crit ? 'danger' : '') + '"><div class="sc-num">' + h.counts.crit + '</div><div class="sc-label">Critical</div></div>' +
+    '<div class="stat-card ' + (h.counts.warn ? 'warn' : '') + '"><div class="sc-num">' + h.counts.warn + '</div><div class="sc-label">Warnings</div></div>' +
+    '<div class="stat-card"><div class="sc-num">' + h.counts.info + '</div><div class="sc-label">Advisory</div></div>' +
+    '<div class="stat-card accent"><div class="sc-num">' + h.cats.filter(c=>c.score!==null).length + '/' + h.cats.length + '</div><div class="sc-label">Categories scored</div></div>';
+
+  const SEV_LABEL = { crit:'Critical', warn:'Warning', info:'Advisory', ok:'Clear' };
+  const SEV_ORDER = { crit:0, warn:1, info:2, ok:3 };
+  $('healthGroups').innerHTML = h.cats.map(c=>{
+    const sorted = c.findings.slice().sort((a,b)=> SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
+    const worst = sorted.length ? sorted[0].sev : 'ok';
+    const body = sorted.map((f, fi)=>{
+      const shown = f.items.slice(0, 8);
+      const hasItems = f.items.length > 0;
+      return '<div class="hm-find' + (hasItems ? ' has-items' : '') + '">' +
+        '<div class="hm-find-top"' + (hasItems ? ' data-hmtoggle="' + c.key + '-' + fi + '"' : '') + '>' +
+          '<span class="hm-sev ' + f.sev + '">' + SEV_LABEL[f.sev] + '</span>' +
+          '<span class="hm-find-title">' + hmEsc(f.title) + '</span>' +
+          (f.count ? '<span class="hm-count">' + f.count + '</span>' : '') +
+          (hasItems ? '<span class="hm-caret" id="hmcaret-' + c.key + '-' + fi + '">▸</span>' : '') +
+        '</div>' +
+        (f.why ? '<div class="hm-find-why">' + hmEsc(f.why) + '</div>' : '') +
+        (hasItems ?
+          '<div class="hm-items" id="hmitems-' + c.key + '-' + fi + '">' +
+            shown.map(it => '<div class="hm-item"><span class="hm-item-main">' + hmEsc(it.main) + '</span><span class="hm-item-meta">' + hmEsc(it.meta) + '</span></div>').join('') +
+            (f.items.length > shown.length ? '<div class="hm-more">…and ' + (f.items.length - shown.length) + ' more — use Export Report for the full list.</div>' : '') +
+          '</div>' : '') +
+      '</div>';
+    }).join('');
+    return '<div class="hm-group">' +
+      '<div class="hm-group-head">' +
+        '<span class="hm-sev ' + worst + '">' + SEV_LABEL[worst] + '</span>' +
+        '<span class="hm-group-title">' + hmEsc(c.label) + '</span>' +
+        '<span class="hm-count">' + hmEsc(c.basis) + '</span>' +
+      '</div>' + body + '</div>';
+  }).join('');
+
+  document.querySelectorAll('[data-hmtoggle]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const key = el.dataset.hmtoggle;
+      const box = $('hmitems-' + key), caret = $('hmcaret-' + key);
+      if(!box) return;
+      const open = box.classList.toggle('open');
+      if(caret) caret.textContent = open ? '▾' : '▸';
+    });
+  });
+
+  $('healthScannedAt').textContent = ' Last run ' + h.at.toLocaleString() + '.' +
+    (h.skipped ? ' ' + h.skipped + ' categor' + (h.skipped === 1 ? 'y was' : 'ies were') + ' skipped for want of data.' : '');
+
+  updateHealthBadge(h);
+}
+
+function updateHealthBadge(h){
+  const badge = $('healthQuickBadge');
+  if(!badge) return;
+  const n = (h || hmLast || { counts:{crit:0} }).counts.crit;
+  badge.textContent = n;
+  badge.style.display = n ? 'inline-block' : 'none';
+}
+
+function exportHealthCSV(){
+  const h = hmLast || computeHealth();
+  const rows = [['Category','Severity','Finding','Affected','Item','Detail']];
+  h.cats.forEach(c=>{
+    c.findings.forEach(f=>{
+      if(!f.items.length){ rows.push([c.label, f.sev, f.title, f.count || 0, '', '']); return; }
+      f.items.forEach(it => rows.push([c.label, f.sev, f.title, f.count || f.items.length, it.main, it.meta]));
+    });
+  });
+  // toLocaleString() contains a comma in most locales — quote it or it spills a column
+  const header = 'Chamaria Group — IT Health Report,,,,,\nGenerated,"' + h.at.toLocaleString() + '",,,,\nOverall score,' + (h.score === null ? 'n/a' : h.score + '/100') + ',,,,\n\n';
+  const csv = header + rows.map(r => r.map(v=>{
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = 'it-health-report-' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+  showToast('Health report exported');
+}
+
 function switchTab(tabName){
   document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab === tabName));
   if(tabName !== 'services') document.querySelectorAll('.svc-nav-btn').forEach(b=> b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p=> p.classList.remove('active'));
   $('tab-' + tabName).classList.add('active');
   if(tabName === 'dashboard') renderDashboard();
+  if(tabName === 'health') renderHealth();
   if(tabName === 'assets') renderAssets();
   if(tabName === 'companies') renderCompanies();
   if(tabName === 'employees') renderEmployees();
