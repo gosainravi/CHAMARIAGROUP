@@ -521,6 +521,43 @@
   .hm-note strong{color:var(--ink);}
   .hm-clean{padding:22px 18px;text-align:center;font-size:12.5px;color:var(--success);}
 
+  /* Monitored systems — what the on-prem health agent captured */
+  .hm-live{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px;margin-bottom:22px;}
+  .hm-sys{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;}
+  .hm-sys-head{padding:14px 16px 12px;display:flex;align-items:flex-start;gap:10px;}
+  .hm-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+  .hm-dot.ok{background:var(--success);box-shadow:0 0 0 3px rgba(52,211,153,0.16);}
+  .hm-dot.warning{background:var(--warn);box-shadow:0 0 0 3px rgba(255,194,75,0.16);}
+  .hm-dot.critical,.hm-dot.error{background:var(--danger);box-shadow:0 0 0 3px rgba(240,71,90,0.16);}
+  .hm-dot.none{background:#6B6B78;}
+  .hm-sys-name{font-size:13.5px;font-weight:700;line-height:1.3;}
+  .hm-sys-sum{font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
+  .hm-sys-age{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-top:6px;}
+  .hm-sys-age.stale{color:var(--warn);}
+  .hm-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px;}
+  .hm-metric{font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--surface);border:1px solid var(--line);color:var(--ink-soft);}
+  .hm-shot{
+    margin:0 16px 14px;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+    cursor:zoom-in;background:var(--surface);height:132px;display:flex;align-items:center;justify-content:center;
+  }
+  .hm-shot img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;}
+  .hm-shot .ph{font-size:11px;color:var(--ink-soft);}
+  .hm-sys-err{
+    margin:0 16px 14px;padding:9px 11px;border-radius:9px;font-size:11px;line-height:1.5;
+    background:var(--danger-soft);color:var(--danger);font-family:var(--mono);
+    word-break:break-word;
+  }
+  .hm-shotbox{
+    position:fixed;inset:0;background:rgba(5,5,8,0.92);z-index:300;
+    display:none;align-items:center;justify-content:center;padding:24px;
+  }
+  .hm-shotbox.open{display:flex;}
+  .hm-shotbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;}
+  .hm-shotbox .close{
+    position:absolute;top:16px;right:20px;background:var(--paper);border:1px solid var(--line);
+    color:var(--ink);font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;
+  }
+
   @media (max-width:760px){
     .hm-hero{grid-template-columns:1fr;gap:20px;justify-items:center;text-align:center;}
     .hm-bars{width:100%;}
@@ -785,6 +822,12 @@
 
     <div class="card-row" id="healthStatsRow"></div>
 
+    <div class="section-row" style="display:flex;align-items:baseline;gap:12px;margin:24px 0 12px;">
+      <h2 style="margin:0;font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.14em;">Monitored Systems</h2>
+      <span style="font-size:11.5px;color:var(--ink-soft);" id="healthLiveMeta">—</span>
+    </div>
+    <div class="hm-live" id="healthLiveRow"></div>
+
     <div id="healthGroups"></div>
 
     <div class="hm-note">
@@ -795,6 +838,11 @@
       <span id="healthScannedAt"></span>
     </div>
   </section>
+
+  <div class="hm-shotbox" id="hmShotBox">
+    <button class="close" id="hmShotClose" aria-label="Close">&times;</button>
+    <img id="hmShotImg" alt="Captured report">
+  </div>
 
   <!-- ================= ASSETS ================= -->
   <section id="tab-assets" class="tab-panel">
@@ -3051,6 +3099,7 @@ async function loadAll(){
     await loadProjects().catch(e => { console.warn('IT Projects skipped:', e.message); itProjects = []; });
     await loadTickets().catch(e => { console.warn('IT Tickets skipped:', e.message); tickets = []; });
     await loadDiscovery().catch(e => { console.warn('Discovery skipped:', e.message); discoveryItems = []; });
+    await loadHealthTelemetry().catch(e => { console.warn('Health telemetry skipped:', e.message); healthTelemetry = []; });
     await loadLocalCounter();
 
     // AUTO-SEED DISABLED — system is live with real data
@@ -5154,11 +5203,15 @@ $('projectViewCloseBtn').addEventListener('click', closeProjectView);
 $('projectViewOverlay').addEventListener('click', e => { if(e.target.id==='projectViewOverlay') closeProjectView(); });
 $('projQuickBtn').addEventListener('click', () => switchTab('projects'));
 $('healthQuickBtn').addEventListener('click', () => switchTab('health'));
+$('hmShotClose').addEventListener('click', ()=> $('hmShotBox').classList.remove('open'));
+$('hmShotBox').addEventListener('click', (e)=>{ if(e.target.id === 'hmShotBox') $('hmShotBox').classList.remove('open'); });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') $('hmShotBox').classList.remove('open'); });
 $('healthExportBtn').addEventListener('click', exportHealthCSV);
 $('healthRefreshBtn').addEventListener('click', async () => {
   const btn = $('healthRefreshBtn');
   btn.disabled = true; btn.textContent = '↻ Re-running…';
   try{ await loadDiscovery(); }catch(e){ console.warn('Discovery refresh skipped:', e); }
+  try{ await loadHealthTelemetry(); }catch(e){ console.warn('Telemetry refresh skipped:', e); }
   renderHealth();
   btn.disabled = false; btn.textContent = '↻ Re-run Checks';
   showToast('Health checks re-run');
@@ -7203,6 +7256,133 @@ function hmLabelOf(a){
   return (a.assetCode ? a.assetCode + ' — ' : '') + ([a.brand, a.model].filter(Boolean).join(' ') || a.category || 'Asset');
 }
 
+/* ---- Monitored systems: what the on-prem health agent captured ----
+   The agent (Chamaria_Health_Agent, running inside the office network) logs
+   into Acronis, Commvault, the SonicWall, the FortiGate and Trend Micro every
+   morning at 10:00 and pushes one row per system. The portal only reads.
+   A system listed here that has never reported, or has gone quiet, is itself a
+   finding — silence is not the same as healthy. */
+const HM_SOURCES = [
+  { key:'acronis',    label:'Acronis Cyber Protect' },
+  { key:'commvault',  label:'Commvault Backup' },
+  { key:'sonicwall',  label:'SonicWall TZ370' },
+  { key:'fortigate',  label:'FortiGate F80' },
+  { key:'trendmicro', label:'Trend Micro' }
+];
+const HM_STALE_HOURS = 26;   // agent runs daily — more than a day late means it stopped
+
+let healthTelemetry = [];
+
+async function loadHealthTelemetry(){
+  try{
+    if(!supa){ healthTelemetry = []; return; }
+    const { data, error } = await supa
+      .from('health_telemetry').select('*')
+      .order('collected_at', { ascending:false }).limit(200);
+    if(error) throw error;
+    // Keep only the newest row per source
+    const seen = new Set(); const latest = [];
+    (data || []).forEach(r => { if(!seen.has(r.source)){ seen.add(r.source); latest.push(r); } });
+    healthTelemetry = latest;
+  }catch(e){
+    console.warn('Health telemetry not available — run the migration / agent.', e);
+    healthTelemetry = [];
+  }
+}
+
+function hmSourceRow(key){ return healthTelemetry.find(r => r.source === key) || null; }
+function hmAgeHours(row){ return row ? hmDaysSince(row.collected_at) * 24 : null; }
+function hmAgeText(row){
+  if(!row) return 'never reported';
+  const d = new Date(row.collected_at);
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if(mins < 60) return 'captured ' + mins + 'm ago';
+  if(mins < 60*48) return 'captured ' + Math.floor(mins/60) + 'h ago';
+  return 'captured ' + Math.floor(mins/1440) + 'd ago';
+}
+// A row is only trustworthy if it is recent — an old "ok" is not an ok.
+function hmEffectiveState(row){
+  if(!row) return 'none';
+  const hrs = (Date.now() - new Date(row.collected_at).getTime()) / 3600000;
+  if(hrs > HM_STALE_HOURS) return 'stale';
+  return row.status;
+}
+
+async function hmOpenShot(path){
+  try{
+    const { data, error } = await supa.storage.from('health-reports').createSignedUrl(path, 120);
+    if(error) throw error;
+    $('hmShotImg').src = data.signedUrl;
+    $('hmShotBox').classList.add('open');
+  }catch(e){ showToast('Could not open the captured report', true); }
+}
+
+function renderHealthLive(){
+  const wrap = $('healthLiveRow');
+  if(!wrap) return;
+
+  const reported = HM_SOURCES.filter(s => hmSourceRow(s.key)).length;
+  $('healthLiveMeta').textContent = reported
+    ? reported + ' of ' + HM_SOURCES.length + ' reporting'
+    : 'agent not set up yet';
+
+  wrap.innerHTML = HM_SOURCES.map(s=>{
+    const row = hmSourceRow(s.key);
+    const eff = hmEffectiveState(row);
+    const dotCls = (eff === 'stale') ? 'warning' : (eff === 'none' ? 'none' : eff);
+    const label = row && row.source_label ? row.source_label : s.label;
+
+    let summary;
+    if(!row) summary = 'No report yet — the agent has not sent anything for this system.';
+    else if(row.status === 'error') summary = row.summary || 'Agent could not read this system';
+    else summary = row.summary || '—';
+
+    const metrics = (row && row.metrics && typeof row.metrics === 'object')
+      ? Object.entries(row.metrics).filter(([k,v]) => typeof v !== 'object')
+          .slice(0,4)
+          .map(([k,v]) => '<span class="hm-metric">' + hmEsc(k.replace(/_/g,' ')) + ': ' + hmEsc(v) + '</span>').join('')
+      : '';
+
+    const ageCls = (eff === 'stale' || eff === 'none') ? ' stale' : '';
+    const ageTxt = hmAgeText(row) + (eff === 'stale' ? ' — agent may have stopped' : '');
+
+    const shot = (row && row.screenshot_path)
+      ? '<div class="hm-shot" data-hmshot="' + hmEsc(row.screenshot_path) + '" title="Click to view the full captured report"><div class="ph">Loading capture…</div></div>'
+      : '<div class="hm-shot" style="cursor:default;"><div class="ph">' + (row ? 'no capture stored' : 'nothing captured yet') + '</div></div>';
+
+    const err = (row && row.error)
+      ? '<div class="hm-sys-err">' + hmEsc(String(row.error).slice(0,300)) + '</div>' : '';
+
+    return '<div class="hm-sys">' +
+      '<div class="hm-sys-head">' +
+        '<span class="hm-dot ' + dotCls + '"></span>' +
+        '<div style="min-width:0;flex:1;">' +
+          '<div class="hm-sys-name">' + hmEsc(label) + '</div>' +
+          '<div class="hm-sys-sum">' + hmEsc(summary) + '</div>' +
+          '<div class="hm-sys-age' + ageCls + '">' + hmEsc(ageTxt) + '</div>' +
+        '</div>' +
+      '</div>' +
+      (metrics ? '<div class="hm-chips">' + metrics + '</div>' : '') +
+      err + shot +
+    '</div>';
+  }).join('');
+
+  // Swap each placeholder for the real image via a short-lived signed URL
+  wrap.querySelectorAll('[data-hmshot]').forEach(box=>{
+    const path = box.dataset.hmshot;
+    box.addEventListener('click', ()=> hmOpenShot(path));
+    if(!supa) return;
+    supa.storage.from('health-reports').createSignedUrl(path, 300).then(({data, error})=>{
+      if(error || !data) { box.innerHTML = '<div class="ph">capture unavailable</div>'; return; }
+      const img = new Image();
+      img.onload = ()=>{ box.innerHTML = ''; box.appendChild(img); };
+      img.onerror = ()=>{ box.innerHTML = '<div class="ph">capture unavailable</div>'; };
+      img.src = data.signedUrl;
+      img.alt = 'Captured report';
+    }).catch(()=>{ box.innerHTML = '<div class="ph">capture unavailable</div>'; });
+  });
+}
+
 function computeHealth(){
   const cats = [];
 
@@ -7404,6 +7584,52 @@ function computeHealth(){
       basis: tickets.length ? open.length + ' open of ' + tickets.length : 'no tickets yet' });
   })();
 
+  /* ---------- 7. Monitored systems (weight 25) ----------
+     Scored only once at least one system has reported; before the agent is set
+     up there is nothing to judge and the category sits out. */
+  (function(){
+    const findings = [];
+    const rows = HM_SOURCES.map(s => ({ s, row: hmSourceRow(s.key) }));
+    const reporting = rows.filter(x => x.row);
+    if(!reporting.length){
+      cats.push({ key:'monitored', label:'Monitored systems', weight:25, score:null,
+        findings:[{ sev:'info', title:'Health agent not reporting yet', count:0,
+          why:'Once the collector runs on an office PC, Acronis, Commvault, the SonicWall, the FortiGate and Trend Micro appear here with their daily capture.', items:[] }],
+        basis:'agent not set up' });
+      return;
+    }
+
+    const bad    = rows.filter(x => x.row && (x.row.status === 'critical' || x.row.status === 'error'));
+    const warn   = rows.filter(x => x.row && x.row.status === 'warning');
+    const stale  = rows.filter(x => x.row && hmEffectiveState(x.row) === 'stale');
+    const silent = rows.filter(x => !x.row);
+
+    const failed = bad.filter(x => x.row.status === 'error');
+    const real   = bad.filter(x => x.row.status === 'critical');
+
+    if(real.length) findings.push({ sev:'crit', title:'Systems reporting a critical condition', count:real.length,
+      why:'The agent reached these and what it found is bad — open the capture on the card above for the detail.',
+      items: real.map(x=>({ main:x.row.source_label || x.s.label, meta:x.row.summary || '' })) });
+    if(failed.length) findings.push({ sev:'crit', title:'Systems the agent could not read', count:failed.length,
+      why:'A login or connection failed, so there is no current picture of these at all. The capture on the card usually shows exactly why.',
+      items: failed.map(x=>({ main:x.row.source_label || x.s.label, meta:(x.row.error || '').slice(0,120) })) });
+    if(stale.length) findings.push({ sev:'warn', title:'Systems whose last report is over ' + HM_STALE_HOURS + 'h old', count:stale.length,
+      why:'The agent runs daily, so anything older than this means it stopped running — the status shown for these is no longer current.',
+      items: stale.map(x=>({ main:x.row.source_label || x.s.label, meta:hmAgeText(x.row) })) });
+    if(warn.length) findings.push({ sev:'warn', title:'Systems reporting a warning', count:warn.length,
+      why:'Not urgent, but worth opening the capture.',
+      items: warn.map(x=>({ main:x.row.source_label || x.s.label, meta:x.row.summary || '' })) });
+    if(silent.length) findings.push({ sev:'info', title:'Systems not yet configured in the agent', count:silent.length,
+      why:'These have never sent a report. Either the agent has not been set up for them, or it cannot reach them at all.',
+      items: silent.map(x=>({ main:x.s.label, meta:'never reported' })) });
+    if(!findings.length) findings.push({ sev:'ok', title:'All monitored systems reported healthy today', count:reporting.length, why:'', items:[] });
+
+    const penalty = bad.length + 0.5 * (warn.length + stale.length);
+    const score = Math.max(0, Math.round(100 * (reporting.length - penalty) / reporting.length));
+    cats.push({ key:'monitored', label:'Monitored systems', weight:25, score, findings,
+      basis: reporting.length + ' of ' + HM_SOURCES.length + ' reporting' });
+  })();
+
   /* ---------- Weighted score ---------- */
   const scored = cats.filter(c => c.score !== null);
   const totalW = scored.reduce((s,c)=> s + c.weight, 0);
@@ -7432,6 +7658,7 @@ let hmLast = null;
 function renderHealth(){
   const h = computeHealth();
   hmLast = h;
+  renderHealthLive();
   const tone = hmTone(h.score);
 
   const pct = h.score === null ? 0 : h.score;
