@@ -7262,13 +7262,25 @@ function hmLabelOf(a){
    morning at 10:00 and pushes one row per system. The portal only reads.
    A system listed here that has never reported, or has gone quiet, is itself a
    finding — silence is not the same as healthy. */
-const HM_SOURCES = [
+const HM_EXPECTED = [
   { key:'acronis',    label:'Acronis Cyber Protect' },
   { key:'commvault',  label:'Commvault Backup' },
-  { key:'sonicwall',  label:'SonicWall TZ370' },
-  { key:'fortigate',  label:'FortiGate F80' },
-  { key:'trendmicro', label:'Trend Micro' }
+  { key:'sonicwall',  label:'SonicWall TZ370 — Boss house' },
+  { key:'fortigate',  label:'FortiGate F80 — Office' },
+  { key:'trendmicro', label:'Trend Micro Worry-Free' }
 ];
+// The expected five, plus anything else the agent starts reporting (the WiFi
+// controllers, say) — so turning a new system on in the agent needs no change
+// here. Extras only appear once they have actually reported.
+function hmSources(){
+  const known = HM_EXPECTED.slice();
+  healthTelemetry.forEach(r=>{
+    if(!known.some(s => s.key === r.source)){
+      known.push({ key:r.source, label:r.source_label || r.source, extra:true });
+    }
+  });
+  return known;
+}
 const HM_STALE_HOURS = 26;   // agent runs daily — more than a day late means it stopped
 
 let healthTelemetry = [];
@@ -7321,12 +7333,13 @@ function renderHealthLive(){
   const wrap = $('healthLiveRow');
   if(!wrap) return;
 
-  const reported = HM_SOURCES.filter(s => hmSourceRow(s.key)).length;
+  const sources = hmSources();
+  const reported = sources.filter(s => hmSourceRow(s.key)).length;
   $('healthLiveMeta').textContent = reported
-    ? reported + ' of ' + HM_SOURCES.length + ' reporting'
+    ? reported + ' of ' + sources.length + ' reporting'
     : 'agent not set up yet';
 
-  wrap.innerHTML = HM_SOURCES.map(s=>{
+  wrap.innerHTML = sources.map(s=>{
     const row = hmSourceRow(s.key);
     const eff = hmEffectiveState(row);
     const dotCls = (eff === 'stale') ? 'warning' : (eff === 'none' ? 'none' : eff);
@@ -7589,7 +7602,7 @@ function computeHealth(){
      up there is nothing to judge and the category sits out. */
   (function(){
     const findings = [];
-    const rows = HM_SOURCES.map(s => ({ s, row: hmSourceRow(s.key) }));
+    const rows = hmSources().map(s => ({ s, row: hmSourceRow(s.key) }));
     const reporting = rows.filter(x => x.row);
     if(!reporting.length){
       cats.push({ key:'monitored', label:'Monitored systems', weight:25, score:null,
@@ -7627,7 +7640,7 @@ function computeHealth(){
     const penalty = bad.length + 0.5 * (warn.length + stale.length);
     const score = Math.max(0, Math.round(100 * (reporting.length - penalty) / reporting.length));
     cats.push({ key:'monitored', label:'Monitored systems', weight:25, score, findings,
-      basis: reporting.length + ' of ' + HM_SOURCES.length + ' reporting' });
+      basis: reporting.length + ' of ' + rows.length + ' reporting' });
   })();
 
   /* ---------- Weighted score ---------- */
