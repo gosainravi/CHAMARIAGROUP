@@ -910,37 +910,18 @@
     <div class="hm-tabs" id="healthTabs"></div>
 
     <div id="healthOverview">
-    <div class="hm-hero">
-      <div class="hm-ring" id="healthRing">
-        <div class="hm-ring-inner">
-          <div class="hm-score" id="healthScoreVal">–</div>
-          <div class="hm-score-lbl">Score</div>
-        </div>
+      <div class="section-row" style="display:flex;align-items:baseline;gap:12px;margin:0 0 14px;">
+        <h2 style="margin:0;font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.14em;">Monitored Systems</h2>
+        <span style="font-size:11.5px;color:var(--ink-soft);" id="healthLiveMeta">-</span>
       </div>
-      <div>
-        <div class="hm-verdict" id="healthVerdict">Running checks…</div>
-        <div class="hm-sub" id="healthSub">Reading your assets, services, network devices and agent scans.</div>
-        <div class="hm-bars" id="healthCatBars"></div>
+      <div class="hm-live" id="healthLiveRow"></div>
+
+      <div class="hm-note">
+        <strong>Where this comes from.</strong> Each system is read through its own API by the
+        collector running inside the office network - no screen scraping, no guessing. A reading
+        older than 26 hours is shown as a warning whatever it says, because a stale "all good"
+        is not an "all good". <span id="healthScannedAt"></span>
       </div>
-    </div>
-
-    <div class="card-row" id="healthStatsRow"></div>
-
-    <div class="section-row" style="display:flex;align-items:baseline;gap:12px;margin:24px 0 12px;">
-      <h2 style="margin:0;font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.14em;">Monitored Systems</h2>
-      <span style="font-size:11.5px;color:var(--ink-soft);" id="healthLiveMeta">—</span>
-    </div>
-    <div class="hm-live" id="healthLiveRow"></div>
-
-    <div id="healthGroups"></div>
-
-    <div class="hm-note">
-      <strong>How this works.</strong> Every check runs in your browser against data already in this portal —
-      assets, IT services, network devices and agent scans. Nothing is pinged or probed over the network, so a
-      finding here means <em>the record says so</em>, not that a device was contacted. The score is a weighted
-      average of the categories above; a category with no data to judge is skipped rather than counted as a pass.
-      <span id="healthScannedAt"></span>
-    </div>
     </div><!-- /healthOverview -->
 
     <div id="healthApplianceView" style="display:none;"></div>
@@ -7846,7 +7827,12 @@ function vizForRow(row){
     ]);
   }
   if(m.online !== undefined || m.offline !== undefined){
-    return vizProportion('Access points', [
+    // Both the WiFi controller and the AV console report online/offline, so the
+    // caption has to come from what is being counted, not from the split.
+    const noun = (m.access_points !== undefined) ? 'Access points'
+               : (m.endpoints !== undefined)     ? 'Protected endpoints'
+               : 'Devices';
+    return vizProportion(noun, [
       { label:'Online',  value:n('online'),  color:VIZ.ok },
       { label:'Offline', value:n('offline'), color:VIZ.bad }
     ]);
@@ -8050,94 +8036,44 @@ function hmBindShots(scope){
 }
 
 function renderHealth(){
+  // The asset-derived checks still run - they feed the header badge and the
+  // exported report - but the Health page itself is now appliance monitoring
+  // only, so none of that is drawn here any more.
   const h = computeHealth();
   hmLast = h;
   renderHealthLive();
   renderHealthTabs();
+  if(false){
+    // (score ring, category bars, counters and the findings list used to render here)
+  }
+  const el = $('healthScannedAt');
+  if(el){
+    el.textContent = ' Last checked ' + h.at.toLocaleString() + '.';
+  }
   if(hmTab !== 'overview'){
     $('healthOverview').style.display = 'none';
     $('healthApplianceView').style.display = '';
     $('healthApplianceView').innerHTML = renderApplianceDetail(hmTab);
     hmBindShots($('healthApplianceView'));
   }
-  const tone = hmTone(h.score);
-
-  const pct = h.score === null ? 0 : h.score;
-  $('healthRing').style.background = 'conic-gradient(' + tone.color + ' 0% ' + pct + '%, rgba(255,255,255,0.07) ' + pct + '% 100%)';
-  $('healthScoreVal').textContent = h.score === null ? '–' : h.score;
-  $('healthScoreVal').style.color = tone.color;
-  $('healthVerdict').textContent = tone.verdict;
-  $('healthVerdict').style.color = tone.color;
-  $('healthSub').textContent = tone.sub;
-
-  $('healthCatBars').innerHTML = h.cats.map(c=>{
-    const cs = c.score;
-    const col = cs === null ? '#8B8A9C' : (cs >= 85 ? '#34D399' : cs >= 65 ? '#FFC24B' : '#F0475A');
-    const w = cs === null ? 0 : cs;
-    return '<div class="hm-bar-row">' +
-      '<div class="hm-bar-lbl" title="' + hmEsc(c.label + ' — ' + c.basis) + '">' + hmEsc(c.label) + '</div>' +
-      '<div class="hm-bar-track"><div class="hm-bar-fill" style="width:' + w + '%;background:' + col + ';"></div></div>' +
-      '<div class="hm-bar-val">' + (cs === null ? 'n/a' : cs + '%') + ' <span style="opacity:.5;">·' + c.weight + '</span></div>' +
-    '</div>';
-  }).join('');
-
-  $('healthStatsRow').innerHTML =
-    '<div class="stat-card ' + (h.counts.crit ? 'danger' : '') + '"><div class="sc-num">' + h.counts.crit + '</div><div class="sc-label">Critical</div></div>' +
-    '<div class="stat-card ' + (h.counts.warn ? 'warn' : '') + '"><div class="sc-num">' + h.counts.warn + '</div><div class="sc-label">Warnings</div></div>' +
-    '<div class="stat-card"><div class="sc-num">' + h.counts.info + '</div><div class="sc-label">Advisory</div></div>' +
-    '<div class="stat-card accent"><div class="sc-num">' + h.cats.filter(c=>c.score!==null).length + '/' + h.cats.length + '</div><div class="sc-label">Categories scored</div></div>';
-
-  const SEV_LABEL = { crit:'Critical', warn:'Warning', info:'Advisory', ok:'Clear' };
-  const SEV_ORDER = { crit:0, warn:1, info:2, ok:3 };
-  $('healthGroups').innerHTML = h.cats.map(c=>{
-    const sorted = c.findings.slice().sort((a,b)=> SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
-    const worst = sorted.length ? sorted[0].sev : 'ok';
-    const body = sorted.map((f, fi)=>{
-      const shown = f.items.slice(0, 8);
-      const hasItems = f.items.length > 0;
-      return '<div class="hm-find' + (hasItems ? ' has-items' : '') + '">' +
-        '<div class="hm-find-top"' + (hasItems ? ' data-hmtoggle="' + c.key + '-' + fi + '"' : '') + '>' +
-          '<span class="hm-sev ' + f.sev + '">' + SEV_LABEL[f.sev] + '</span>' +
-          '<span class="hm-find-title">' + hmEsc(f.title) + '</span>' +
-          (f.count ? '<span class="hm-count">' + f.count + '</span>' : '') +
-          (hasItems ? '<span class="hm-caret" id="hmcaret-' + c.key + '-' + fi + '">▸</span>' : '') +
-        '</div>' +
-        (f.why ? '<div class="hm-find-why">' + hmEsc(f.why) + '</div>' : '') +
-        (hasItems ?
-          '<div class="hm-items" id="hmitems-' + c.key + '-' + fi + '">' +
-            shown.map(it => '<div class="hm-item"><span class="hm-item-main">' + hmEsc(it.main) + '</span><span class="hm-item-meta">' + hmEsc(it.meta) + '</span></div>').join('') +
-            (f.items.length > shown.length ? '<div class="hm-more">…and ' + (f.items.length - shown.length) + ' more — use Export Report for the full list.</div>' : '') +
-          '</div>' : '') +
-      '</div>';
-    }).join('');
-    return '<div class="hm-group">' +
-      '<div class="hm-group-head">' +
-        '<span class="hm-sev ' + worst + '">' + SEV_LABEL[worst] + '</span>' +
-        '<span class="hm-group-title">' + hmEsc(c.label) + '</span>' +
-        '<span class="hm-count">' + hmEsc(c.basis) + '</span>' +
-      '</div>' + body + '</div>';
-  }).join('');
-
-  document.querySelectorAll('[data-hmtoggle]').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const key = el.dataset.hmtoggle;
-      const box = $('hmitems-' + key), caret = $('hmcaret-' + key);
-      if(!box) return;
-      const open = box.classList.toggle('open');
-      if(caret) caret.textContent = open ? '▾' : '▸';
-    });
-  });
-
-  $('healthScannedAt').textContent = ' Last run ' + h.at.toLocaleString() + '.' +
-    (h.skipped ? ' ' + h.skipped + ' categor' + (h.skipped === 1 ? 'y was' : 'ies were') + ' skipped for want of data.' : '');
-
+  // The score ring, category bars, counters and findings list used to render
+  // here. The Health page is appliance monitoring now; those checks still run
+  // for the header badge and the exported report.
   updateHealthBadge(h);
 }
 
 function updateHealthBadge(h){
   const badge = $('healthQuickBadge');
   if(!badge) return;
-  const n = (h || hmLast || { counts:{crit:0} }).counts.crit;
+  // Count the systems that are actually unhealthy or unreadable right now -
+  // that is what the Health page shows, so that is what the badge should mean.
+  let n = 0;
+  hmSources().forEach(function(src){
+    const row = hmSourceRow(src.key);
+    if(!row) return;
+    const eff = hmEffectiveState(row);
+    if(eff === 'critical' || eff === 'error') n++;
+  });
   badge.textContent = n;
   badge.style.display = n ? 'inline-block' : 'none';
 }
