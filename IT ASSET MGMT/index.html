@@ -542,6 +542,19 @@
   }
   .hm-shot img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;}
   .hm-shot .ph{font-size:11px;color:var(--ink-soft);}
+  .hm-detail{margin:0 16px 14px;border-top:1px solid var(--line-soft);}
+  .hm-drow{
+    display:flex;gap:10px;justify-content:space-between;align-items:baseline;
+    padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:11px;
+    font-family:var(--mono);
+  }
+  .hm-drow:last-child{border-bottom:none;}
+  .hm-dname{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%;}
+  .hm-ddet{color:var(--ink-soft);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hm-drow.bad  .hm-dname{color:var(--danger);}
+  .hm-drow.warn .hm-dname{color:var(--warn);}
+  .hm-drow.ok   .hm-dname{color:var(--success);}
+  .hm-dmore{font-size:10.5px;color:var(--ink-soft);padding-top:7px;font-style:italic;}
   .hm-sys-err{
     margin:0 16px 14px;padding:9px 11px;border-radius:9px;font-size:11px;line-height:1.5;
     background:var(--danger-soft);color:var(--danger);font-family:var(--mono);
@@ -7352,16 +7365,37 @@ function renderHealthLive(){
 
     const metrics = (row && row.metrics && typeof row.metrics === 'object')
       ? Object.entries(row.metrics).filter(([k,v]) => typeof v !== 'object')
-          .slice(0,4)
+          .slice(0,8)
           .map(([k,v]) => '<span class="hm-metric">' + hmEsc(k.replace(/_/g,' ')) + ': ' + hmEsc(v) + '</span>').join('')
       : '';
 
     const ageCls = (eff === 'stale' || eff === 'none') ? ' stale' : '';
     const ageTxt = hmAgeText(row) + (eff === 'stale' ? ' — agent may have stopped' : '');
 
+    // The detail the collector read out of the appliance itself — WAN links,
+    // failing backup clients, offline access points. This is the part worth
+    // looking at; the summary line above is only the headline.
+    const rowItems = (row && Array.isArray(row.items)) ? row.items : [];
+    const detail = rowItems.length
+      ? '<div class="hm-detail">' +
+          rowItems.slice(0, 12).map(it => {
+            const st = (it.state === 'failed') ? 'bad' : (it.state === 'warn' ? 'warn' : 'ok');
+            return '<div class="hm-drow ' + st + '">' +
+                     '<span class="hm-dname">' + hmEsc(it.name || '') + '</span>' +
+                     '<span class="hm-ddet">' + hmEsc(it.detail || '') + '</span>' +
+                   '</div>';
+          }).join('') +
+          (rowItems.length > 12
+            ? '<div class="hm-dmore">…and ' + (rowItems.length - 12) + ' more</div>' : '') +
+        '</div>'
+      : '';
+
+    // Screenshots only exist for systems still read through a browser. The API
+    // collector has no screen to capture, and an empty placeholder there would
+    // read as "something is missing" when nothing is.
     const shot = (row && row.screenshot_path)
       ? '<div class="hm-shot" data-hmshot="' + hmEsc(row.screenshot_path) + '" title="Click to view the full captured report"><div class="ph">Loading capture…</div></div>'
-      : '<div class="hm-shot" style="cursor:default;"><div class="ph">' + (row ? 'no capture stored' : 'nothing captured yet') + '</div></div>';
+      : '';
 
     const err = (row && row.error)
       ? '<div class="hm-sys-err">' + hmEsc(String(row.error).slice(0,300)) + '</div>' : '';
@@ -7376,7 +7410,7 @@ function renderHealthLive(){
         '</div>' +
       '</div>' +
       (metrics ? '<div class="hm-chips">' + metrics + '</div>' : '') +
-      err + shot +
+      err + detail + shot +
     '</div>';
   }).join('');
 
