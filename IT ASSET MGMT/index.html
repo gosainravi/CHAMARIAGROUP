@@ -542,6 +542,57 @@
   }
   .hm-shot img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;}
   .hm-shot .ph{font-size:11px;color:var(--ink-soft);}
+  /* ── Visualisation components ──────────────────────────────────────────
+     Status colours only (good / warning / critical). They are reserved, and
+     every one is paired with a text label, never colour alone — red/green is
+     the one pair a colour-blind reader cannot separate, so the words carry the
+     meaning and the colour merely reinforces it. */
+  .viz-prop{
+    display:flex;gap:2px;height:9px;border-radius:5px;overflow:hidden;
+    background:rgba(255,255,255,0.06);
+  }
+  .viz-prop > span{display:block;height:100%;border-radius:2px;}
+  .viz-prop > span:first-child{border-radius:5px 2px 2px 5px;}
+  .viz-prop > span:last-child{border-radius:2px 5px 5px 2px;}
+  .viz-prop > span:only-child{border-radius:5px;}
+  .viz-legend{display:flex;gap:15px;flex-wrap:wrap;margin-top:9px;font-size:11px;}
+  .viz-key{display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);}
+  .viz-key i{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+  .viz-key b{color:var(--ink);font-family:var(--mono);font-weight:700;}
+  .viz-block{padding:16px 18px;}
+  .viz-cap{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--ink-soft);margin-bottom:10px;font-weight:700;
+  }
+
+  /* Port faceplate — a firewall's ports drawn the way they sit on the box.
+     Reads at a glance in a way a list of rows never does. */
+  .ports{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;}
+  .port{
+    position:relative;overflow:hidden;
+    border:1px solid var(--line);border-radius:11px;
+    padding:11px 12px 10px 15px;background:var(--surface);
+  }
+  .port::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+  .port.up::before{background:var(--success);}
+  .port.down::before{background:var(--danger);}
+  .port.spare::before{background:#6B6B78;}
+  .port.up{border-color:rgba(52,211,153,0.30);}
+  .port.down{border-color:rgba(240,71,90,0.38);}
+  .port.spare{opacity:0.72;}
+  .port .pn{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);}
+  .port .pz{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--ink-soft);margin-top:2px;}
+  .port .ps{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:10px;color:var(--ink-soft);}
+  .port .ps i{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .port.up .ps i{background:var(--success);}
+  .port.down .ps i{background:var(--danger);}
+  .port.spare .ps i{background:#6B6B78;}
+  .port .pip{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);margin-top:4px;
+             overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* Score ring — thin track, one accent arc, value inside */
+  .hm-ring{box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04);}
+
   /* Sub-tabs: overview plus one per appliance */
   .hm-tabs{
     display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;
@@ -7453,7 +7504,7 @@ function renderHealthLive(){
         '</div>' +
       '</div>' +
       (metrics ? '<div class="hm-chips">' + metrics + '</div>' : '') +
-      err + detail + shot +
+      err + (vizForRow(row) || detail) + shot +
     '</div>';
   }).join('');
 
@@ -7752,6 +7803,101 @@ function hmTone(score){
 
 let hmLast = null;
 
+/* ---- Small visual components -------------------------------------------
+   Forms chosen by the job the data does: a part-to-whole split of two or three
+   states is a proportion bar (never a pie); per-port state is a faceplate, not
+   a chart; a single number stays a number. */
+
+const VIZ = { ok:'#34D399', warn:'#FFC24B', bad:'#F0475A', idle:'#6B6B78' };
+
+// segments: [{label, value, color}] — zero-value segments are dropped so the
+// bar never carries a sliver that cannot be seen or hovered.
+function vizProportion(caption, segments){
+  const live = segments.filter(function(x){ return Number(x.value) > 0; });
+  const total = live.reduce(function(a,b){ return a + Number(b.value); }, 0);
+  if(!total) return '';
+  const bar = live.map(function(seg){
+    const pct = (Number(seg.value) / total) * 100;
+    return '<span style="width:' + pct.toFixed(2) + '%;background:' + seg.color +
+           ';" title="' + hmEsc(seg.label + ': ' + seg.value) + '"></span>';
+  }).join('');
+  const legend = live.map(function(seg){
+    return '<span class="viz-key"><i style="background:' + seg.color + '"></i>' +
+           hmEsc(seg.label) + ' <b>' + hmEsc(seg.value) + '</b></span>';
+  }).join('');
+  return '<div class="viz-block">' +
+           (caption ? '<div class="viz-cap">' + hmEsc(caption) + '</div>' : '') +
+           '<div class="viz-prop">' + bar + '</div>' +
+           '<div class="viz-legend">' + legend + '</div>' +
+         '</div>';
+}
+
+// Build a proportion bar straight from a telemetry row, if its numbers describe
+// a whole. Returns '' when they do not — better nothing than a meaningless bar.
+function vizForRow(row){
+  if(!row || !row.metrics) return '';
+  const m = row.metrics;
+  const n = function(k){ return Number(m[k]) || 0; };
+  if(m.succeeded !== undefined || m.failed !== undefined){
+    return vizProportion('Backup jobs, last 24 hours', [
+      { label:'Succeeded', value:n('succeeded'), color:VIZ.ok },
+      { label:'Warnings',  value:n('warnings'),  color:VIZ.warn },
+      { label:'Failed',    value:n('failed'),    color:VIZ.bad }
+    ]);
+  }
+  if(m.online !== undefined || m.offline !== undefined){
+    return vizProportion('Access points', [
+      { label:'Online',  value:n('online'),  color:VIZ.ok },
+      { label:'Offline', value:n('offline'), color:VIZ.bad }
+    ]);
+  }
+  if(m.wan_up !== undefined || m.wan_down !== undefined){
+    return vizProportion('WAN links', [
+      { label:'Up',    value:n('wan_up'),    color:VIZ.ok },
+      { label:'Down',  value:n('wan_down'),  color:VIZ.bad },
+      { label:'Spare', value:n('wan_spare'), color:VIZ.idle }
+    ]);
+  }
+  if(m.current !== undefined || m.never !== undefined){
+    return vizProportion('Devices by backup state', [
+      { label:'Current', value:n('current'), color:VIZ.ok },
+      { label:'Stale',   value:n('stale'),   color:VIZ.warn },
+      { label:'Never',   value:n('never'),   color:VIZ.bad }
+    ]);
+  }
+  return '';
+}
+
+// A firewall's ports, drawn as ports. Item names look like "X1 (WAN)" or "wan1".
+function vizPorts(items){
+  if(!items || !items.length) return '';
+  const ports = items.filter(function(it){
+    return /^(x\d|u\d|wan\d|port\d|ge\d)/i.test(String(it.name || '').trim());
+  });
+  if(ports.length < 2) return '';
+  const tiles = ports.map(function(it){
+    const raw = String(it.name || '');
+    const mm = raw.match(/^\s*([\w.\/]+)\s*(?:\(([^)]*)\))?/);
+    const nm = mm ? mm[1] : raw;
+    const zone = (mm && mm[2]) ? mm[2] : '';
+    const detail = String(it.detail || '');
+    const spare = /spare|no address/i.test(detail);
+    const cls = spare ? 'spare' : (it.state === 'failed' ? 'down' : 'up');
+    const word = spare ? 'Spare' : (it.state === 'failed' ? 'No link' : 'Link up');
+    const ipm = detail.match(/(\d{1,3}(?:\.\d{1,3}){3})/);
+    const speed = (detail.match(/(\d+\s*[GM]bps[^-,]*)/i) || [])[1];
+    return '<div class="port ' + cls + '" title="' + hmEsc(raw + ' — ' + detail) + '">' +
+             '<div class="pn">' + hmEsc(nm) + '</div>' +
+             (zone ? '<div class="pz">' + hmEsc(zone) + '</div>' : '') +
+             '<div class="ps"><i></i>' + hmEsc(word) + '</div>' +
+             (speed ? '<div class="pip">' + hmEsc(speed.trim()) + '</div>' : '') +
+             (ipm ? '<div class="pip">' + hmEsc(ipm[1]) + '</div>' : '') +
+           '</div>';
+  }).join('');
+  return '<div class="viz-block"><div class="viz-cap">Interfaces</div>' +
+         '<div class="ports">' + tiles + '</div></div>';
+}
+
 /* ---- Health sub-tabs: Overview plus one page per appliance ----
    The overview answers "is anything wrong". An appliance tab answers "what
    exactly did the collector read out of this box". Keeping them apart stops the
@@ -7815,8 +7961,14 @@ function renderApplianceDetail(key){
   // Numbers that mean something bad get coloured; the rest stay neutral.
   const BAD_KEYS  = ['failed','offline','down','wan_down','never','stale','warnings'];
   const GOOD_KEYS = ['succeeded','online','up','wan_up','current','ok'];
+  // Keys that exist for the scoring logic, or that restate a neighbouring tile,
+  // are not worth a tile of their own - "uptime 9 Days" beside "uptime days 9"
+  // is the same fact twice and just dilutes the row.
+  const HIDE = ['uptime_days', 'rows_read', 'tables', 'captured_chars', 'page'];
   const stats = Object.keys(metrics).filter(function(k){
       const v = metrics[k];
+      if(HIDE.indexOf(k) !== -1 && metrics.uptime !== undefined) return false;
+      if(k === 'rows_read' || k === 'tables' || k === 'captured_chars') return false;
       return v !== null && typeof v !== 'object';
     }).map(function(k){
       const v = metrics[k];
@@ -7867,6 +8019,12 @@ function renderApplianceDetail(key){
     '</div>' +
     (stats ? '<div class="ap-grid">' + stats + '</div>' : '') +
     errBlock +
+    (function(){
+      const plate = vizPorts(items);
+      const prop  = vizForRow(row);
+      if(!plate && !prop) return '';
+      return '<div class="hm-group">' + plate + prop + '</div>';
+    })() +
     '<div class="hm-group">' +
       '<div class="hm-group-head"><span class="hm-group-title">Detail read from the appliance</span>' +
       '<span class="hm-count">' + items.length + ' row(s)</span></div>' +
