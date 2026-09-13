@@ -542,6 +542,43 @@
   }
   .hm-shot img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;}
   .hm-shot .ph{font-size:11px;color:var(--ink-soft);}
+  /* Sub-tabs: overview plus one per appliance */
+  .hm-tabs{
+    display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;
+    border-bottom:1px solid var(--line);padding-bottom:10px;
+  }
+  .hm-tab{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:7px 14px;border-radius:10px;cursor:pointer;
+    background:transparent;border:1px solid transparent;
+    font-size:12.5px;font-weight:600;color:var(--ink-soft);
+    font-family:inherit;white-space:nowrap;
+  }
+  .hm-tab:hover{background:var(--paper);color:var(--ink);}
+  .hm-tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+  .hm-tab .tdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .hm-tab .tdot.ok{background:var(--success);}
+  .hm-tab .tdot.warning{background:var(--warn);}
+  .hm-tab .tdot.critical,.hm-tab .tdot.error{background:var(--danger);}
+  .hm-tab .tdot.none{background:#6B6B78;}
+
+  /* Appliance detail page */
+  .ap-head{
+    background:var(--paper);border:1px solid var(--line);border-radius:16px;
+    padding:22px 24px;margin-bottom:16px;
+  }
+  .ap-title{display:flex;align-items:center;gap:11px;margin-bottom:6px;}
+  .ap-title h2{margin:0;font-size:19px;font-weight:700;}
+  .ap-sum{font-size:14px;color:var(--ink);line-height:1.5;}
+  .ap-meta{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:10px;
+           display:flex;gap:16px;flex-wrap:wrap;}
+  .ap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;}
+  .ap-stat{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px;}
+  .ap-stat .k{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.07em;}
+  .ap-stat .v{font-family:var(--mono);font-size:19px;font-weight:700;margin-top:5px;word-break:break-word;}
+  .ap-stat.bad .v{color:var(--danger);}
+  .ap-stat.good .v{color:var(--success);}
+  .ap-empty{padding:34px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
   .hm-detail{margin:0 16px 14px;border-top:1px solid var(--line-soft);}
   .hm-drow{
     display:flex;gap:10px;justify-content:space-between;align-items:baseline;
@@ -819,6 +856,9 @@
       </div>
     </div>
 
+    <div class="hm-tabs" id="healthTabs"></div>
+
+    <div id="healthOverview">
     <div class="hm-hero">
       <div class="hm-ring" id="healthRing">
         <div class="hm-ring-inner">
@@ -850,6 +890,9 @@
       average of the categories above; a category with no data to judge is skipped rather than counted as a pass.
       <span id="healthScannedAt"></span>
     </div>
+    </div><!-- /healthOverview -->
+
+    <div id="healthApplianceView" style="display:none;"></div>
   </section>
 
   <div class="hm-shotbox" id="hmShotBox">
@@ -7400,7 +7443,7 @@ function renderHealthLive(){
     const err = (row && row.error)
       ? '<div class="hm-sys-err">' + hmEsc(String(row.error).slice(0,300)) + '</div>' : '';
 
-    return '<div class="hm-sys">' +
+    return '<div class="hm-sys" data-hmopen="' + hmEsc(s.key) + '" style="cursor:pointer;" title="Open this appliance">' +
       '<div class="hm-sys-head">' +
         '<span class="hm-dot ' + dotCls + '"></span>' +
         '<div style="min-width:0;flex:1;">' +
@@ -7413,6 +7456,13 @@ function renderHealthLive(){
       err + detail + shot +
     '</div>';
   }).join('');
+
+  wrap.querySelectorAll('[data-hmopen]').forEach(function(card){
+    card.addEventListener('click', function(e){
+      if(e.target.closest('[data-hmshot]')) return;   // let the capture open instead
+      hmSwitchHealthTab(card.dataset.hmopen);
+    });
+  });
 
   // Swap each placeholder for the real image via a short-lived signed URL
   wrap.querySelectorAll('[data-hmshot]').forEach(box=>{
@@ -7702,10 +7752,156 @@ function hmTone(score){
 
 let hmLast = null;
 
+/* ---- Health sub-tabs: Overview plus one page per appliance ----
+   The overview answers "is anything wrong". An appliance tab answers "what
+   exactly did the collector read out of this box". Keeping them apart stops the
+   overview turning into a wall of rows as more systems are added. */
+let hmTab = 'overview';
+
+function hmSwitchHealthTab(key){
+  hmTab = key;
+  const ov = $('healthOverview'), ap = $('healthApplianceView');
+  if(key === 'overview'){
+    ov.style.display = '';
+    ap.style.display = 'none';
+  } else {
+    ov.style.display = 'none';
+    ap.style.display = '';
+    ap.innerHTML = renderApplianceDetail(key);
+    hmBindShots(ap);
+  }
+  renderHealthTabs();
+}
+
+function renderHealthTabs(){
+  const bar = $('healthTabs');
+  if(!bar) return;
+  const tabs = [{ key:'overview', label:'Overview', state:null }].concat(
+    hmSources().map(function(src){
+      const row = hmSourceRow(src.key);
+      return { key:src.key,
+               label:src.label.split('\u2014')[0].split(' - ')[0].trim(),
+               state:hmEffectiveState(row) };
+    })
+  );
+  bar.innerHTML = tabs.map(function(t){
+    const dot = t.state === null ? ''
+      : '<span class="tdot ' + (t.state === 'stale' ? 'warning' : t.state) + '"></span>';
+    return '<button class="hm-tab' + (hmTab === t.key ? ' active' : '') +
+           '" data-hmtab="' + hmEsc(t.key) + '">' + dot + hmEsc(t.label) + '</button>';
+  }).join('');
+  bar.querySelectorAll('[data-hmtab]').forEach(function(b){
+    b.addEventListener('click', function(){ hmSwitchHealthTab(b.dataset.hmtab); });
+  });
+}
+
+function renderApplianceDetail(key){
+  const src = hmSources().find(function(x){ return x.key === key; }) || { key:key, label:key };
+  const row = hmSourceRow(key);
+  if(!row){
+    return '<div class="ap-head"><div class="ap-title"><span class="hm-dot none"></span><h2>' +
+           hmEsc(src.label) + '</h2></div>' +
+           '<div class="ap-sum">Nothing reported yet.</div></div>' +
+           '<div class="hm-group"><div class="ap-empty">The collector has not sent a reading ' +
+           'for this system. Either it is not configured yet, or it could not be reached.' +
+           '</div></div>';
+  }
+
+  const eff = hmEffectiveState(row);
+  const dotCls = (eff === 'stale') ? 'warning' : eff;
+  const metrics = (row.metrics && typeof row.metrics === 'object') ? row.metrics : {};
+  const items = Array.isArray(row.items) ? row.items : [];
+
+  // Numbers that mean something bad get coloured; the rest stay neutral.
+  const BAD_KEYS  = ['failed','offline','down','wan_down','never','stale','warnings'];
+  const GOOD_KEYS = ['succeeded','online','up','wan_up','current','ok'];
+  const stats = Object.keys(metrics).filter(function(k){
+      const v = metrics[k];
+      return v !== null && typeof v !== 'object';
+    }).map(function(k){
+      const v = metrics[k];
+      const lk = k.toLowerCase();
+      let cls = '';
+      if(BAD_KEYS.indexOf(lk) !== -1 && Number(v) > 0) cls = ' bad';
+      else if(GOOD_KEYS.indexOf(lk) !== -1 && Number(v) > 0) cls = ' good';
+      return '<div class="ap-stat' + cls + '"><div class="k">' +
+             hmEsc(k.replace(/_/g,' ')) + '</div><div class="v">' + hmEsc(v) + '</div></div>';
+    }).join('');
+
+  const errBlock = row.error
+    ? '<div class="hm-group"><div class="hm-group-head">' +
+      '<span class="hm-sev crit">Error</span>' +
+      '<span class="hm-group-title">The collector could not read this system</span></div>' +
+      '<div class="hm-find"><div class="hm-sys-err" style="margin:0;">' +
+      hmEsc(String(row.error)) + '</div></div></div>'
+    : '';
+
+  const itemRows = items.length
+    ? items.map(function(it){
+        const st = (it.state === 'failed') ? 'bad' : (it.state === 'warn' ? 'warn' : 'ok');
+        return '<div class="hm-drow ' + st + '" style="padding:9px 18px;">' +
+                 '<span class="hm-dname" style="max-width:40%;">' + hmEsc(it.name || '') + '</span>' +
+                 '<span class="hm-ddet">' + hmEsc(it.detail || '') + '</span>' +
+               '</div>';
+      }).join('')
+    : '<div class="ap-empty">Nothing flagged \u2014 this system reported clean.</div>';
+
+  const shot = row.screenshot_path
+    ? '<div class="hm-group"><div class="hm-group-head">' +
+      '<span class="hm-group-title">Captured screen</span></div>' +
+      '<div style="padding:14px 18px;"><div class="hm-shot" style="height:280px;" data-hmshot="' +
+      hmEsc(row.screenshot_path) + '" title="Click to enlarge">' +
+      '<div class="ph">Loading capture...</div></div></div></div>'
+    : '';
+
+  return '<div class="ap-head">' +
+      '<div class="ap-title"><span class="hm-dot ' + dotCls + '"></span><h2>' +
+        hmEsc(row.source_label || src.label) + '</h2></div>' +
+      '<div class="ap-sum">' + hmEsc(row.summary || '\u2014') + '</div>' +
+      '<div class="ap-meta">' +
+        '<span>' + hmEsc(hmAgeText(row)) + '</span>' +
+        (row.collector_host ? '<span>collector: ' + hmEsc(row.collector_host) + '</span>' : '') +
+        (row.agent_version ? '<span>via: ' + hmEsc(row.agent_version) + '</span>' : '') +
+        ((eff === 'stale') ? '<span style="color:var(--warn);">reading is stale</span>' : '') +
+      '</div>' +
+    '</div>' +
+    (stats ? '<div class="ap-grid">' + stats + '</div>' : '') +
+    errBlock +
+    '<div class="hm-group">' +
+      '<div class="hm-group-head"><span class="hm-group-title">Detail read from the appliance</span>' +
+      '<span class="hm-count">' + items.length + ' row(s)</span></div>' +
+      itemRows +
+    '</div>' + shot;
+}
+
+// Turn every capture placeholder inside `scope` into the real image.
+function hmBindShots(scope){
+  scope.querySelectorAll('[data-hmshot]').forEach(function(box){
+    const path = box.dataset.hmshot;
+    box.addEventListener('click', function(){ hmOpenShot(path); });
+    if(!supa) return;
+    supa.storage.from('health-reports').createSignedUrl(path, 300).then(function(r){
+      if(r.error || !r.data){ box.innerHTML = '<div class="ph">capture unavailable</div>'; return; }
+      const img = new Image();
+      img.onload = function(){ box.innerHTML = ''; box.appendChild(img); };
+      img.onerror = function(){ box.innerHTML = '<div class="ph">capture unavailable</div>'; };
+      img.src = r.data.signedUrl;
+      img.alt = 'Captured report';
+    }).catch(function(){ box.innerHTML = '<div class="ph">capture unavailable</div>'; });
+  });
+}
+
 function renderHealth(){
   const h = computeHealth();
   hmLast = h;
   renderHealthLive();
+  renderHealthTabs();
+  if(hmTab !== 'overview'){
+    $('healthOverview').style.display = 'none';
+    $('healthApplianceView').style.display = '';
+    $('healthApplianceView').innerHTML = renderApplianceDetail(hmTab);
+    hmBindShots($('healthApplianceView'));
+  }
   const tone = hmTone(h.score);
 
   const pct = h.score === null ? 0 : h.score;
