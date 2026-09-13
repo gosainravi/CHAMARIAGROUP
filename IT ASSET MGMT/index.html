@@ -1023,9 +1023,11 @@
 
     <div class="hm-note" style="margin-top:16px;">
       <strong>How the dates are read.</strong> Subscriptions use the expiry date on the
-      IT service record; equipment uses the warranty end date on the asset. Anything with
-      no date recorded is listed as <em>not tracked</em> rather than hidden - an untracked
-      contract is the one that lapses quietly.
+      IT service record; equipment uses the warranty end date on the asset. Both are
+      treated the same way - a warranty is an expiry, so <em>Renewed</em> moves a warranty
+      or AMC forward by its contract term exactly as it does a subscription, and invoices
+      attach to either. Anything with no date recorded is listed as <em>not tracked</em>
+      rather than hidden - an untracked contract is the one that lapses quietly.
       <span id="expiryCoverage"></span>
     </div>
   </section>
@@ -2743,6 +2745,8 @@ function assetFromDb(r){
     poNumber:r.po_number||'', poDate:r.po_date||'', poQty:r.po_qty??'', poAmount:r.po_amount??'',
     systemType:r.system_type||'', processor:r.processor||'', ram:r.ram||'',
     hdd:r.hdd||'', ssd:r.ssd||'', remarks:r.remarks||'',
+    contractTerm:r.contract_term||'', attachments:Array.isArray(r.attachments)?r.attachments:[],
+    renewalHistory:Array.isArray(r.renewal_history)?r.renewal_history:[], lastRenewedAt:r.last_renewed_at||'',
     serviceTag:r.service_tag||'', computerName:r.computer_name||'', loggedInUser:r.logged_in_user||'',
     coresSpeed:r.cores_speed||'', storage:r.storage||'', graphics:r.graphics||'', battery:r.battery||'',
     monitor:r.monitor||'', osName:r.os_name||'', osArch:r.os_arch||'', osVersion:r.os_version||'',
@@ -8018,9 +8022,9 @@ function exRows(){
       assigned: a.assignedDisplayName || '-',
       date: a.warrantyEnd || '',
       days: exDaysLeft(a.warrantyEnd),
-      term: '',
-      files: 0,
-      renewable: false,
+      term: a.contractTerm || '',
+      files: (a.attachments || []).length,
+      renewable: true,
       raw: a
     }));
 }
@@ -8066,7 +8070,7 @@ function renderExpiry(){
   const sub = exTab === 'subscription';
   $('expiryHead').innerHTML = sub
     ? '<th>Item</th><th>Type</th><th>Company</th><th>Term</th><th>Expires</th><th>Status</th><th>Files</th><th>Action</th>'
-    : '<th>Asset</th><th>Category</th><th>Assigned</th><th>Company</th><th>Warranty ends</th><th>Status</th>';
+    : '<th>Asset</th><th>Category</th><th>Assigned</th><th>Term</th><th>Warranty ends</th><th>Status</th><th>Files</th><th>Action</th>';
 
   if(!rows.length){
     $('expiryBody').innerHTML = '<tr><td colspan="8"><div class="ex-empty">' +
@@ -8094,9 +8098,13 @@ function renderExpiry(){
         '<td><strong>' + hmEsc(r.name) + '</strong></td>' +
         '<td>' + hmEsc(r.kind) + '</td>' +
         '<td>' + hmEsc(r.assigned) + '</td>' +
-        '<td>' + hmEsc(r.company) + '</td>' +
+        '<td>' + (r.term ? '<span class="ex-term">' + hmEsc(r.term) + '</span>'
+                         : '<span style="color:var(--ink-soft);">-</span>') + '</td>' +
         '<td style="font-family:var(--mono);">' + when + '</td>' +
         '<td>' + pill + '</td>' +
+        '<td><button class="ex-files" data-exfiles="' + hmEsc(r.id) + '">' +
+          (r.files ? '&#128206; ' + r.files : '&#128206; add') + '</button></td>' +
+        '<td><button class="btn btn-sm" data-exrenew="' + hmEsc(r.id) + '">Renewed</button></td>' +
       '</tr>';
     }).join('');
 
@@ -8142,13 +8150,39 @@ function exAddTerm(fromStr, term){
   return d.toISOString().slice(0, 10);
 }
 
-function openRenew(id){
+/* A subscription and a warranty are the same thing to this dialog: a dated
+   commitment that gets pushed forward. exTarget() hides which table it lives in
+   so the renewal, the history and the file handling are written once. */
+function exTarget(id){
   const sv = itServices.find(x => x.id === id);
-  if(!sv){ showToast('Could not find that subscription', true); return; }
+  if(sv) return {
+    rec: sv, table: 'it_services', dateCol: 'expiry_date',
+    title: exServiceName(sv),
+    sub: (sv.serviceType || 'service') + ' · ' + (companyNameById(sv.companyId) || 'no company'),
+    getDate: () => sv.expiryDate, setDate: v => { sv.expiryDate = v; },
+    what: 'subscription'
+  };
+  const a = assets.find(x => x.id === id);
+  if(a) return {
+    rec: a, table: 'assets', dateCol: 'warranty_end',
+    title: hmLabelOf(a),
+    sub: (a.category || 'asset') + ' · ' + (a.assignedDisplayName || 'unassigned') +
+         ' · ' + (a.companyName || 'no company'),
+    getDate: () => a.warrantyEnd, setDate: v => { a.warrantyEnd = v; },
+    what: 'warranty'
+  };
+  return null;
+}
+
+function openRenew(id){
+  const t = exTarget(id);
+  if(!t){ showToast('Could not find that record', true); return; }
+  const sv = t.rec;
   exRenewId = id;
-  $('renewWhat').textContent = exServiceName(sv);
-  $('renewSub').textContent = (sv.serviceType || 'service') + ' · ' +
-    (companyNameById(sv.companyId) || 'no company');
+  document.querySelector('#renewOverlay .panel-head h3').textContent =
+    t.what === 'warranty' ? 'Renew warranty / AMC' : 'Renew subscription';
+  $('renewWhat').textContent = t.title;
+  $('renewSub').textContent = t.sub;
   $('renewTerm').value = sv.contractTerm || 'yearly';
   $('renewUploadMsg').textContent = '';
   exRefreshRenewDates();
@@ -8157,10 +8191,10 @@ function openRenew(id){
 }
 
 function exRefreshRenewDates(){
-  const sv = itServices.find(x => x.id === exRenewId);
-  if(!sv) return;
+  const t = exTarget(exRenewId);
+  if(!t) return;
   const term = $('renewTerm').value;
-  const from = sv.expiryDate || '';
+  const from = t.getDate() || '';
   const to = exAddTerm(from, term);
   $('renewFrom').textContent = from || 'no date on file';
   $('renewTo').textContent = to;
@@ -8173,8 +8207,8 @@ function exRefreshRenewDates(){
 }
 
 function exRenderRenewFiles(){
-  const sv = itServices.find(x => x.id === exRenewId);
-  const files = (sv && sv.attachments) || [];
+  const t = exTarget(exRenewId);
+  const files = (t && t.rec.attachments) || [];
   $('renewFiles').innerHTML = files.length
     ? files.map((f, i) =>
         '<div class="ex-attach-row">' +
@@ -8204,23 +8238,24 @@ function exRenderRenewFiles(){
 // Write just the columns we touch, so a renewal cannot clobber the rest of a
 // service record that this page never loaded.
 async function exSaveService(patch){
-  const sv = itServices.find(x => x.id === exRenewId);
-  if(!sv) return;
+  const t = exTarget(exRenewId);
+  if(!t) return;
   if(supa){
-    const { error } = await supa.from('it_services').update(patch).eq('id', exRenewId);
+    const { error } = await supa.from(t.table).update(patch).eq('id', exRenewId);
     if(error){ showToast('Could not save: ' + error.message, true); throw error; }
   }
-  if(patch.expiry_date !== undefined)    sv.expiryDate = patch.expiry_date;
-  if(patch.contract_term !== undefined)  sv.contractTerm = patch.contract_term;
-  if(patch.attachments !== undefined)    sv.attachments = patch.attachments;
-  if(patch.renewal_history !== undefined) sv.renewalHistory = patch.renewal_history;
+  // Mirror into the in-memory copy so the table updates without a reload.
+  if(patch[t.dateCol] !== undefined)      t.setDate(patch[t.dateCol]);
+  if(patch.contract_term !== undefined)   t.rec.contractTerm = patch.contract_term;
+  if(patch.attachments !== undefined)     t.rec.attachments = patch.attachments;
+  if(patch.renewal_history !== undefined) t.rec.renewalHistory = patch.renewal_history;
 }
 
 async function exUploadFiles(fileList){
-  const sv = itServices.find(x => x.id === exRenewId);
-  if(!sv || !fileList || !fileList.length) return;
+  const t = exTarget(exRenewId);
+  if(!t || !fileList || !fileList.length) return;
   const msg = $('renewUploadMsg');
-  const existing = sv.attachments || [];
+  const existing = t.rec.attachments || [];
   const added = [];
   for(let i = 0; i < fileList.length; i++){
     const f = fileList[i];
@@ -8240,21 +8275,21 @@ async function exUploadFiles(fileList){
 }
 
 async function exConfirmRenew(){
-  const sv = itServices.find(x => x.id === exRenewId);
-  if(!sv) return;
+  const t = exTarget(exRenewId);
+  if(!t) return;
   const term = $('renewTerm').value;
-  const from = sv.expiryDate || '';
+  const from = t.getDate() || '';
   const to = exAddTerm(from, term);
-  const history = (sv.renewalHistory || []).concat([{
+  const history = (t.rec.renewalHistory || []).concat([{
     renewedAt: new Date().toISOString(), from: from || null, to: to, term: term
   }]);
   const btn = $('renewConfirm');
   btn.disabled = true; btn.textContent = 'Saving...';
   try{
-    await exSaveService({
-      expiry_date: to, contract_term: term,
-      last_renewed_at: new Date().toISOString(), renewal_history: history
-    });
+    const patch = { contract_term: term, last_renewed_at: new Date().toISOString(),
+                    renewal_history: history };
+    patch[t.dateCol] = to;                 // expiry_date or warranty_end
+    await exSaveService(patch);
     showToast('Renewed - now expires ' + to);
     $('renewOverlay').classList.remove('open');
     renderExpiry();
@@ -8270,10 +8305,10 @@ function exportExpiryCSV(){
   const sub = exTab === 'subscription';
   const head = sub
     ? ['Item','Type','Company','Contract term','Expires','Days left','Files']
-    : ['Asset','Category','Assigned','Company','Warranty ends','Days left'];
+    : ['Asset','Category','Assigned','Company','Contract term','Warranty ends','Days left','Files'];
   const body = rows.map(r => sub
     ? [r.name, r.kind, r.company, r.term, r.date, r.days ?? '', r.files]
-    : [r.name, r.kind, r.assigned, r.company, r.date, r.days ?? '']);
+    : [r.name, r.kind, r.assigned, r.company, r.term, r.date, r.days ?? '', r.files]);
   const csv = [head, ...body].map(line => line.map(v => {
     const t = String(v ?? '');
     return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
