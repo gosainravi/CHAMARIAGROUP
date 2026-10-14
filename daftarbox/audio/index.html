@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Audio editing – Daftarbox</title>
+<meta name="description" content="Free audio tools that run in your browser: cut, join, convert to MP3, change speed, boost volume, reduce noise, make ringtones and record your voice. Nothing is uploaded.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/site.css?v=20261005">
+<style>
+/* ---------- Audio portal page styles (colours come from site.css variables) ---------- */
+.p-hero .eyebrow svg{width:14px;height:14px}
+.trust{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 22px;margin:34px 0 0;padding:0;list-style:none;color:var(--muted);font-size:.9rem}
+.trust li{display:flex;align-items:center;gap:7px}
+.trust svg{width:16px;height:16px;color:var(--accent);flex:none}
+.empty-filter{text-align:center;color:var(--muted);padding:30px 0}
+
+/* picker extras */
+.picker .lock{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.86rem;margin-top:4px}
+.picker .lock svg{width:14px;height:14px}
+.picker .big svg{width:22px;height:22px}
+.drop-veil{position:fixed;inset:0;z-index:50;display:none;place-items:center;background:color-mix(in srgb,var(--accent-soft) 82%,transparent);border:3px dashed var(--accent);pointer-events:none}
+.drop-veil span{font-weight:800;font-size:1.4rem;color:var(--accent);background:var(--surface);padding:14px 26px;border-radius:14px;box-shadow:var(--shadow)}
+body.dragging .drop-veil{display:grid}
+
+/* workspace header */
+.fhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.fhead .fname{flex:1 1 160px}
+.fhead .meta{color:var(--muted);font-size:.86rem;white-space:nowrap}
+
+/* waveform */
+.wv{display:flex;flex-direction:column;gap:10px}
+.wv-stage{position:relative;border-radius:10px;background:var(--sunk);overflow:hidden;touch-action:none}
+.wv canvas{display:block;width:100%;height:190px;cursor:text}
+.wv canvas:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.wv-scroll{width:100%;margin:0;accent-color:var(--accent)}
+.wv-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wv-bar .play{width:44px;height:44px;border-radius:50%;padding:0}
+.wv-bar .play svg{width:20px;height:20px}
+.wv-time{font-variant-numeric:tabular-nums;font-size:.92rem;color:var(--muted);margin-right:auto}
+.wv-time b{color:var(--ink);font-weight:650}
+.wv-zoom{display:inline-flex;gap:4px}
+.selinfo{font-size:.86rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* options panel extras */
+.opts .grp{border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+.opts .grp:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.opts h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;font-weight:700}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.btnrow .btn{flex:1 1 auto}
+.minis{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.minis button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 11px;font-weight:600;font-size:.84rem;cursor:pointer;color:var(--ink)}
+.minis button:hover{border-color:var(--ink)}
+.minis button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.seg.full{display:flex;width:100%;margin:6px 0 14px}
+.seg.full button{flex:1;padding:8px 6px}
+label.f output,.f.lab output{float:right;font-weight:650;color:var(--accent);font-variant-numeric:tabular-nums}
+.f.lab{display:block;margin:0 0 14px;font-weight:600;font-size:.92rem}
+.kbd{font-size:.8rem;color:var(--muted);margin:10px 0 0;line-height:1.7}
+kbd{font:inherit;font-size:.76rem;font-weight:650;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface);color:var(--ink)}
+.busy-row{display:flex;align-items:center;gap:10px}
+
+/* results */
+.results audio{width:100%;margin:4px 0 14px;display:block}
+.results li .btn{flex:none}
+
+/* join list */
+.clips{list-style:none;margin:0;padding:0}
+.clips li{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.clips li:first-child{border-top:0}
+.clips .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:750;font-size:.82rem}
+.clips .nm{min-width:0}
+.clips .nm b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.clips .nm span{font-size:.84rem;color:var(--muted)}
+.clips .acts{display:flex;gap:4px}
+.addmore{margin-top:12px}
+.timeline{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--sunk);margin:2px 0 14px;gap:2px}
+.timeline i{display:block;background:var(--accent);opacity:.85}
+.timeline i:nth-child(even){opacity:.55}
+
+/* recorder */
+.rec{display:flex;flex-direction:column;align-items:center;gap:16px;padding:26px 16px}
+.rec-time{font-size:clamp(2.4rem,8vw,3.6rem);font-weight:800;font-stretch:110%;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.rec-state{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:600}
+.rec-dot{width:12px;height:12px;border-radius:50%;background:var(--muted)}
+.rec-on .rec-dot{background:var(--danger);animation:blink 1.1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.rec canvas{width:100%;height:110px;display:block;border-radius:10px;background:var(--sunk)}
+.rec-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.rec-btns .btn{min-width:130px}
+.recbig{width:96px;height:96px;border-radius:50%;padding:0;background:var(--danger);color:var(--surface);box-shadow:0 10px 24px color-mix(in srgb,var(--danger) 30%,transparent)}
+.recbig svg{width:34px;height:34px}
+.meter{width:100%;height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .05s linear}
+
+@media (max-width:520px){
+  .wv canvas{height:150px}
+  .clips li{grid-template-columns:auto minmax(0,1fr) auto}
+  .clips li .play-mini{display:none}
+  .results li{flex-wrap:wrap}
+}
+</style>
+</head>
+<body class="p-audio">
+<a class="sr" href="#app">Skip to content</a>
+<header class="top"><div class="top-in">
+  <a class="mark" href="../index.html"><span aria-hidden="true"></span>Daftarbox</a>
+  <a class="portal-name" href="index.html#/">Audio editing</a>
+  <nav class="nav" aria-label="Audio tools">
+    <a href="#/" data-nav="home">All tools</a>
+    <a href="#/t/editor" data-nav="editor">Editor</a>
+    <a href="#/t/cut" data-nav="cut">Cut</a>
+    <a href="#/t/join" data-nav="join">Join</a>
+    <a href="#/t/convert" data-nav="convert">Convert</a>
+    <a href="#/t/recorder" data-nav="recorder">Record</a>
+  </nav>
+</div></header>
+
+<main id="app" tabindex="-1"></main>
+
+<footer class="site"><div>Daftarbox audio tools run entirely in your browser. Your files are never uploaded to a server. MP3 encoding uses lamejs (LGPL).</div></footer>
+<div class="drop-veil" aria-hidden="true"><span>Drop to open</span></div>
+<noscript><p style="text-align:center">These tools need JavaScript turned on.</p></noscript>
+
+<script src="audio-core.js?v=20261005"></script>
+<script src="audio-ui.js?v=20261005"></script>
+<script src="audio-tools.js?v=20261005"></script>
+</body>
+</html>

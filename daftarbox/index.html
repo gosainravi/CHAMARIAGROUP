@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daftarbox – Online tools for work</title>
+<meta name="description" content="Free online tools for PDFs, video and audio, plus remote access, security audits, IT asset management, Wi-Fi planning and IT project budgets for organisations.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/site.css?v=202610141">
+<style>
+/* Hub page. Tokens and components come from shared/site.css; each portal card takes its colour from a .p-* class. */
+.hero{position:relative;text-align:center;padding:72px 0 40px;isolation:isolate;overflow-x:clip}
+.hero::before{content:"";position:absolute;inset:0;z-index:-2;
+  background-image:radial-gradient(color-mix(in srgb,var(--ink) 12%,transparent) 1px,transparent 1px);background-size:22px 22px;
+  -webkit-mask-image:radial-gradient(ellipse 60% 70% at 50% 40%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 60% 70% at 50% 40%,#000 30%,transparent 75%)}
+.hero::after{content:"";position:absolute;z-index:-1;left:50%;top:10px;width:min(980px,100vw);height:420px;transform:translateX(-50%);
+  background:radial-gradient(closest-side at 30% 50%,rgba(217,58,43,.13),transparent),radial-gradient(closest-side at 70% 45%,rgba(67,56,202,.14),transparent),radial-gradient(closest-side at 50% 70%,rgba(11,122,158,.12),transparent);filter:blur(12px)}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:6px 14px;border-radius:99px;margin-bottom:20px;box-shadow:var(--shadow)}
+.eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.hero h1{font-stretch:120%;font-weight:850;font-size:clamp(2.3rem,6.4vw,4.4rem);line-height:.98;letter-spacing:-.04em;margin:0 auto 18px;max-width:15ch;text-wrap:balance}
+.hero h1 mark{background:linear-gradient(transparent 58%,var(--hl) 58%,var(--hl) 92%,transparent 92%);color:inherit;padding:0 .06em}
+.hero .sub{color:var(--muted);font-size:clamp(1.02rem,1.6vw,1.18rem);margin:0 auto 30px;max-width:56ch}
+
+/* Search */
+.search{position:relative;max-width:640px;margin:0 auto}
+.search-box{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:6px 6px 6px 18px;box-shadow:0 2px 4px rgba(21,24,30,.05),0 18px 40px rgba(21,24,30,.10);transition:border-color .15s,box-shadow .15s}
+.search-box:focus-within{border-color:var(--ink);box-shadow:0 0 0 4px color-mix(in srgb,var(--ink) 10%,transparent),0 18px 40px rgba(21,24,30,.12)}
+.search-box svg{width:22px;height:22px;color:var(--muted);flex:none}
+.search-box input{flex:1;min-width:0;border:0;background:transparent;font-size:1.08rem;padding:12px 0;outline:none}
+.search-box kbd{font:600 .78rem/1 "Archivo",sans-serif;color:var(--muted);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:5px 7px;margin-right:8px}
+@media (max-width:560px){.search-box kbd{display:none}}
+.results-pop{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.18);padding:6px;text-align:left;max-height:min(420px,60vh);overflow:auto}
+.results-pop[hidden]{display:none}
+.res{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:var(--ink);text-decoration:none}
+.res[aria-selected="true"],.res:hover{background:var(--sunk)}
+.res .rdot{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.res .rdot svg{width:18px;height:18px}
+.res b{display:block;font-weight:650}
+.res small{display:block;color:var(--muted);font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res .rp{margin-left:auto;font-size:.74rem;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:2px 9px;white-space:nowrap}
+.res > span{min-width:0}
+.no-res{padding:16px;color:var(--muted);text-align:center}
+.popular{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:18px auto 0;max-width:720px;align-items:center}
+.popular span{color:var(--muted);font-size:.88rem;margin-right:2px}
+.popular a{font-size:.88rem;font-weight:600;color:var(--ink);text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 12px;transition:border-color .15s,background .15s}
+.popular a:hover{border-color:var(--ink)}
+.count{margin:26px 0 0;color:var(--muted);font-size:.92rem}
+.count b{color:var(--ink)}
+
+/* Portal groups */
+.group{padding:34px 0 8px;scroll-margin-top:70px}
+.group-h{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 16px}
+.group-h h2{font-stretch:115%;font-weight:800;font-size:clamp(1.4rem,2.6vw,1.9rem);letter-spacing:-.025em;margin:0}
+.group-h p{margin:0;color:var(--muted)}
+.pgrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.pcard{position:relative;display:flex;flex-direction:column;height:100%;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow);overflow:hidden;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.pcard::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--accent);opacity:0;transition:opacity .18s}
+.pcard:has(.pmain:hover){transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:0 2px 4px rgba(21,24,30,.06),0 18px 40px color-mix(in srgb,var(--accent) 16%,transparent)}
+.pcard:has(.pmain:hover)::before{opacity:1}
+.pcard:has(.pmain:focus-visible){outline:2px solid var(--accent);outline-offset:3px}
+.pico{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:16px;transition:background .18s,color .18s}
+.pico svg{width:28px;height:28px}
+.pcard:has(.pmain:hover) .pico{background:var(--accent);color:var(--accent-ink)}
+.pcard h3{font-size:1.22rem;font-weight:750;margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pmain{color:inherit;text-decoration:none}
+.pmain::after{content:"";position:absolute;inset:0;border-radius:16px}
+.pmain:focus-visible{outline:none}
+.pcard p{margin:0 0 14px;color:var(--muted);font-size:.95rem}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;padding:0;list-style:none}
+.quick a{position:relative;z-index:1;font-size:.8rem;font-weight:600;text-decoration:none;color:var(--ink);background:var(--sunk);border-radius:99px;padding:4px 10px;transition:background .15s,color .15s}
+.quick a:hover{background:var(--accent);color:var(--accent-ink)}
+.pfoot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;font-weight:650;font-size:.93rem;color:var(--accent)}
+.pfoot small{color:var(--muted);font-weight:500}
+.pfoot svg{width:18px;height:18px;transition:transform .18s}
+.pcard:has(.pmain:hover) .pfoot svg{transform:translateX(4px)}
+.badge.preview{background:var(--accent-soft);color:var(--accent)}
+
+/* How it works and why */
+.how{margin:46px 0 0;padding:34px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.how h2{text-align:center;font-stretch:115%;font-weight:800;font-size:clamp(1.3rem,2.4vw,1.7rem);letter-spacing:-.02em;margin:0 0 24px}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:22px;counter-reset:s}
+.steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start}
+.steps li::before{content:counter(s);flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg);font-weight:800}
+.steps b{display:block;margin:4px 0 2px}
+.steps span{color:var(--muted);font-size:.93rem}
+.why{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin:22px 0 0}
+.why div{display:flex;gap:14px;align-items:flex-start;padding:18px;border-radius:16px;border:1px dashed var(--line)}
+.why svg{width:24px;height:24px;flex:none;color:var(--ink);margin-top:2px}
+.why b{display:block;margin-bottom:2px}
+.why span{color:var(--muted);font-size:.92rem}
+
+/* Footer */
+.fgrid{display:grid;grid-template-columns:1.4fr repeat(4,1fr);gap:24px;max-width:1180px;margin:0 auto;padding:36px 20px 18px}
+@media (max-width:860px){.fgrid{grid-template-columns:1fr 1fr}}
+.fgrid h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);margin:0 0 10px}
+.fgrid ul{list-style:none;margin:0;padding:0}
+.fgrid li{margin:0 0 6px}
+.fgrid a{color:var(--muted);text-decoration:none}
+.fgrid a:hover{color:var(--ink);text-decoration:underline}
+.fgrid p{margin:8px 0 0;max-width:34ch}
+footer.site .legal{border-top:1px solid var(--line);padding:16px 20px}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="mark" href="index.html"><span aria-hidden="true"></span>Daftarbox</a>
+  <nav class="nav" aria-label="Sections">
+    <a href="#files">File tools</a>
+    <a href="#org">For organisations</a>
+    <a href="#daily">Daily office</a>
+    <a href="#how">How it works</a>
+  </nav>
+</div></header>
+
+<main id="main">
+  <section class="hero">
+    <span class="eyebrow"><i aria-hidden="true"></i>Free · Private · Made in India</span>
+    <h1>Every tool your work needs, <mark>in one place</mark></h1>
+    <p class="sub">Edit PDFs, video and audio right in your browser. Plan, secure and manage your office IT with simple tools built for Indian teams.</p>
+
+    <div class="search" role="search">
+      <label class="search-box" for="q">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span class="sr">Search all tools</span>
+        <input id="q" type="search" autocomplete="off" placeholder="Search tools: merge PDF, trim video, heat map…" role="combobox" aria-expanded="false" aria-controls="qres" aria-autocomplete="list">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+      <div class="results-pop" id="qres" role="listbox" aria-label="Matching tools" hidden></div>
+    </div>
+    <div class="popular" aria-label="Popular tools"><span>Popular:</span></div>
+    <p class="count" data-count></p>
+  </section>
+
+  <section class="group" id="files" aria-labelledby="g-files">
+    <div class="group-h"><h2 id="g-files">Work with files</h2><p>Your files are processed on your device and never uploaded.</p></div>
+    <ul class="pgrid" data-group="files"></ul>
+  </section>
+
+  <section class="group" id="org" aria-labelledby="g-org">
+    <div class="group-h"><h2 id="g-org">For your organisation</h2><p>Plan, protect and keep track of your office IT.</p></div>
+    <ul class="pgrid" data-group="org"></ul>
+  </section>
+
+  <section class="group" id="daily" aria-labelledby="g-daily">
+    <div class="group-h"><h2 id="g-daily">Daily office</h2><p>Your day-to-day business apps, always one click away.</p></div>
+    <ul class="pgrid" data-group="daily"></ul>
+  </section>
+
+  <section class="how" id="how" aria-labelledby="g-how">
+    <h2 id="g-how">Done in three steps</h2>
+    <ol class="steps">
+      <li><div><b>Pick a tool</b><span>Search above or open a portal.</span></div></li>
+      <li><div><b>Add your file or details</b><span>Drop a file anywhere on the page, or fill in a short form.</span></div></li>
+      <li><div><b>Download the result</b><span>Save it straight to your device. No sign-up, no waiting list.</span></div></li>
+    </ol>
+  </section>
+
+  <section class="why" aria-label="Why Daftarbox">
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><p style="margin:0"><b>Your files stay with you</b><span>PDF, video and audio tools run in your browser.</span></p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 4h10M7 9h10M7 4c5 0 5 5 0 5l8 11"/></svg><p style="margin:0"><b>Built for India</b><span>Prices in rupees with GST, CERT-In and DPDP checks, Indian date formats.</span></p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg><p style="margin:0"><b>Simple by design</b><span>One clear button on every screen. Plain words, no jargon.</span></p></div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="fgrid" data-footer></div>
+  <div class="legal">© 2026 Daftarbox. Online tools for work.</div>
+</footer>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+
+/* ---------- Portals ---------- */
+const PORTALS = [
+  {id:"pdf", group:"files", cls:"p-pdf", name:"PDF tools", url:"pdf/index.html", desc:"Merge, split, compress, convert, edit and sign PDF files.",
+    icon:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'},
+  {id:"video", group:"files", cls:"p-video", name:"Video editing", url:"video/index.html", desc:"Trim, compress, resize for Reels, add text, and make GIFs.",
+    icon:'<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/>'},
+  {id:"audio", group:"files", cls:"p-audio", name:"Audio editing", url:"audio/index.html", desc:"Cut, join, convert to MP3, clean up noise and record your voice.",
+    icon:'<path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/>'},
+  {id:"budget", group:"org", cls:"p-budget", name:"IT project budget", url:"budget/index.html", desc:"Pick the equipment for a site and get the full project cost in minutes.",
+    icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M8 18h2M12 18h4"/>'},
+  {id:"wifi", group:"org", cls:"p-wifi", name:"Wi-Fi heat mapping", url:"wifi/index.html", desc:"Upload a floor plan and see 2.4 GHz and 5 GHz coverage before you install.",
+    icon:'<path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/>'},
+  {id:"security", group:"org", cls:"p-security", name:"Security audit", url:"security/index.html", desc:"Check your email domain and get a clear, prioritised security action plan.",
+    icon:'<path d="M12 3 5 6v5c0 4.4 3 8.3 7 10 4-1.7 7-5.6 7-10V6z"/><path d="m9 12 2 2 4-4"/>'},
+  {id:"assets", group:"org", cls:"p-assets", name:"IT asset management", url:"it-assets/index.html", desc:"Track every laptop, licence and device, who has it, and when warranties end.",
+    icon:'<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>'},
+  {id:"remote", group:"org", cls:"p-remote", name:"Remote access", url:"remote/index.html", desc:"Help someone on their computer, or reach your own, from anywhere.", badge:"Preview",
+    icon:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M9 10l2 2 4-4"/>'},
+  {id:"office", group:"daily", cls:"p-office", name:"Daily office tools", url:"https://gosainravi.github.io/CHAMARIAGROUP/", desc:"IT assets, HRMS, finance dashboard, equipment register and more — all your day-to-day office apps in one place.", ext:true,
+    icon:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>'}
+];
+
+/* ---------- Every tool, for search and quick links (soon: true = not live yet) ---------- */
+const T = (p, path, name, desc, extra = {}) => Object.assign({p, url:PORTALS.find(x => x.id === p).url + path, name, desc}, extra);
+const TOOLS = [
+  T("pdf", "#/t/merge", "Merge PDF", "Join several PDFs into one file, in any order you like.", {pop:1, k:"combine join"}),
+  T("pdf", "#/t/split", "Split PDF", "Cut one PDF into smaller files by page, by range or every few pages.", {k:"separate"}),
+  T("pdf", "#/t/organise", "Organise pages", "See every page, then drag to reorder, rotate or delete.", {k:"reorder arrange sort"}),
+  T("pdf", "#/t/rotate", "Rotate PDF", "Turn sideways or upside-down pages the right way round."),
+  T("pdf", "#/t/remove", "Remove pages", "Take out blank or unwanted pages in seconds.", {k:"delete"}),
+  T("pdf", "#/t/extract", "Extract pages", "Copy just the pages you need into a new PDF."),
+  T("pdf", "#/t/compress", "Compress PDF", "Make big PDFs small enough to email or upload.", {pop:1, k:"reduce size shrink smaller 100kb"}),
+  T("pdf", "#/t/repair", "Repair PDF", "Try to fix a PDF that won't open or shows errors.", {k:"fix broken corrupt"}),
+  T("pdf", "#/t/pdf2word", "PDF to Word", "Get the text out of a PDF into an editable Word file.", {pop:1, k:"docx convert"}),
+  T("pdf", "#/t/word2pdf", "Word to PDF", "Turn a .docx document into a tidy PDF.", {k:"docx convert"}),
+  T("pdf", "#/t/pdf2jpg", "PDF to JPG", "Save each page as a JPG or PNG picture.", {k:"image png convert"}),
+  T("pdf", "#/t/jpg2pdf", "JPG to PDF", "Put photos and scans (JPG, PNG, WebP) together in one PDF.", {k:"image png photo convert"}),
+  T("pdf", "#/t/excel", "Excel to PDF", "Print spreadsheets and CSV files as neat PDF tables.", {k:"xlsx csv sheet convert"}),
+  T("pdf", "#/t/pdf2txt", "PDF to text", "Pull all the text out of a PDF into a plain .txt file.", {k:"txt extract text"}),
+  T("pdf", "#/t/pagenumbers", "Add page numbers", "Number your pages in the corner or centre, your way."),
+  T("pdf", "#/t/watermark", "Add watermark", "Stamp text or your logo across every page.", {k:"stamp confidential logo"}),
+  T("pdf", "#/t/crop", "Crop PDF", "Trim the margins off pages, with a live preview.", {k:"margins trim"}),
+  T("pdf", "#/t/edit", "Edit PDF", "Change any text in a PDF or scan, in the original font. Add text, images and signatures.", {pop:1, k:"annotate write text whiteout change modify scanned acrobat"}),
+  T("pdf", "#/t/ocr", "OCR PDF", "Make scanned PDFs searchable, so you can find and copy their text.", {k:"scan searchable recognise text hindi"}),
+  T("pdf", "#/t/meta", "Edit PDF metadata", "Change the title, author, subject and keywords stored in a PDF.", {k:"properties author title"}),
+  T("pdf", "#/t/sign", "Sign PDF", "Draw, type or upload your signature and place it on the page.", {pop:1, k:"signature esign"}),
+  T("pdf", "#/t/protect", "Protect PDF", "Lock a PDF with a password.", {soon:true, k:"password encrypt lock"}),
+  T("pdf", "#/t/unlock", "Unlock PDF", "Remove a password you know from a PDF.", {soon:true, k:"password decrypt"}),
+  T("video", "#/t/trim", "Trim video", "Cut off the start or end, or snip a part out of the middle.", {pop:1, k:"cut clip"}),
+  T("video", "#/t/compress", "Compress video", "Make a big video smaller so it's quick to send and share.", {k:"reduce size shrink whatsapp"}),
+  T("video", "#/t/resize", "Crop & resize video", "Fit any video to Reels, Shorts, square or widescreen.", {k:"instagram reels shorts youtube aspect 9:16"}),
+  T("video", "#/t/rotate", "Rotate & flip video", "Turn a sideways video the right way up, or mirror it."),
+  T("video", "#/t/speed", "Change video speed", "Slow motion or fast forward, from 0.25× to 4×.", {k:"slow motion fast"}),
+  T("video", "#/t/audio", "Mute or replace audio", "Remove the sound, or put your own music on the video.", {k:"music silent"}),
+  T("video", "#/t/merge", "Merge videos", "Join several clips into one video, in the order you like.", {k:"combine join"}),
+  T("video", "#/t/text", "Add text or logo to video", "Put a caption, title or watermark on your video.", {k:"caption watermark subtitle"}),
+  T("video", "#/t/gif", "Video to GIF", "Turn a short moment into a looping GIF.", {pop:1, k:"animation"}),
+  T("video", "#/t/extract", "Extract audio from video", "Save the sound from a video as a WAV or MP3 file.", {k:"mp3 sound"}),
+  T("video", "#/t/frame", "Save a video frame", "Grab a still photo from any moment, at full quality.", {k:"screenshot still image"}),
+  T("audio", "#/t/editor", "Audio editor", "Trim, delete parts, fade and tidy up on a zoomable waveform.", {k:"edit waveform"}),
+  T("audio", "#/t/cut", "Cut audio", "Keep or remove one part of a song or recording.", {pop:1, k:"trim mp3 cutter"}),
+  T("audio", "#/t/join", "Join audio", "Put clips one after another, with a pause or a crossfade.", {k:"merge combine"}),
+  T("audio", "#/t/convert", "Convert audio", "Change to MP3, WAV or WebM, or take the sound out of a video.", {k:"mp3 wav format"}),
+  T("audio", "#/t/speed", "Change speed & pitch", "Slow down or speed up, with or without changing the pitch.", {k:"tempo"}),
+  T("audio", "#/t/volume", "Volume booster", "Make quiet audio louder without harsh crackle.", {k:"louder amplify"}),
+  T("audio", "#/t/eq", "Equaliser", "Adjust bass, mids and treble, or use a ready preset.", {k:"bass treble eq"}),
+  T("audio", "#/t/noise", "Reduce noise", "Quieten steady hum and hiss in the gaps between words.", {k:"clean background hum hiss"}),
+  T("audio", "#/t/reverse", "Reverse audio", "Play any sound backwards."),
+  T("audio", "#/t/ringtone", "Ringtone maker", "Pick the best 30 seconds and add soft fades for your phone.", {k:"phone"}),
+  T("audio", "#/t/recorder", "Voice recorder", "Record from your microphone, then trim or download.", {k:"mic microphone record"}),
+  T("budget", "", "IT project budget", "Workstations, Wi-Fi, switches, CCTV, NVR and UPS with cabling, installation and GST.", {pop:1, k:"cost estimate quotation boq cctv cabling"}),
+  T("wifi", "", "Wi-Fi heat map planner", "Upload a floor plan (JPG, PDF, DXF), place access points and see coverage.", {pop:1, k:"heatmap wireless coverage access point floor plan"}),
+  T("security", "#/email", "Email & domain security check", "See if someone could send fake email in your name. SPF, DKIM, DMARC.", {k:"spf dkim dmarc dns phishing"}),
+  T("security", "#/assess", "Security self-assessment", "47 plain-English questions with a score and a prioritised to-do list.", {k:"audit cert-in dpdp compliance"}),
+  T("security", "#/reports", "Security reports", "Open, compare and print your saved checks and assessments."),
+  T("assets", "#/", "IT asset dashboard", "Totals, warranties ending soon and anything that needs attention.", {k:"inventory"}),
+  T("assets", "#/assets", "Asset register", "Every laptop, desktop, printer and device, with check-out and history.", {k:"inventory hardware tag"}),
+  T("assets", "#/licences", "Software licences", "Seats, keys and renewal dates in one list.", {k:"license subscription"}),
+  T("assets", "#/reports?tool=labels", "QR asset labels", "Print A4 sheets of asset tags with QR codes.", {k:"barcode sticker"}),
+  T("remote", "#/", "Remote access", "Get help or help someone with a one-time code.", {k:"anydesk teamviewer support"}),
+  T("remote", "#/safety", "Remote-access scam safety", "How to spot 'digital arrest' and fake support calls.", {k:"fraud 1930 cybercrime"})
+];
+
+/* ---------- Render portal cards ---------- */
+const ARROW = svg('<path d="M5 12h14M13 6l6 6-6 6"/>');
+const EXT = svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/>');
+for (const g of ["files", "org", "daily"]) {
+  $(`[data-group="${g}"]`).innerHTML = PORTALS.filter(p => p.group === g).map(p => {
+    const tools = TOOLS.filter(t => t.p === p.id && !t.soon);
+    const quick = tools.filter(t => t.pop).concat(tools.filter(t => !t.pop)).slice(0, 3).filter(t => t.url !== p.url);
+    const extAttr = p.ext ? ' target="_blank" rel="noopener"' : '';
+    return `<li class="pcard ${p.cls}">
+      <div class="pico">${svg(p.icon)}</div>
+      <h3><a class="pmain" href="${p.url}"${extAttr}>${esc(p.name)}</a>${p.badge ? `<span class="badge preview">${esc(p.badge)}</span>` : ""}</h3>
+      <p>${esc(p.desc)}</p>
+      ${quick.length ? `<ul class="quick" aria-label="Popular in ${esc(p.name)}">${quick.map(t => `<li><a href="${t.url}">${esc(t.name)}</a></li>`).join("")}</ul>` : ""}
+      <div class="pfoot" aria-hidden="true"><span>Open ${esc(p.name.toLowerCase())}</span>${p.ext ? EXT : tools.length > 1 ? `<small>${tools.length} tools</small>` : ARROW}</div>
+    </li>`;
+  }).join("");
+}
+$(".popular").insertAdjacentHTML("beforeend", TOOLS.filter(t => t.pop).map(t => `<a href="${t.url}">${esc(t.name.replace(" planner", ""))}</a>`).join(""));
+$("[data-count]").innerHTML = `<b>${TOOLS.filter(t => !t.soon).length} tools</b> across <b>${PORTALS.length} portals</b>, free to use`;
+$("[data-footer]").innerHTML = `<div><a class="mark" href="index.html"><span aria-hidden="true"></span>Daftarbox</a><p>Online tools for work. Files you edit stay on your device.</p></div>` +
+  [["Files", ["pdf", "video", "audio"]], ["Plan", ["budget", "wifi"]], ["Protect", ["security", "remote"]], ["Manage", ["assets"]], ["Daily", ["office"]]].map(([h, ids]) =>
+    `<div><h3>${h}</h3><ul>${ids.map(id => PORTALS.find(p => p.id === id)).map(p => `<li><a href="${p.url}"${p.ext?' target="_blank" rel="noopener"':''}>${esc(p.name)}</a></li>`).join("")}</ul></div>`).join("");
+
+/* ---------- Search ---------- */
+const q = $("#q"), pop = $("#qres");
+let hits = [], sel = -1;
+const norm = s => s.toLowerCase().replace(/[^a-z0-9.:]+/g, " ").trim();
+function score(t, words) {
+  const name = norm(t.name), hay = norm([t.name, t.desc, t.k || "", PORTALS.find(p => p.id === t.p).name].join(" "));
+  let s = 0;
+  for (const w of words) { if (!hay.includes(w)) return 0; s += name.startsWith(w) ? 6 : name.split(" ").some(x => x.startsWith(w)) ? 4 : name.includes(w) ? 3 : 1; }
+  return s - (t.soon ? 2 : 0);
+}
+function search() {
+  const words = norm(q.value).split(" ").filter(Boolean);
+  if (!words.length) { close(); return; }
+  hits = TOOLS.map(t => [t, score(t, words)]).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+  sel = hits.length ? 0 : -1;
+  pop.innerHTML = hits.length ? hits.map((t, i) => { const p = PORTALS.find(x => x.id === t.p);
+    return `<a class="res ${p.cls}" id="r${i}" role="option" aria-selected="${i === sel}" href="${t.url}"><span class="rdot">${svg(p.icon)}</span><span><b>${esc(t.name)}${t.soon ? " (coming soon)" : ""}</b><small>${esc(t.desc)}</small></span><span class="rp">${esc(p.name)}</span></a>`; }).join("")
+    : `<p class="no-res">No tool matches “${esc(q.value.trim())}”. Try a simpler word like “PDF” or “video”.</p>`;
+  pop.hidden = false; q.setAttribute("aria-expanded", "true"); q.setAttribute("aria-activedescendant", sel >= 0 ? "r" + sel : "");
+}
+function close() { pop.hidden = true; q.setAttribute("aria-expanded", "false"); q.removeAttribute("aria-activedescendant"); }
+function move(d) {
+  if (!hits.length) return;
+  sel = (sel + d + hits.length) % hits.length;
+  [...pop.querySelectorAll(".res")].forEach((el, i) => el.setAttribute("aria-selected", i === sel));
+  q.setAttribute("aria-activedescendant", "r" + sel); $("#r" + sel).scrollIntoView({block:"nearest"});
+}
+q.addEventListener("input", search);
+q.addEventListener("focus", () => { if (q.value.trim()) search(); });
+q.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown") { e.preventDefault(); if (pop.hidden) search(); else move(1); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+  else if (e.key === "Enter" && sel >= 0 && !pop.hidden) { e.preventDefault(); location.href = hits[sel].url; }
+  else if (e.key === "Escape") { if (!pop.hidden) close(); else q.value = ""; }
+});
+document.addEventListener("click", e => { if (!e.target.closest(".search")) close(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); q.focus(); }
+});
+</script>
+</body>
+</html>
