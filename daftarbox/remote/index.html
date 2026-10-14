@@ -287,7 +287,8 @@ let sessions = [];
 
 // ── PeerJS init ──
 function initPeer() {
-  const id = 'ct-' + Math.random().toString(36).slice(2,11);
+  const digits = String(Math.floor(100000000 + Math.random() * 900000000));
+  const id = 'ct-' + digits;
   peer = new Peer(id, {
     host: '0.peerjs.com', port: 443, secure: true, path: '/',
     config: { iceServers: [
@@ -297,7 +298,7 @@ function initPeer() {
   });
 
   peer.on('open', pid => {
-    myID = pid.replace('ct-','').replace(/(.{3})(.{3})(.{3})/,'$1 $2 $3').toUpperCase();
+    myID = pid.replace('ct-','').replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3');
     myOTP = genOTP();
     document.getElementById('my-id').textContent = myID;
     document.getElementById('my-id').classList.remove('loading');
@@ -379,7 +380,7 @@ function doConnect() {
   if (rawID.length < 9) { alert('Enter the full 9-digit remote ID.'); return; }
   if (!otp) { alert('Enter the one-time password.'); return; }
 
-  const peerId = 'ct-' + rawID.toLowerCase();
+  const peerId = 'ct-' + rawID;
   setCtrlStatus('waiting', 'Connecting…');
   document.getElementById('connect-btn').disabled = true;
 
