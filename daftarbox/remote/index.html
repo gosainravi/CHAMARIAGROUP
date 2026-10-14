@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Remote access – Daftarbox</title>
+<meta name="description" content="Get help or help someone on their computer. Product preview of Daftarbox remote access: your device ID, one-time password, screen-share preview, address book and safety tips.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/site.css?v=20261005">
+<style>
+/* ---------- Page styles (Remote access). Colours come only from site.css tokens. ---------- */
+.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.i.sm{width:16px;height:16px}
+.i.lg{width:28px;height:28px}
+.view[hidden]{display:none!important}
+.view{animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view{animation:none}}
+
+/* Preview ribbon */
+.ribbon{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;text-align:center;
+  background:var(--accent-soft);color:var(--ink);font-size:.88rem;padding:9px 16px;border-bottom:1px solid var(--line)}
+.ribbon b{color:var(--accent)}
+.ribbon a{font-weight:600}
+
+/* Section heads */
+.v-head{padding:40px 0 24px}
+.v-head h1{font-stretch:115%;font-weight:850;font-size:clamp(1.7rem,3.6vw,2.4rem);letter-spacing:-.025em;line-height:1.08;margin:0 0 8px}
+.v-head p{margin:0;color:var(--muted);max-width:62ch}
+.v-head.center{text-align:center}
+.v-head.center p{margin:0 auto}
+.v-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 16px}
+.v-tools .grow{flex:1}
+
+/* Connect: two big panels */
+.connect{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:stretch}
+@media (max-width:860px){.connect{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:24px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel-h{display:flex;gap:14px;align-items:flex-start}
+.panel-h .ico{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.panel-h h2{margin:0;font-size:1.3rem;font-weight:800;font-stretch:110%;letter-spacing:-.01em}
+.panel-h p{margin:2px 0 0;color:var(--muted);font-size:.94rem}
+.cred{background:var(--sunk);border-radius:12px;padding:16px;display:grid;gap:4px}
+.cred-l{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;gap:8px}
+.cred-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cred-v{font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(1.7rem,4.4vw,2.3rem);letter-spacing:.04em;line-height:1.15;flex:1;min-width:0;font-stretch:105%;overflow-wrap:anywhere}
+.cred-v.pw{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:clamp(1.3rem,3.4vw,1.7rem);letter-spacing:.06em;font-weight:700}
+.icon-btn{transition:background .15s ease,border-color .15s ease}
+.icon-btn:active{transform:scale(.96)}
+.mode{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.mode-l{font-weight:650;font-size:.94rem}
+.mode-l small{display:block;font-weight:400;color:var(--muted);font-size:.84rem}
+.seg button{display:inline-flex;align-items:center;gap:6px;transition:background .15s ease,color .15s ease}
+.safe-tip{display:flex;gap:10px;align-items:flex-start;background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:12px 14px;font-size:.9rem;font-weight:550;margin-top:auto}
+.safe-tip a{color:inherit;font-weight:700}
+.svc{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--warn);flex:none}
+.big-in{display:block;width:100%;font-variant-numeric:tabular-nums;font-size:clamp(1.5rem,4vw,2rem);font-weight:750;letter-spacing:.06em;
+  padding:14px 16px;border:2px solid var(--line);border-radius:12px;background:var(--bg);text-align:center;transition:border-color .15s ease,box-shadow .15s ease}
+.big-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.big-in[aria-invalid="true"]{border-color:var(--danger)}
+.btn.xl{font-size:1.12rem;padding:15px 24px;border-radius:12px}
+.btn{transition:filter .15s ease,background .15s ease,transform .1s ease}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.field-msg{min-height:1.4em;font-size:.88rem;margin:6px 0 0;color:var(--muted)}
+.field-msg.err{color:var(--danger);font-weight:550}
+.recent{display:flex;gap:8px;flex-wrap:wrap}
+.recent button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-size:.86rem;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;transition:border-color .15s ease}
+.recent button:hover{border-color:var(--accent)}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:32px 0 0;padding:0;list-style:none;counter-reset:s}
+@media (max-width:760px){.how{grid-template-columns:1fr}}
+.how li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;counter-increment:s}
+.how li::before{content:counter(s);display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:.9rem;margin-bottom:8px}
+.how b{display:block;margin-bottom:2px}
+.how span{color:var(--muted);font-size:.92rem}
+
+/* Tooltip for "coming soon" controls */
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translate(-50%,4px);background:var(--ink);color:var(--bg);
+  font-size:.78rem;font-weight:600;line-height:1.3;padding:6px 9px;border-radius:6px;width:max-content;max-width:200px;text-align:center;white-space:normal;
+  pointer-events:none;z-index:30;display:none}
+[data-tip]:hover::after,[data-tip]:focus-visible::after{display:block;animation:tipIn .15s ease}
+.icon-btn[data-tip]::after{left:auto;right:0;transform:none}
+@keyframes tipIn{from{opacity:0}to{opacity:1}}
+body{overflow-x:clip}
+[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+
+/* Screen preview */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.alert-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--danger);color:var(--surface);padding:10px 16px;font-weight:650;font-size:.94rem}
+.alert-bar .grow{flex:1;min-width:180px}
+.alert-bar .btn{background:var(--surface);color:var(--danger)}
+.alert-bar .btn.ghost{background:transparent;color:var(--surface);border-color:currentColor}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface)}
+.toolbar .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+.toolbar .grow{flex:1}
+.tb{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 11px;font-weight:600;font-size:.88rem;cursor:pointer;color:var(--ink);transition:background .15s ease}
+.tb:hover{background:var(--sunk)}
+.tb.end{background:var(--danger);color:var(--surface);border-color:var(--danger)}
+.tb.end:hover{filter:brightness(1.08);background:var(--danger)}
+.tb select{border:0;background:transparent;font-weight:600;font-size:.88rem;cursor:pointer;padding:0}
+.screen{position:relative;background:var(--sunk);aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden}
+.screen video{width:100%;height:100%;object-fit:contain;display:block;background:var(--sunk)}
+.screen .empty-s{text-align:center;padding:24px;max-width:440px}
+.screen .empty-s p{color:var(--muted);margin:6px 0 16px}
+.screen .empty-s h2{margin:12px 0 0;font-size:1.2rem}
+.who{position:absolute;top:12px;left:12px;display:flex;gap:6px;align-items:center;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.82rem;font-weight:650;box-shadow:var(--shadow)}
+.live{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse 1.6s ease infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.live{animation:none}}
+.stage-foot{display:flex;gap:16px;flex-wrap:wrap;padding:12px 16px;font-size:.86rem;color:var(--muted);border-top:1px solid var(--line)}
+.stage-foot b{color:var(--ink);font-variant-numeric:tabular-nums}
+.side-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+@media (max-width:760px){.side-cards{grid-template-columns:1fr}}
+.mini{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.mini h3{margin:8px 0 4px;font-size:1rem}
+.mini p{margin:0;color:var(--muted);font-size:.9rem}
+.mini .ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+
+/* Devices */
+.search{position:relative;flex:1;min-width:200px}
+.search .i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.search input{width:100%;padding:10px 12px 10px 40px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.chips{justify-content:flex-start;margin:0 0 16px}
+.dgrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.dcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;transition:border-color .15s ease}
+.dcard:hover{border-color:var(--accent)}
+.dcard-h{display:flex;gap:12px;align-items:center}
+.dcard-h .ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.dcard h3{margin:0;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcard .did{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem;letter-spacing:.03em}
+.dcard .meta{display:flex;gap:6px;flex-wrap:wrap}
+.dcard .notes{color:var(--muted);font-size:.88rem;margin:0;overflow-wrap:anywhere}
+.dcard-f{display:flex;gap:8px;align-items:center;margin-top:auto;padding-top:6px}
+.dcard-f .btn{flex:1}
+.min0{min-width:0}
+
+/* Empty states */
+.empty{text-align:center;padding:48px 20px;background:var(--surface);border:1px dashed var(--line);border-radius:16px}
+.empty svg.art{width:120px;height:90px;color:var(--accent)}
+.empty h2{margin:12px 0 4px;font-size:1.15rem}
+.empty p{margin:0 auto 18px;color:var(--muted);max-width:46ch}
+
+/* History */
+.tbl-wrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow-x:auto}
+.tbl-wrap table.t th:first-child,.tbl-wrap table.t td:first-child{padding-left:16px}
+@media (max-width:640px){
+  .tbl-wrap{overflow:visible;background:none;border:0}
+  table.t.stack thead{display:none}
+  table.t.stack,table.t.stack tbody,table.t.stack tr,table.t.stack td{display:block;width:100%}
+  table.t.stack tr{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:6px 0}
+  table.t.stack td{border:0;padding:4px 14px!important;display:flex;justify-content:space-between;gap:12px}
+  table.t.stack td::before{content:attr(data-l);color:var(--muted);font-size:.82rem;font-weight:600}
+}
+
+/* Settings */
+.set-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:860px){.set-grid{grid-template-columns:1fr;gap:16px}}
+.set-nav{position:sticky;top:84px;display:flex;flex-direction:column;gap:2px}
+@media (max-width:860px){.set-nav{position:static;flex-direction:row;overflow-x:auto}}
+.set-nav a{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:600;font-size:.94rem;white-space:nowrap}
+.set-nav a:hover{background:var(--sunk);color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:0 0 24px}
+.card-h{padding:18px 20px 4px}
+.card-h h2{margin:0;font-size:1.15rem;display:flex;gap:10px;align-items:center}
+.card-h p{margin:4px 0 0;color:var(--muted);font-size:.92rem}
+.card-b{padding:12px 20px 20px}
+.opt{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+.opt:first-child{border-top:0}
+.opt .txt{min-width:0}
+.opt .txt b{display:block;font-weight:650;font-size:.96rem}
+.opt .txt span{display:block;color:var(--muted);font-size:.86rem}
+.opt select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);max-width:100%}
+/* Switch */
+.sw{position:relative;display:inline-block;width:46px;height:26px;flex:none}
+.sw input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.sw span{position:absolute;inset:0;background:var(--line);border-radius:99px;transition:background .15s ease}
+.sw span::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .18s ease}
+.sw input:checked+span{background:var(--accent)}
+.sw input:checked+span::after{transform:translateX(20px)}
+.sw input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.sw input:disabled{cursor:not-allowed}
+.sw input:disabled+span{opacity:.5}
+.perms{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;margin-top:8px}
+@media (max-width:560px){.perms{grid-template-columns:1fr}}
+.perms .check{margin:0;padding:8px 0}
+.sub{background:var(--sunk);border-radius:12px;padding:16px;margin:4px 0 8px}
+.meter{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:10px 0 6px}
+.meter i{height:6px;border-radius:3px;background:var(--line);transition:background .15s ease}
+.meter[data-s="1"] i:nth-child(-n+1){background:var(--danger)}
+.meter[data-s="2"] i:nth-child(-n+2){background:var(--warn)}
+.meter[data-s="3"] i:nth-child(-n+3){background:var(--ok)}
+.meter[data-s="4"] i{background:var(--ok)}
+.meter-l{display:flex;justify-content:space-between;font-size:.86rem;font-weight:650}
+.tips{margin:6px 0 0;padding-left:18px;font-size:.86rem;color:var(--muted)}
+.pw-row{display:flex;gap:8px;align-items:flex-end}
+.pw-row label.f{flex:1;margin:0}
+
+/* Download */
+.os-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.os{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:22px 20px;display:flex;flex-direction:column;gap:8px;text-align:center;align-items:center}
+.os .ico{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.os h2{margin:6px 0 0;font-size:1.15rem}
+.os p{margin:0 0 8px;color:var(--muted);font-size:.9rem;flex:1}
+.os .btn{width:100%}
+.feat{list-style:none;padding:0;margin:32px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px 24px}
+.feat li{display:flex;gap:10px;align-items:flex-start;font-size:.94rem}
+.feat .i{color:var(--ok);margin-top:2px}
+
+/* Stay safe */
+.golden{background:var(--surface);border:2px solid var(--danger);border-radius:16px;padding:24px;display:flex;gap:18px;align-items:flex-start;box-shadow:var(--shadow)}
+.golden .ico{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger);flex:none}
+.golden h2{margin:0 0 6px;font-size:clamp(1.2rem,3vw,1.5rem);font-stretch:110%}
+.golden p{margin:0;font-size:1.02rem}
+.scams{list-style:none;margin:24px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.scam{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+.scam h3{margin:0 0 6px;font-size:1.05rem}
+.scam p{margin:0 0 10px;color:var(--muted);font-size:.92rem}
+.scam .truth{display:flex;gap:8px;align-items:flex-start;background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok);border-radius:8px;padding:8px 10px;font-size:.88rem;font-weight:600;margin:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.steps{margin:0;padding-left:22px}
+.steps li{margin:0 0 10px}
+.signs{list-style:none;margin:0;padding:0}
+.signs li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+.signs li:first-child{border-top:0}
+.signs .i{color:var(--danger);margin-top:2px}
+.help-lines{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0 0}
+.hl-card{flex:1;min-width:200px;background:var(--accent-soft);border-radius:12px;padding:14px 16px}
+.hl-card b{display:block;font-size:1.6rem;font-weight:850;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2;overflow-wrap:anywhere}
+.hl-card span{font-size:.88rem;color:var(--muted)}
+
+/* Dialog extras */
+dialog .d-b ol{padding-left:20px;margin:8px 0 0}
+dialog .d-b ol li{margin-bottom:8px}
+dialog .d-b p{margin:0 0 12px}
+.d-banner{display:flex;gap:8px;align-items:center;background:var(--danger);color:var(--surface);border-radius:8px;padding:8px 12px;font-size:.86rem;font-weight:650;margin:10px 0}
+.d-banner .x{margin-left:auto;background:var(--surface);color:var(--danger);border-radius:6px;padding:2px 8px;font-size:.8rem}
+dialog .d-b{max-height:min(70vh,640px);overflow:auto}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,16px);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:10px;font-weight:600;font-size:.92rem;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;z-index:50;max-width:calc(100vw - 32px);text-align:center}
+.err-t{color:var(--danger)!important;font-weight:550}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body class="p-remote">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-lifebuoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14.5a6.5 6.5 0 013.5 5.5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 00-14.5-4.5L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0014.5 4.5L20 16"/><path d="M20 21v-5h-5"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-mouse" viewBox="0 0 24 24"><path d="M5 3l6 16 2.5-6.5L20 10z"/><path d="M14 14l5 5"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="i-files" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 10v6M9.5 13.5L12 16l2.5-2.5"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 17a8 8 0 1116 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-laptop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M2 19h20l-2-4H4z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M12 9v11"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 17H2z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 012 2v14H7a2 2 0 01-2-2z"/><path d="M5 18a2 2 0 012-2h12M9 8h6"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0112 5c6.5 0 10 7 10 7a17 17 0 01-3 3.9M6.6 6.6A17 17 0 002 12s3.5 7 10 7a9.6 9.6 0 005.4-1.6"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/></symbol>
+    <symbol id="i-art-devices" viewBox="0 0 120 90"><rect x="14" y="18" width="62" height="42" rx="5"/><path d="M30 72h30M45 60v12"/><rect x="82" y="34" width="24" height="42" rx="4"/><path d="M91 70h6"/><path d="M28 32h20M28 40h34M28 48h14" opacity=".5"/><circle cx="102" cy="18" r="9"/><path d="M102 14v8M98 18h8"/></symbol>
+    <symbol id="i-art-history" viewBox="0 0 120 90"><rect x="20" y="14" width="80" height="64" rx="6"/><path d="M20 30h80" /><path d="M32 44h36M32 54h46M32 64h24" opacity=".5"/><circle cx="92" cy="62" r="14"/><path d="M92 55v7l5 3"/></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <a class="mark" href="../index.html"><span aria-hidden="true"></span>Daftarbox</a>
+    <a class="portal-name" href="index.html#/">Remote access</a>
+    <nav class="nav" aria-label="Remote access sections">
+      <a href="#/" data-r="">Connect</a>
+      <a href="#/preview" data-r="preview">Screen preview</a>
+      <a href="#/devices" data-r="devices">Devices</a>
+      <a href="#/history" data-r="history">History</a>
+      <a href="#/settings" data-r="settings">Settings</a>
+      <a href="#/download" data-r="download">Download</a>
+      <a href="#/safety" data-r="safety">Stay safe</a>
+    </nav>
+  </div>
+</header>
+<div class="ribbon" role="note"><b>Preview</b> Our connection service is still being built, so nothing here links to another computer yet. <a href="#/download">See what’s coming</a></div>
+
+<main id="main" tabindex="-1">
+
+<!-- ============ CONNECT ============ -->
+<section class="view" data-view="" aria-labelledby="h-connect">
+  <div class="p-hero">
+    <span class="eyebrow"><svg class="i sm"><use href="#i-monitor"/></svg>Remote access</span>
+    <h1 id="h-connect" tabindex="-1">Help or get help, from anywhere</h1>
+    <p>Share your ID with someone you trust, or type theirs to help them. You stay in control and can end a session with one click.</p>
+  </div>
+
+  <div class="connect">
+    <!-- Get help -->
+    <article class="panel" aria-labelledby="h-get">
+      <div class="panel-h">
+        <div class="ico"><svg class="i lg"><use href="#i-lifebuoy"/></svg></div>
+        <div><h2 id="h-get">Get help</h2><p>Read these to the person helping you.</p></div>
+      </div>
+      <div class="cred">
+        <span class="cred-l" id="l-myid">Your ID</span>
+        <div class="cred-row">
+          <span class="cred-v" id="my-id" aria-labelledby="l-myid">— — —</span>
+          <button class="icon-btn" type="button" id="copy-id" aria-label="Copy your ID" data-tip="Copy"><svg class="i sm"><use href="#i-copy"/></svg></button>
+        </div>
+      </div>
+      <div class="cred">
+        <span class="cred-l" id="l-otp">One-time password <span class="pill">changes after each session</span></span>
+        <div class="cred-row">
+          <span class="cred-v pw" id="otp" aria-labelledby="l-otp">••••-••••</span>
+          <button class="icon-btn" type="button" id="show-otp" aria-label="Hide password" aria-pressed="false" data-tip="Hide"><svg class="i sm"><use href="#i-eye"/></svg></button>
+          <button class="icon-btn" type="button" id="new-otp" aria-label="Make a new password" data-tip="New password"><svg class="i sm"><use href="#i-refresh"/></svg></button>
+          <button class="icon-btn" type="button" id="copy-otp" aria-label="Copy password" data-tip="Copy"><svg class="i sm"><use href="#i-copy"/></svg></button>
+        </div>
+      </div>
+      <div class="mode">
+        <div class="mode-l">What can they do?<small id="mode-desc">They can see your screen and use your mouse and keyboard.</small></div>
+        <div class="seg" role="group" aria-label="What the helper can do">
+          <button type="button" data-mode="control" aria-pressed="true"><svg class="i sm"><use href="#i-mouse"/></svg>Full control</button>
+          <button type="button" data-mode="view" aria-pressed="false"><svg class="i sm"><use href="#i-eye"/></svg>View only</button>
+        </div>
+      </div>
+      <p class="svc"><span class="dot" aria-hidden="true"></span>Waiting for our connection service – coming soon</p>
+      <div class="safe-tip" role="note"><svg class="i"><use href="#i-alert"/></svg>
+        <span>Only share these with someone <b>you</b> called and trust. Banks, police and government offices never ask for them. <a href="#/safety">Stay safe</a></span></div>
+    </article>
+
+    <!-- Help someone -->
+    <article class="panel" aria-labelledby="h-help">
+      <div class="panel-h">
+        <div class="ico"><svg class="i lg"><use href="#i-hand"/></svg></div>
+        <div><h2 id="h-help">Help someone</h2><p>Ask for the 9-digit ID on their screen.</p></div>
+      </div>
+      <form id="connect-form" novalidate>
+        <label for="partner" class="cred-l" style="margin-bottom:8px">Partner’s ID</label>
+        <input class="big-in" id="partner" inputmode="numeric" autocomplete="off" placeholder="123 456 789" maxlength="11" aria-describedby="partner-msg">
+        <p class="field-msg" id="partner-msg" aria-live="polite">The last digit is a check digit, so typos get caught.</p>
+        <button class="btn xl wide" type="submit"><svg class="i"><use href="#i-link"/></svg>Connect</button>
+      </form>
+      <div id="recent-wrap" hidden>
+        <p class="cred-l" style="margin:0 0 8px">From your devices</p>
+        <div class="recent" id="recent"></div>
+      </div>
+      <p class="note" style="margin:auto 0 0">They will see your request and must say yes. They can stop you at any time.</p>
+    </article>
+  </div>
+
+  <ol class="how" aria-label="How it will work">
+    <li><b>Share the ID</b><span>The person who needs help reads out their ID and password.</span></li>
+    <li><b>Ask and approve</b><span>The helper connects. Nothing happens until the other person taps Allow.</span></li>
+    <li><b>Help, then end</b><span>A red bar shows who is connected. Either side can end it instantly.</span></li>
+  </ol>
+</section>
+
+<!-- ============ SCREEN PREVIEW ============ -->
+<section class="view" data-view="preview" aria-labelledby="h-prev" hidden>
+  <div class="v-head">
+    <h1 id="h-prev" tabindex="-1">See what a helper would see</h1>
+    <p>Share your screen with yourself to try the session window. Nothing leaves this browser.</p>
+  </div>
+  <div class="stage">
+    <div class="alert-bar" id="alert-bar" hidden role="status">
+      <svg class="i"><use href="#i-monitor"/></svg>
+      <span class="grow">Your screen is being shared · <span id="alert-time">0 s</span> <span style="font-weight:400">(preview, only you can see it)</span></span>
+      <button class="btn small ghost" type="button" id="alert-report"><svg class="i sm"><use href="#i-flag"/></svg>Report</button>
+      <button class="btn small" type="button" id="alert-end"><svg class="i sm"><use href="#i-stop"/></svg>End</button>
+    </div>
+    <div class="toolbar" role="toolbar" aria-label="Session controls">
+      <div class="seg" role="group" aria-label="Session mode">
+        <button type="button" aria-pressed="true" id="tb-view"><svg class="i sm"><use href="#i-eye"/></svg>View</button>
+        <button type="button" aria-pressed="false" aria-disabled="true" class="soon" data-tip="Available when connection service goes live"><svg class="i sm"><use href="#i-mouse"/></svg>Control</button>
+      </div>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="tb soon" type="button" aria-disabled="true" data-tip="Available when connection service goes live"><svg class="i sm"><use href="#i-chat"/></svg>Chat</button>
+      <button class="tb soon" type="button" aria-disabled="true" data-tip="Available when connection service goes live"><svg class="i sm"><use href="#i-files"/></svg>Files</button>
+      <label class="tb"><svg class="i sm"><use href="#i-gauge"/></svg><span class="sr">Quality</span>
+        <select id="quality" aria-label="Quality"><option value="auto">Auto</option><option value="best">Best quality</option><option value="fast">Faster</option></select></label>
+      <button class="tb" type="button" id="tb-full" disabled><svg class="i sm"><use href="#i-expand"/></svg>Full screen</button>
+      <span class="grow"></span>
+      <button class="tb" type="button" id="tb-report"><svg class="i sm"><use href="#i-flag"/></svg>Report</button>
+      <button class="tb end" type="button" id="tb-end" disabled><svg class="i sm"><use href="#i-stop"/></svg>End session</button>
+    </div>
+    <div class="screen" id="screen">
+      <div class="empty-s" id="screen-empty">
+        <svg class="i lg" style="width:48px;height:48px;color:var(--accent)"><use href="#i-monitor"/></svg>
+        <h2>Ready when you are</h2>
+        <p id="share-msg">Pick a screen, window or tab. Your browser will ask first.</p>
+        <button class="btn xl" type="button" id="start-share"><svg class="i"><use href="#i-monitor"/></svg>Start preview</button>
+      </div>
+      <video id="vid" autoplay playsinline muted hidden aria-label="Preview of your shared screen"></video>
+      <div class="who" id="who" hidden><span class="live" aria-hidden="true"></span>Viewing: this device (preview)</div>
+    </div>
+    <div class="stage-foot" aria-live="polite">
+      <span>Status: <b id="st-state">Not sharing</b></span>
+      <span>Size: <b id="st-size">–</b></span>
+      <span>Frame rate: <b id="st-fps">–</b></span>
+    </div>
+  </div>
+  <div class="side-cards">
+    <div class="mini"><div class="ico"><svg class="i"><use href="#i-shield"/></svg></div><h3>Always visible</h3><p>The red bar stays on top while someone is connected, so you always know.</p></div>
+    <div class="mini"><div class="ico"><svg class="i"><use href="#i-stop"/></svg></div><h3>One-click end</h3><p>Press End, or close the window. The session stops at once.</p></div>
+    <div class="mini"><div class="ico"><svg class="i"><use href="#i-flag"/></svg></div><h3>Report abuse</h3><p>Felt pressured? Report ends the session and flags the helper’s ID to us.</p></div>
+  </div>
+</section>
+
+<!-- ============ DEVICES ============ -->
+<section class="view" data-view="devices" aria-labelledby="h-dev" hidden>
+  <div class="v-head">
+    <h1 id="h-dev" tabindex="-1">Your devices</h1>
+    <p>Save the computers you help often. Saved only in this browser.</p>
+  </div>
+  <div class="v-tools">
+    <div class="search"><svg class="i sm"><use href="#i-search"/></svg><input type="search" id="dev-q" placeholder="Search by name, ID or note" aria-label="Search devices"></div>
+    <button class="btn" type="button" id="add-dev"><svg class="i sm"><use href="#i-plus"/></svg>Add device</button>
+  </div>
+  <div class="chips" id="dev-groups" role="group" aria-label="Filter by group"></div>
+  <p class="sr" id="dev-count" aria-live="polite"></p>
+  <ul class="dgrid" id="dev-list"></ul>
+  <div class="empty" id="dev-empty" hidden>
+    <svg class="art" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#i-art-devices"/></svg>
+    <h2>No devices yet</h2>
+    <p>Add family or office computers here, so you don’t need to ask for the ID every time.</p>
+    <button class="btn" type="button" data-act="add-dev"><svg class="i sm"><use href="#i-plus"/></svg>Add your first device</button>
+  </div>
+  <div class="empty" id="dev-nomatch" hidden>
+    <h2>Nothing matches</h2><p>Try another word, or clear the filters.</p>
+    <button class="btn ghost" type="button" id="dev-clear">Clear search</button>
+  </div>
+</section>
+
+<!-- ============ HISTORY ============ -->
+<section class="view" data-view="history" aria-labelledby="h-his" hidden>
+  <div class="v-head">
+    <h1 id="h-his" tabindex="-1">Session history</h1>
+    <p>Every session is listed here, so you can always check who connected and for how long.</p>
+  </div>
+  <div class="stats" id="his-stats"></div>
+  <div class="v-tools">
+    <span class="grow"></span>
+    <button class="btn ghost small" type="button" id="his-clear"><svg class="i sm"><use href="#i-trash"/></svg>Clear</button>
+    <button class="btn small" type="button" id="his-csv"><svg class="i sm"><use href="#i-download"/></svg>Export CSV</button>
+  </div>
+  <div class="tbl-wrap" id="his-table-wrap">
+    <table class="t stack">
+      <caption class="sr">Past sessions, newest first</caption>
+      <thead><tr><th scope="col">When</th><th scope="col">Type</th><th scope="col">With</th><th scope="col">Access</th><th scope="col" class="num">Length</th><th scope="col">Ended by</th></tr></thead>
+      <tbody id="his-body"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="his-empty" hidden>
+    <svg class="art" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#i-art-history"/></svg>
+    <h2>No sessions yet</h2>
+    <p>Real sessions will show here once the connection service is live. Try the screen preview – it gets logged as “Preview”.</p>
+    <a class="btn" href="#/preview"><svg class="i sm"><use href="#i-monitor"/></svg>Try screen preview</a>
+  </div>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section class="view" data-view="settings" aria-labelledby="h-set" hidden>
+  <div class="v-head">
+    <h1 id="h-set" tabindex="-1">Settings</h1>
+    <p>Choose what others may do on this device. Changes save automatically in this browser and will carry over to the app.</p>
+  </div>
+  <div class="set-grid">
+    <nav class="set-nav" aria-label="Settings sections">
+      <a href="#/settings" data-jump="s-sec"><svg class="i sm"><use href="#i-shield"/></svg>Security</a>
+      <a href="#/settings" data-jump="s-perm"><svg class="i sm"><use href="#i-lock"/></svg>Permissions</a>
+      <a href="#/settings" data-jump="s-priv"><svg class="i sm"><use href="#i-eyeoff"/></svg>Privacy</a>
+      <a href="#/settings" data-jump="s-not"><svg class="i sm"><use href="#i-bell"/></svg>Notifications</a>
+    </nav>
+    <form id="settings" novalidate>
+      <div class="card" id="s-sec">
+        <div class="card-h"><h2><svg class="i"><use href="#i-shield"/></svg>Security</h2><p>Who can connect, and how.</p></div>
+        <div class="card-b">
+          <div class="opt"><div class="txt"><b id="t-approve">Ask me before every connection</b><span>Recommended. You tap Allow each time.</span></div>
+            <label class="sw"><input type="checkbox" name="approve" aria-labelledby="t-approve"><span></span></label></div>
+          <p class="warn" id="approve-warn" hidden>Without approval, anyone with your ID and password can connect. Turn this off only for your own computers.</p>
+          <div class="opt"><div class="txt"><b id="t-trusted">Only my saved devices can connect</b><span>Requests from IDs not in Devices are blocked.</span></div>
+            <label class="sw"><input type="checkbox" name="trustedOnly" aria-labelledby="t-trusted"><span></span></label></div>
+          <div class="opt"><div class="txt"><b id="t-un">Unattended access</b><span>Connect to this computer when nobody is in front of it. Needs a strong password.</span></div>
+            <label class="sw"><input type="checkbox" name="unattended" aria-labelledby="t-un"><span></span></label></div>
+          <div class="sub" id="un-box" hidden>
+            <div class="pw-row">
+              <label class="f">Access password
+                <input type="password" id="un-pw" autocomplete="new-password" aria-describedby="meter-label">
+              </label>
+              <button class="icon-btn" type="button" id="un-show" aria-label="Show password" aria-pressed="false" style="width:40px;height:40px"><svg class="i sm"><use href="#i-eye"/></svg></button>
+            </div>
+            <div class="meter" id="meter" data-s="0" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="meter-l"><span id="meter-label">Strength: Not set</span></div>
+            <ul class="tips" id="pw-tips"></ul>
+            <label class="f" style="margin-top:12px">Type it again
+              <input type="password" id="un-pw2" autocomplete="new-password">
+            </label>
+            <button class="btn small" type="button" id="un-check">Check password</button>
+            <p class="status" id="un-status" aria-live="polite"></p>
+            <p class="note" style="margin:8px 0 0">For your safety this preview never saves the password. The desktop app will store it securely on your computer.</p>
+          </div>
+          <div class="opt"><div class="txt"><b><label for="timeout">End idle sessions after</label></b><span>Stops a session nobody is using.</span></div>
+            <select id="timeout" name="timeout"><option value="0">Never</option><option value="10">10 minutes</option><option value="30">30 minutes</option><option value="60">1 hour</option></select></div>
+        </div>
+      </div>
+
+      <div class="card" id="s-perm">
+        <div class="card-h"><h2><svg class="i"><use href="#i-lock"/></svg>Permissions</h2><p>What a helper may do once you allow them in.</p></div>
+        <div class="card-b">
+          <div class="perms">
+            <label class="check"><input type="checkbox" name="p_screen" disabled> See my screen <span class="pill">always on</span></label>
+            <label class="check"><input type="checkbox" name="p_control"> Use my mouse and keyboard</label>
+            <label class="check"><input type="checkbox" name="p_files"> Send and receive files</label>
+            <label class="check"><input type="checkbox" name="p_clip"> Share copy-paste (clipboard)</label>
+            <label class="check"><input type="checkbox" name="p_audio"> Hear my computer’s sound</label>
+            <label class="check"><input type="checkbox" name="p_restart"> Restart my computer</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="s-priv">
+        <div class="card-h"><h2><svg class="i"><use href="#i-eyeoff"/></svg>Privacy</h2><p>What gets kept after a session.</p></div>
+        <div class="card-b">
+          <div class="opt"><div class="txt"><b id="t-rec">Record sessions</b><span>Off by default. If on, both sides will see a “Recording” label.</span></div>
+            <label class="sw"><input type="checkbox" name="record" aria-labelledby="t-rec"><span></span></label></div>
+          <div class="opt"><div class="txt"><b id="t-blank">Hide my screen from people nearby</b><span>Blanks this computer’s display while being helped (for privacy at the office).</span></div>
+            <label class="sw"><input type="checkbox" name="blank" aria-labelledby="t-blank"><span></span></label></div>
+          <div class="opt"><div class="txt"><b><label for="keep">Keep session history for</label></b><span>Older entries are deleted automatically.</span></div>
+            <select id="keep" name="keep"><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option><option value="0">Forever</option></select></div>
+        </div>
+      </div>
+
+      <div class="card" id="s-not">
+        <div class="card-h"><h2><svg class="i"><use href="#i-bell"/></svg>Notifications</h2><p>How we tell you about connections.</p></div>
+        <div class="card-b">
+          <div class="opt"><div class="txt"><b id="t-snd">Play a sound for connection requests</b></div>
+            <label class="sw"><input type="checkbox" name="sound" aria-labelledby="t-snd"><span></span></label></div>
+          <div class="opt"><div class="txt"><b id="t-pop">Show a pop-up when someone connects or leaves</b></div>
+            <label class="sw"><input type="checkbox" name="popup" aria-labelledby="t-pop"><span></span></label></div>
+          <div class="opt"><div class="txt"><b id="t-mail">Email me about new unattended logins</b><span>Needs a Daftarbox account – coming soon.</span></div>
+            <label class="sw"><input type="checkbox" name="email" aria-labelledby="t-mail" disabled><span></span></label></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn ghost" type="button" id="set-reset">Reset to safe defaults</button>
+        <span class="status ok" id="set-status" aria-live="polite" style="margin:0"></span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ============ DOWNLOAD ============ -->
+<section class="view" data-view="download" aria-labelledby="h-dl" hidden>
+  <div class="v-head center">
+    <h1 id="h-dl" tabindex="-1">Get the app</h1>
+    <p>Remote control needs a small app on the computer being helped. We’re building it now.</p>
+  </div>
+  <ul class="os-grid">
+    <li class="os"><div class="ico"><svg class="i lg"><use href="#i-window"/></svg></div><h2>Windows</h2><p>Give and get help. Runs without installing.</p><button class="btn" type="button" disabled><svg class="i sm"><use href="#i-download"/></svg>Coming soon</button></li>
+    <li class="os"><div class="ico"><svg class="i lg"><use href="#i-laptop"/></svg></div><h2>macOS</h2><p>Give and get help. Asks for screen permission once.</p><button class="btn" type="button" disabled><svg class="i sm"><use href="#i-download"/></svg>Coming soon</button></li>
+    <li class="os"><div class="ico"><svg class="i lg"><use href="#i-terminal"/></svg></div><h2>Linux</h2><p>Give and get help on popular desktops.</p><button class="btn" type="button" disabled><svg class="i sm"><use href="#i-download"/></svg>Coming soon</button></li>
+    <li class="os"><div class="ico"><svg class="i lg"><use href="#i-phone"/></svg></div><h2>Android</h2><p>Help others, or share your phone screen.</p><button class="btn" type="button" disabled><svg class="i sm"><use href="#i-download"/></svg>Coming soon</button></li>
+    <li class="os"><div class="ico"><svg class="i lg"><use href="#i-phone"/></svg></div><h2>iPhone &amp; iPad</h2><p>Help others only. iPhones can’t be controlled from outside.</p><button class="btn" type="button" disabled><svg class="i sm"><use href="#i-download"/></svg>Coming soon</button></li>
+  </ul>
+  <ul class="feat" aria-label="Planned features">
+    <li><svg class="i"><use href="#i-check"/></svg>End-to-end encrypted sessions</li>
+    <li><svg class="i"><use href="#i-check"/></svg>Approval for every connection</li>
+    <li><svg class="i"><use href="#i-check"/></svg>Red “connected” bar with one-click End</li>
+    <li><svg class="i"><use href="#i-check"/></svg>Chat and file transfer</li>
+    <li><svg class="i"><use href="#i-check"/></svg>Unattended access for your own PCs</li>
+    <li><svg class="i"><use href="#i-check"/></svg>Works on slow mobile data</li>
+  </ul>
+</section>
+
+<!-- ============ STAY SAFE ============ -->
+<section class="view" data-view="safety" aria-labelledby="h-safe" hidden>
+  <div class="v-head">
+    <h1 id="h-safe" tabindex="-1">Stay safe from remote-access scams</h1>
+    <p>Scammers love remote-access apps. Two minutes here can save your savings.</p>
+  </div>
+  <div class="golden">
+    <div class="ico"><svg class="i lg"><use href="#i-alert"/></svg></div>
+    <div><h2>The golden rule</h2>
+      <p><b>If someone called, messaged or emailed you first, never give them your ID or password.</b> Only share them with a person you contacted yourself and know well.</p></div>
+  </div>
+  <ul class="scams">
+    <li class="scam"><h3>“Digital arrest”</h3><p>A video call from fake police, CBI, customs or a court. They say a parcel or your Aadhaar is linked to a crime and keep you “under watch” until you pay.</p><p class="truth"><svg class="i sm"><use href="#i-check"/></svg>There is no such thing as a digital arrest. Real police never do this on a call.</p></li>
+    <li class="scam"><h3>Bank or KYC update</h3><p>“Your KYC has expired, your account will be blocked today.” Then they ask you to install an app so they can “help”.</p><p class="truth"><svg class="i sm"><use href="#i-check"/></svg>Banks never ask you to install remote-access apps. Visit your branch.</p></li>
+    <li class="scam"><h3>Fake customer care</h3><p>You search for a helpline and call a number on a fake website. The “agent” wants to connect to your phone or PC to fix a problem.</p><p class="truth"><svg class="i sm"><use href="#i-check"/></svg>Only use numbers from the official app, card or bill.</p></li>
+    <li class="scam"><h3>Refund or cashback</h3><p>“We sent you too much money by mistake” or “Install this to receive your refund.” Then they move money out while connected.</p><p class="truth"><svg class="i sm"><use href="#i-check"/></svg>You never need an app or your UPI PIN to <i>receive</i> money.</p></li>
+  </ul>
+  <div class="two">
+    <div class="card" style="margin:0">
+      <div class="card-h"><h2><svg class="i"><use href="#i-alert"/></svg>Warning signs</h2></div>
+      <div class="card-b">
+        <ul class="signs">
+          <li><svg class="i"><use href="#i-x"/></svg>They rush you: “do it now or your account closes”.</li>
+          <li><svg class="i"><use href="#i-x"/></svg>They ask you to keep it secret from family.</li>
+          <li><svg class="i"><use href="#i-x"/></svg>They ask for OTP, UPI PIN, card number or passwords.</li>
+          <li><svg class="i"><use href="#i-x"/></svg>They want you to open your bank app while connected.</li>
+          <li><svg class="i"><use href="#i-x"/></svg>They ask you to turn off “Ask me before every connection”.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card" style="margin:0">
+      <div class="card-h"><h2><svg class="i"><use href="#i-call"/></svg>If it already happened</h2></div>
+      <div class="card-b">
+        <ol class="steps">
+          <li><b>End the session</b> and turn off Wi-Fi or mobile data.</li>
+          <li><b>Call your bank</b> using the number on your card and block cards and UPI.</li>
+          <li><b>Call 1930</b>, the national cyber crime helpline, as fast as you can – the first hours matter most.</li>
+          <li><b>Report online</b> at <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer">cybercrime.gov.in</a>.</li>
+          <li>Uninstall unknown apps and change your passwords from a different device.</li>
+        </ol>
+        <div class="help-lines">
+          <div class="hl-card"><b>1930</b><span>Cyber crime helpline</span></div>
+          <div class="hl-card"><b style="font-size:1.1rem;padding:6px 0">cybercrime.gov.in</b><span>Report online</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site"><div>Daftarbox Remote access · Product preview. Saved devices, settings and history stay in this browser only. · <a href="#/safety">Stay safe</a> · <a href="../index.html">All tools</a></div></footer>
+
+<!-- Connect dialog -->
+<dialog id="dlg-connect" aria-labelledby="dc-title">
+  <div class="d-h"><h2 id="dc-title">Almost there</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i sm"><use href="#i-x"/></svg></button></div>
+  <div class="d-b">
+    <p>You asked to connect to <b id="dc-id"></b><span id="dc-name"></span>.</p>
+    <p class="warn" style="margin:0 0 12px">Our connection service is still being built, so we can’t connect yet. No request was sent.</p>
+    <p style="margin:0"><b>When it goes live, this is what happens:</b></p>
+    <ol>
+      <li>They see a request with your name and device. Nothing happens until they tap <b>Allow</b>.</li>
+      <li>While you are connected, they see a red bar on top of their screen:
+        <div class="d-banner" aria-hidden="true"><svg class="i sm"><use href="#i-monitor"/></svg>Your helper is connected<span class="x">End</span></div></li>
+      <li>They can press <b>End</b> or <b>Report</b> at any time, and the session stops at once.</li>
+    </ol>
+  </div>
+  <div class="d-f"><a class="btn ghost" href="#/preview" data-close>Try screen preview</a><button class="btn" type="button" data-close>Got it</button></div>
+</dialog>
+
+<!-- Device dialog -->
+<dialog id="dlg-dev" aria-labelledby="dd-title">
+  <form id="dev-form" novalidate>
+    <div class="d-h"><h2 id="dd-title">Add device</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i sm"><use href="#i-x"/></svg></button></div>
+    <div class="d-b">
+      <label class="f">Name<input type="text" name="name" maxlength="60" placeholder="e.g. Papa’s laptop" aria-describedby="e-name"><span class="h err-t" id="e-name"></span></label>
+      <label class="f">ID<input type="text" name="id" inputmode="numeric" maxlength="11" placeholder="123 456 789" aria-describedby="e-id"><span class="h err-t" id="e-id"></span></label>
+      <label class="f">Group <span class="h">Optional, e.g. Family or Office</span><input type="text" name="group" maxlength="40" list="group-list"><datalist id="group-list"></datalist></label>
+      <label class="f">Notes <span class="h">Optional</span><textarea name="notes" rows="3" maxlength="500"></textarea></label>
+      <div class="opt" style="padding:4px 0 0"><div class="txt"><b id="t-dun">Unattended access</b><span>This device is set up to let you in without someone present.</span></div>
+        <label class="sw"><input type="checkbox" name="unattended" aria-labelledby="t-dun"><span></span></label></div>
+    </div>
+    <div class="d-f"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="submit">Save device</button></div>
+  </form>
+</dialog>
+
+<!-- Confirm dialog -->
+<dialog id="dlg-confirm" aria-labelledby="cf-title">
+  <div class="d-h"><h2 id="cf-title">Are you sure?</h2></div>
+  <div class="d-b"><p id="cf-text" style="margin:0"></p></div>
+  <div class="d-f"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="button" id="cf-ok" style="background:var(--danger);color:var(--surface)">Delete</button></div>
+</dialog>
+
+<!-- Report dialog -->
+<dialog id="dlg-report" aria-labelledby="rp-title">
+  <div class="d-h"><h2 id="rp-title">Report a helper</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i sm"><use href="#i-x"/></svg></button></div>
+  <div class="d-b">
+    <p>When the service is live, Report will end the session straight away and send the helper’s ID to our safety team.</p>
+    <p class="warn">If someone pressured you or you lost money, call <b>1930</b> now and report at <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer">cybercrime.gov.in</a>.</p>
+  </div>
+  <div class="d-f"><a class="btn ghost" href="#/safety" data-close>Safety tips</a><button class="btn" type="button" data-close>Close</button></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="logic.js?v=20261005"></script>
+<script src="app.js?v=20261005"></script>
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IT project budget – Daftarbox</title>
+<meta name="description" content="Plan an office IT project: pick workstations, Wi-Fi, switches, CCTV, NVR and UPS, and get cabling, installation and the total cost worked out for you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/site.css?v=20261005">
+<style>
+/* Budget-specific styles. Tokens, header, buttons and notes come from ../shared/site.css */
+main{max-width:1240px}
+.b-head{padding:4px 0 22px}
+.b-head h1{font-stretch:115%;font-weight:850;font-size:clamp(1.9rem,4.4vw,2.8rem);letter-spacing:-.03em;line-height:1.05;margin:8px 0 8px}
+.lede{margin:0;color:var(--muted);max-width:66ch}
+
+.projbar{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:22px}
+.projbar label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:.92rem}
+.projbar .name{flex:1;min-width:240px}
+.projbar .name input{font-size:1.2rem;font-weight:650;padding:10px 12px}
+input[type=text],input[type=number],select{border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:8px 10px;min-width:0;width:100%;transition:border-color .15s,box-shadow .15s}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+input[type=number]{font-variant-numeric:tabular-nums}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:1fr}}
+
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;box-shadow:var(--shadow)}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:16px 18px 6px;flex-wrap:wrap}
+.sec-h h2{font-size:1.15rem;margin:0;font-weight:750}
+.sec-h .sub{color:var(--muted);font-size:.88rem}
+.sec-h .tot{font-weight:700;font-variant-numeric:tabular-nums}
+.rows{padding:4px 18px 4px}
+.row{display:grid;grid-template-columns:64px var(--cols) minmax(0,1.7fr) 100px 104px 34px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.row.head{border-top:0;padding:2px 0;font-size:.78rem;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.row .lt{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.row.head .lt{font-weight:650}
+.price{position:relative}
+.price input.edited{border-color:var(--accent);background:var(--accent-soft)}
+.sec-f{padding:8px 18px 16px}
+.mlabel{display:none}
+@media (max-width:760px){
+  .row{grid-template-columns:1fr 1fr;padding:12px 0}
+  .row.head{display:none}
+  .row .model{grid-column:1 / -1}
+  .row .lt{text-align:left}
+  .mlabel{display:block;font-size:.75rem;color:var(--muted);font-weight:600;margin-bottom:2px}
+}
+
+.x{border:1px solid var(--line);background:transparent;border-radius:6px;width:32px;height:32px;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+.x:hover{background:var(--sunk);color:var(--danger)}
+.x svg{width:14px;height:14px}
+
+table.auto{width:100%;border-collapse:collapse;font-size:.94rem}
+table.auto th{font-size:.78rem;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:4px 0 6px}
+table.auto td{border-top:1px solid var(--line);padding:8px 0;vertical-align:middle}
+table.auto .n{text-align:right;font-variant-numeric:tabular-nums;padding-left:10px;white-space:nowrap}
+table.auto td.n input{width:104px;text-align:right}
+table.auto .why{display:block;color:var(--muted);font-size:.82rem}
+table.auto .q{font-weight:650}
+.empty{color:var(--muted);font-size:.92rem;padding:4px 0 8px;margin:0}
+
+.side{position:sticky;top:16px}
+@media (max-width:980px){.side{position:static}}
+.panel{background:var(--surface);border:2px solid var(--ink);border-radius:12px;padding:18px;margin-bottom:16px}
+.panel h2{font-size:1.05rem;margin:0 0 12px}
+.sum{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.sum td{padding:5px 0}
+.sum td:last-child{text-align:right;font-weight:600}
+.sum tr.grand td{border-top:2px solid var(--ink);padding-top:10px;font-size:1.25rem;font-weight:800}
+.sum .m{color:var(--muted);font-weight:400}
+.settings label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.9rem;margin:0 0 10px}
+.settings select,.settings input[type=number]{width:120px}
+.settings .check{justify-content:flex-start}
+.warns{list-style:none;margin:0 0 14px;padding:0}
+.warns li{background:var(--warn-bg);color:var(--warn);border-radius:7px;padding:8px 10px;font-size:.88rem;margin-bottom:6px;font-weight:550}
+.btns{display:grid;gap:8px}
+.btns .note{margin:0}
+.btns .status{font-size:.86rem;color:var(--muted);margin:8px 0 0}
+
+.print-head{display:none}
+@media print{
+  body{background:#fff;color:#000;font-size:11pt}
+  .noprint,.top,footer,.crumbs,.b-head,.lede,.projbar,.sec-f,.x,.side .settings,.side .btns,.status{display:none!important}
+  .print-head{display:block;margin:0 0 10px}
+  .layout{display:block}
+  .sec,.panel{border:1px solid #999;break-inside:avoid;box-shadow:none}
+  input,select{border:0;background:none;padding:0;appearance:none;-webkit-appearance:none}
+  .row{grid-template-columns:50px var(--cols) 2.2fr 90px 90px 0}
+}
+</style>
+</head>
+<body class="p-budget">
+<header class="top"><div class="top-in"><a class="mark" href="../index.html"><span aria-hidden="true"></span>Daftarbox</a><a class="portal-name" href="index.html">IT project budget</a></div></header>
+
+<main>
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="../index.html">All portals</a> / IT project budget</nav>
+  <div class="b-head"><h1>IT project budget</h1>
+  <p class="lede">Pick the equipment for your site. Cabling, installation and the total cost are worked out for you. Prices are indicative and can be changed to match your quotes.</p></div>
+  <div class="print-head"><h1 data-ptitle></h1><p data-pdate></p></div>
+
+  <div class="projbar">
+    <label class="name">Project name<input type="text" data-name placeholder="For example: Head office, 3rd floor" maxlength="80"></label>
+    <label>Saved projects<select data-projects></select></label>
+    <button class="btn ghost" data-new>New project</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div data-sections></div>
+
+      <section class="sec">
+        <div class="sec-h"><h2>Cabling and accessories</h2><span class="tot" data-mat-tot></span></div>
+        <div class="rows"><p class="sub" style="margin:0 0 6px;color:var(--muted);font-size:.88rem">Quantities are calculated from the equipment above.</p><div data-mat></div></div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-h"><h2>Installation and commissioning</h2><span class="tot" data-ins-tot></span></div>
+        <div class="rows"><p class="sub" style="margin:0 0 6px;color:var(--muted);font-size:.88rem">Approximate market labour rates. Change any rate to match your installer.</p><div data-ins></div></div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <h2>Project total</h2>
+        <ul class="warns" data-warns></ul>
+        <table class="sum" data-sum></table>
+      </div>
+      <div class="panel settings">
+        <h2>Settings</h2>
+        <label>Network points per desk<select data-set="ppw"><option value="1">1 (data)</option><option value="2">2 (data + phone)</option></select></label>
+        <label>Average cable run (m)<input type="number" min="5" max="90" data-set="run"></label>
+        <label>Contingency (%)<input type="number" min="0" max="50" data-set="cont"></label>
+        <label class="check"><input type="checkbox" data-set="gst"> Add GST at 18%</label>
+      </div>
+      <div class="btns">
+        <button class="btn wide" data-print>Print or save as PDF</button>
+        <button class="btn ghost wide" data-csv>Download as Excel (CSV)</button>
+        <p class="note">Prices are indicative Indian market rates, not live quotes. Changed prices are highlighted. Confirm with your vendor before ordering.</p>
+        <p class="status" data-st role="status" aria-live="polite"></p>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer class="site"><div>Daftarbox. Projects are saved in this browser only.</div></footer>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr = new Intl.NumberFormat("en-IN", {style:"currency", currency:"INR", maximumFractionDigits:0});
+const money = n => inr.format(Math.round(n || 0));
+const X_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+
+/* ---------- Price list (indicative INR, excluding GST) ----------
+   Fields: b brand, t type, m model, p price; extra fields drive the automatic checks:
+   ports/poe (switch and NVR ports), ch (NVR channels), mp (camera megapixels), r (UPS rating). */
+const I = (b, t, m, p, x = {}) => Object.assign({b, t, m, p}, x);
+const CATALOG = {
+  ws: [
+    I("Dell", "Desktop", "Vostro 3020 Tower (Core i5, 8 GB, 512 GB SSD)", 48000),
+    I("Dell", "Desktop", "OptiPlex 7020 Tower (Core i5, 16 GB, 512 GB SSD)", 72000),
+    I("Dell", "Laptop", "Latitude 5450 (Core i5, 16 GB, 512 GB SSD)", 95000),
+    I("Dell", "Monitor", "P2225H 22-inch", 12000),
+    I("HP", "Desktop", "Pro Tower 400 G9 (Core i5, 8 GB, 512 GB SSD)", 55000),
+    I("HP", "Laptop", "ProBook 440 G11 (Core Ultra 5, 16 GB, 512 GB SSD)", 80000),
+    I("HP", "Laptop", "EliteBook 640 G11 (Core Ultra 5, 16 GB, 512 GB SSD)", 110000),
+    I("HP", "Monitor", "P22 G5 22-inch", 10000),
+    I("Lenovo", "Desktop", "ThinkCentre neo 50s Gen 5 (Core i5, 8 GB, 512 GB SSD)", 52000),
+    I("Lenovo", "Laptop", "ThinkPad E14 Gen 6 (Core i5, 16 GB, 512 GB SSD)", 78000),
+    I("Lenovo", "Laptop", "ThinkPad T14 Gen 5 (Core Ultra 5, 16 GB, 512 GB SSD)", 125000),
+    I("Lenovo", "Monitor", "ThinkVision E22-30 22-inch", 10000)
+  ],
+  ap: [
+    I("TP-Link Omada", "Indoor Wi-Fi 6", "EAP650", 9500),
+    I("TP-Link Omada", "Indoor Wi-Fi 6", "EAP670", 14000),
+    I("TP-Link Omada", "Outdoor Wi-Fi 6", "EAP650-Outdoor", 13000),
+    I("Ubiquiti UniFi", "Indoor Wi-Fi 6", "U6+", 14000),
+    I("Ubiquiti UniFi", "Indoor Wi-Fi 7", "U7 Pro", 22000),
+    I("Ubiquiti UniFi", "Outdoor Wi-Fi 6", "U6 Mesh", 20000),
+    I("Aruba Instant On", "Indoor Wi-Fi 6", "AP22", 15000),
+    I("Aruba Instant On", "Indoor Wi-Fi 6", "AP25", 24000),
+    I("Aruba Instant On", "Outdoor Wi-Fi 6", "AP27", 25000)
+  ],
+  sw: [
+    I("TP-Link", "Unmanaged", "TL-SG1024D, 24-port Gigabit", 6500, {ports:24, poe:0}),
+    I("TP-Link", "Managed", "TL-SG3428, 24-port L2+", 17000, {ports:24, poe:0}),
+    I("TP-Link", "PoE managed", "TL-SG2210MP, 8-port PoE+", 11000, {ports:8, poe:8}),
+    I("TP-Link", "PoE managed", "TL-SG3428MP, 24-port PoE+", 38000, {ports:24, poe:24}),
+    I("D-Link", "Unmanaged", "DGS-1024C, 24-port Gigabit", 6000, {ports:24, poe:0}),
+    I("D-Link", "PoE managed", "DGS-1210-28P, 24-port PoE", 30000, {ports:24, poe:24}),
+    I("Ubiquiti UniFi", "Managed", "USW-24, 24-port", 25000, {ports:24, poe:0}),
+    I("Ubiquiti UniFi", "PoE managed", "USW-Lite-8-PoE, 8-port", 12000, {ports:8, poe:4}),
+    I("Ubiquiti UniFi", "PoE managed", "USW-24-PoE, 24-port", 40000, {ports:24, poe:16}),
+    I("Cisco", "Managed", "Catalyst 1200-24T-4G, 24-port", 30000, {ports:24, poe:0}),
+    I("Cisco", "PoE managed", "Catalyst 1300-24P-4X, 24-port PoE+", 80000, {ports:24, poe:24})
+  ],
+  cam: [
+    I("Hikvision", "Dome", "DS-2CD1123G0E-I", 3000, {mp:"2 MP"}),
+    I("Hikvision", "Dome", "DS-2CD2143G2-I AcuSense", 7500, {mp:"4 MP"}),
+    I("Hikvision", "Bullet", "DS-2CD1043G2-I", 4500, {mp:"4 MP"}),
+    I("Hikvision", "Bullet", "DS-2CD2087G2-LU ColorVu", 14000, {mp:"8 MP"}),
+    I("CP Plus", "Dome", "CP-UNC-DA21PL3", 2800, {mp:"2 MP"}),
+    I("CP Plus", "Bullet", "CP-UNC-TA41PL3", 4200, {mp:"4 MP"}),
+    I("Dahua", "Dome", "IPC-HDW1230T1-S5", 3000, {mp:"2 MP"}),
+    I("Dahua", "Bullet", "IPC-HFW2441S-S", 6500, {mp:"4 MP"})
+  ],
+  nvr: [
+    I("Hikvision", "8-channel NVR", "DS-7608NI-Q1/8P (8 PoE)", 12000, {ch:8, poe:8}),
+    I("Hikvision", "16-channel NVR", "DS-7616NI-Q2/16P (16 PoE)", 22000, {ch:16, poe:16}),
+    I("Hikvision", "32-channel NVR", "DS-7732NI-M4", 35000, {ch:32, poe:0}),
+    I("CP Plus", "8-channel NVR", "CP-UNR-108F1-8P (8 PoE)", 10000, {ch:8, poe:8}),
+    I("Dahua", "8-channel NVR", "NVR4108HS-8P-4KS2 (8 PoE)", 11000, {ch:8, poe:8}),
+    I("Dahua", "16-channel NVR", "NVR4216-16P-4KS2 (16 PoE)", 24000, {ch:16, poe:16}),
+    I("Seagate", "Surveillance hard disk", "SkyHawk 4 TB", 8500),
+    I("Seagate", "Surveillance hard disk", "SkyHawk 8 TB", 17000),
+    I("WD", "Surveillance hard disk", "Purple 4 TB", 8500),
+    I("WD", "Surveillance hard disk", "Purple 8 TB", 17000)
+  ],
+  ups: [
+    I("APC", "Line-interactive", "Back-UPS BX1100C-IN", 6500, {r:"1.1 kVA"}),
+    I("APC", "Online", "Easy UPS SRV1KI", 22000, {r:"1 kVA"}),
+    I("APC", "Online", "Easy UPS SRV3KI", 55000, {r:"3 kVA"}),
+    I("APC", "Online", "Easy UPS SRV6KI", 120000, {r:"6 kVA"}),
+    I("Eaton", "Line-interactive", "5E 1100i", 6000, {r:"1.1 kVA"}),
+    I("Eaton", "Online", "9E 3 kVA", 50000, {r:"3 kVA"}),
+    I("Eaton", "Online", "9E 6 kVA", 110000, {r:"6 kVA"}),
+    I("Vertiv", "Line-interactive", "Liebert itON 1 kVA", 6000, {r:"1 kVA"}),
+    I("Vertiv", "Online", "Liebert GXT-MT+ 3 kVA", 50000, {r:"3 kVA"})
+  ]
+};
+const SECTIONS = [
+  {id:"ws", name:"Workstations", add:"workstation", sub:"Desktops, laptops and monitors", f:[["b", "Brand"], ["t", "Type"]]},
+  {id:"ap", name:"Wi-Fi access points", add:"access point", sub:"Indoor and outdoor", f:[["b", "Brand"], ["t", "Type"]]},
+  {id:"sw", name:"Network switches", add:"switch", sub:"Unmanaged, managed and PoE", f:[["b", "Brand"], ["t", "Type"]]},
+  {id:"cam", name:"CCTV cameras", add:"camera", sub:"IP cameras", f:[["b", "Brand"], ["t", "Type"], ["mp", "Megapixel"]]},
+  {id:"nvr", name:"NVR and storage", add:"NVR or hard disk", sub:"Recorders and hard disks", f:[["b", "Brand"], ["t", "Type"]]},
+  {id:"ups", name:"UPS", add:"UPS", sub:"Backup power", f:[["b", "Brand"], ["t", "Type"], ["r", "Rating"]]}
+];
+
+/* Cabling material and labour rates (indicative INR, excluding GST) */
+const MAT = {
+  io:{name:"RJ45 I/O (Cat6 keystone jack)", p:250},
+  fp1:{name:"Face plate, single port", p:80},
+  fp2:{name:"Face plate, dual port", p:100},
+  sbox:{name:"Surface mount box (APs and cameras)", p:60},
+  cable:{name:"Cat6 UTP cable, 305 m box", p:9500},
+  panel:{name:"Patch panel, 24-port Cat6 (loaded)", p:4500},
+  mgr:{name:"Cable manager, 1U", p:800},
+  cord:{name:"Cat6 patch cord", p:150},
+  rack9:{name:"Wall-mount rack, 9U", p:9000},
+  rack12:{name:"Wall-mount rack, 12U", p:12000},
+  rack22:{name:"Floor-standing rack, 22U", p:25000},
+  rack42:{name:"Floor-standing rack, 42U", p:45000}
+};
+const LAB = {
+  point:{name:"Cable laying, termination and testing", unit:"per network point", p:450},
+  ws:{name:"Workstation setup", unit:"per workstation", p:500},
+  ap:{name:"Access point installation and configuration", unit:"per AP", p:600},
+  cam:{name:"Camera installation and alignment", unit:"per camera", p:700},
+  sw:{name:"Switch configuration", unit:"per switch", p:1500},
+  nvr:{name:"NVR setup and recording configuration", unit:"per NVR", p:2500},
+  upsS:{name:"UPS installation, line-interactive", unit:"per UPS", p:500},
+  upsL:{name:"UPS installation, online", unit:"per UPS", p:3000},
+  rack:{name:"Rack installation and cable dressing", unit:"per rack", p:3000},
+  comm:{name:"Commissioning, documentation and handover", unit:"3% of network, CCTV and power equipment, and cabling", pct:.03}
+};
+
+/* ---------- State ---------- */
+const STORE = "itbudget.projects.v1";
+const blank = () => ({id:"p" + Date.now().toString(36), name:"", rows:Object.fromEntries(SECTIONS.map(s => [s.id, []])),
+  set:{ppw:"1", run:30, cont:5, gst:true}, over:{}, updated:Date.now()});
+let projects = {};
+try { projects = JSON.parse(localStorage.getItem(STORE) || "{}") || {}; } catch (e) { projects = {}; }
+let P = Object.values(projects).sort((a, b) => b.updated - a.updated)[0] || blank();
+let saveT = 0;
+function save() {
+  P.updated = Date.now();
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    if (!P.name.trim() && !SECTIONS.some(s => P.rows[s.id].length)) return; // don't store an untouched blank project
+    projects[P.id] = P;
+    try { localStorage.setItem(STORE, JSON.stringify(projects)); setStatus("Saved in this browser."); }
+    catch (e) { setStatus("Couldn't save in this browser. Download a copy to keep your work."); }
+    drawProjects();
+  }, 400);
+}
+const setStatus = m => { $("[data-st]").textContent = m; };
+
+/* ---------- Equipment rows ---------- */
+const matches = (it, sel, upto) => upto.every(([k]) => !sel[k] || it[k] === sel[k]);
+const uniq = a => [...new Set(a)];
+/* Choices for each filter depend only on the filters before it, so picking a brand narrows the types, and so on. */
+function resolveRow(sec, r) {
+  const items = CATALOG[sec.id];
+  sec.f.forEach(([k], i) => {
+    const opts = uniq(items.filter(it => matches(it, r, sec.f.slice(0, i))).map(it => it[k]));
+    if (!opts.includes(r[k])) r[k] = opts[0];
+  });
+  const models = items.filter(it => matches(it, r, sec.f));
+  if (!models.some(it => it.m === r.m)) { r.m = models[0].m; r.price = null; }
+  return models;
+}
+const itemOf = (secId, r) => CATALOG[secId].find(it => it.m === r.m && it.b === r.b);
+const priceOf = (secId, r) => r.price != null ? r.price : (itemOf(secId, r) || {p:0}).p;
+
+function drawSections() {
+  $("[data-sections]").innerHTML = SECTIONS.map(s => `<section class="sec" data-sec="${s.id}">
+      <div class="sec-h"><div><h2>${esc(s.name)}</h2><span class="sub">${esc(s.sub)}</span></div><span class="tot" data-stot></span></div>
+      <div class="rows" style="--cols:${s.f.map(() => "minmax(0,1.25fr)").join(" ")}" data-rows></div>
+      <div class="sec-f"><button class="btn ghost small" data-add>+ Add ${esc(s.add)}</button></div>
+    </section>`).join("");
+  SECTIONS.forEach(drawRows);
+}
+function drawRows(sec) {
+  const host = $(`[data-sec="${sec.id}"] [data-rows]`);
+  const rows = P.rows[sec.id];
+  if (!rows.length) { host.innerHTML = `<p class="empty">None added.</p>`; }
+  else host.innerHTML = `<div class="row head"><span>Qty</span>${sec.f.map(([, l]) => `<span>${l}</span>`).join("")}<span>Model</span><span>Unit price</span><span class="lt">Total</span><span></span></div>` +
+    rows.map((r, i) => {
+      const models = resolveRow(sec, r);
+      const sel = (k, i2) => { const opts = uniq(CATALOG[sec.id].filter(it => matches(it, r, sec.f.slice(0, i2))).map(it => it[k]));
+        return `<select data-k="${k}" aria-label="${sec.f[i2][1]}">${opts.map(o => `<option${o === r[k] ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>`; };
+      const p = priceOf(sec.id, r);
+      return `<div class="row" data-i="${i}">
+        <label><span class="mlabel">Qty</span><input type="number" min="0" max="9999" value="${r.qty}" data-k="qty" aria-label="Quantity"></label>
+        ${sec.f.map(([k, l], i2) => `<label><span class="mlabel">${l}</span>${sel(k, i2)}</label>`).join("")}
+        <label class="model"><span class="mlabel">Model</span><select data-k="m" aria-label="Model">${models.map(it => `<option${it.m === r.m ? " selected" : ""}>${esc(it.m)}</option>`).join("")}</select></label>
+        <label class="price"><span class="mlabel">Unit price (₹)</span><input type="number" min="0" step="100" value="${p}" data-k="price" aria-label="Unit price in rupees" class="${r.price != null ? "edited" : ""}" title="${r.price != null ? "Changed from the list price" : "List price"}"></label>
+        <span class="lt"><span class="mlabel">Total</span>${money(p * (+r.qty || 0))}</span>
+        <button class="x" data-del aria-label="Remove this line">${X_ICON}</button></div>`;
+    }).join("");
+  const tot = rows.reduce((s, r) => s + priceOf(sec.id, r) * (+r.qty || 0), 0);
+  $(`[data-sec="${sec.id}"] [data-stot]`).textContent = rows.length ? money(tot) : "";
+}
+document.addEventListener("click", e => {
+  const add = e.target.closest("[data-add]"), del = e.target.closest("[data-del]");
+  if (!add && !del) return;
+  const secEl = e.target.closest("[data-sec]"); const sec = SECTIONS.find(s => s.id === secEl.dataset.sec);
+  if (add) { const last = P.rows[sec.id].at(-1); P.rows[sec.id].push(last ? {...last, qty:1, price:null} : {qty:1}); }
+  else P.rows[sec.id].splice(+del.closest("[data-i]").dataset.i, 1);
+  drawRows(sec); recalc(); save();
+  if (add) $$(`[data-sec="${sec.id}"] [data-i]`).at(-1).querySelector("input").focus();
+});
+document.addEventListener("change", e => {
+  const rowEl = e.target.closest("[data-sec] [data-i]"); if (!rowEl) return;
+  const sec = SECTIONS.find(s => s.id === rowEl.closest("[data-sec]").dataset.sec);
+  const r = P.rows[sec.id][+rowEl.dataset.i]; const k = e.target.dataset.k;
+  if (k === "qty") r.qty = Math.max(0, Math.round(+e.target.value || 0));
+  else if (k === "price") { const v = +e.target.value; const list = (itemOf(sec.id, r) || {}).p; r.price = isFinite(v) && v >= 0 && v !== list ? v : null; }
+  else { r[k] = e.target.value; r.price = null; const ki = sec.f.findIndex(([f]) => f === k); if (ki >= 0) sec.f.slice(ki + 1).forEach(([f]) => delete r[f]); }
+  drawRows(sec); recalc(); save();
+});
+
+/* ---------- Automatic cabling, installation and totals ---------- */
+function compute() {
+  const sumQ = (id, pred = () => true) => P.rows[id].filter(r => pred(itemOf(id, r) || {}, r)).reduce((s, r) => s + (+r.qty || 0), 0);
+  const sumF = (id, f) => P.rows[id].reduce((s, r) => s + (+r.qty || 0) * ((itemOf(id, r) || {})[f] || 0), 0);
+  const ws = sumQ("ws", it => it.t !== "Monitor"), ap = sumQ("ap"), cam = sumQ("cam"), sw = sumQ("sw");
+  const nvr = sumQ("nvr", it => it.ch), upsS = sumQ("ups", it => it.t === "Line-interactive"), upsL = sumQ("ups", it => it.t === "Online");
+  const ppw = +P.set.ppw || 1, run = Math.max(5, +P.set.run || 30);
+  const points = ws * ppw + ap + cam;
+  const panels = Math.ceil(points / 24);
+  const rackU = sw + panels * 2 + nvr + (points || sw ? 2 : 0);
+  const rack = !rackU ? null : rackU <= 9 ? ["rack9", 1] : rackU <= 12 ? ["rack12", 1] : rackU <= 22 ? ["rack22", 1] : ["rack42", Math.ceil(rackU / 42)];
+  const mat = [
+    ["io", points, `${ws} desk${ws === 1 ? "" : "s"} × ${ppw} + ${ap} AP + ${cam} camera`],
+    [ppw === 2 ? "fp2" : "fp1", ws, "One per desk"],
+    ["sbox", ap + cam, "One per access point and camera"],
+    ["cable", Math.ceil(points * run / 305), `${points} points × ${run} m = ${points * run} m`],
+    ["panel", panels, "24 points per panel"],
+    ["mgr", panels, "One per patch panel"],
+    ["cord", points * 2, "Two per point (rack and desk side)"],
+    rack ? [rack[0], rack[1], `${rackU}U needed for switches, panels and NVRs`] : null
+  ].filter(m => m && m[1] > 0).map(([key, q, why]) => ({key, name:MAT[key].name, q, why, p:P.over["m." + key] ?? MAT[key].p}));
+  const matTot = mat.reduce((s, m) => s + m.q * m.p, 0);
+  const equipTot = SECTIONS.reduce((s, sec) => s + P.rows[sec.id].reduce((a, r) => a + priceOf(sec.id, r) * (+r.qty || 0), 0), 0);
+  const ins = [["point", points], ["ws", ws], ["ap", ap], ["cam", cam], ["sw", sw], ["nvr", nvr], ["upsS", upsS], ["upsL", upsL], ["rack", rack ? rack[1] : 0]]
+    .filter(([, q]) => q > 0).map(([key, q]) => ({key, name:LAB[key].name, why:LAB[key].unit, q, p:P.over["l." + key] ?? LAB[key].p}));
+  const infra = equipTot - P.rows.ws.reduce((a, r) => a + priceOf("ws", r) * (+r.qty || 0), 0) + matTot; // PCs are excluded: commissioning covers the infrastructure
+  if (infra > 0) ins.push({key:"comm", name:LAB.comm.name, why:LAB.comm.unit, q:1, p:P.over["l.comm"] ?? Math.round(infra * LAB.comm.pct / 100) * 100});
+  const insTot = ins.reduce((s, l) => s + l.q * l.p, 0);
+  const sub = equipTot + matTot + insTot, cont = sub * (Math.max(0, +P.set.cont || 0) / 100);
+  const gst = P.set.gst ? (sub + cont) * .18 : 0;
+  const warns = [];
+  const swPorts = sumF("sw", "ports"), poe = sumF("sw", "poe") + sumF("nvr", "poe"), ch = sumF("nvr", "ch");
+  if (points && swPorts < points) warns.push(`Switches give ${swPorts} ports but the project has ${points} network points. Add ${Math.ceil((points - swPorts) / 24)} more 24-port switch${points - swPorts > 24 ? "es" : ""}.`);
+  if (ap + cam > poe) warns.push(`${ap + cam} access points and cameras need PoE power, but your switches and NVRs give only ${poe} PoE ports.`);
+  if (cam && ch < cam) warns.push(`${cam} cameras but the NVRs record only ${ch} channels.`);
+  if (cam && !sumQ("nvr", it => !it.ch)) warns.push("Add a surveillance hard disk so the NVR can record.");
+  if ((sw || nvr) && !sumQ("ups")) warns.push("No UPS chosen. Switches and NVRs usually need backup power.");
+  return {mat, matTot, ins, insTot, equipTot, sub, cont, gst, total:sub + cont + gst, warns, points};
+}
+function lineTable(lines, prefix) {
+  if (!lines.length) return `<p class="empty">Add equipment above to see this.</p>`;
+  return `<table class="auto"><thead><tr><th>Item</th><th class="n">Qty</th><th class="n">Rate (₹)</th><th class="n">Total</th></tr></thead><tbody>` +
+    lines.map(l => `<tr><td>${esc(l.name)}<span class="why">${esc(l.why)}</span></td><td class="n q">${l.q}</td>
+      <td class="n"><input type="number" min="0" step="10" value="${l.p}" data-over="${prefix}.${l.key}" aria-label="Rate for ${esc(l.name)}" class="${P.over[prefix + "." + l.key] != null ? "edited" : ""}"></td>
+      <td class="n">${money(l.q * l.p)}</td></tr>`).join("") + `</tbody></table>`;
+}
+function recalc() {
+  const c = compute();
+  $("[data-mat]").innerHTML = lineTable(c.mat, "m"); $("[data-mat-tot]").textContent = c.mat.length ? money(c.matTot) : "";
+  $("[data-ins]").innerHTML = lineTable(c.ins, "l"); $("[data-ins-tot]").textContent = c.ins.length ? money(c.insTot) : "";
+  $("[data-warns]").innerHTML = c.warns.map(w => `<li>${esc(w)}</li>`).join("");
+  $("[data-sum]").innerHTML = `<tr><td>Equipment</td><td>${money(c.equipTot)}</td></tr>
+    <tr><td>Cabling and accessories</td><td>${money(c.matTot)}</td></tr>
+    <tr><td>Installation</td><td>${money(c.insTot)}</td></tr>
+    <tr><td class="m">Contingency ${+P.set.cont || 0}%</td><td class="m">${money(c.cont)}</td></tr>
+    ${P.set.gst ? `<tr><td class="m">GST 18%</td><td class="m">${money(c.gst)}</td></tr>` : ""}
+    <tr class="grand"><td>Total</td><td>${money(c.total)}</td></tr>`;
+  return c;
+}
+document.addEventListener("change", e => {
+  const o = e.target.dataset.over; if (!o) return;
+  const v = +e.target.value; const [pre, key] = o.split(".");
+  const def = pre === "m" ? MAT[key].p : LAB[key].p;
+  if (isFinite(v) && v >= 0 && v !== def) P.over[o] = v; else delete P.over[o];
+  recalc(); save();
+});
+
+/* ---------- Project bar, settings, export ---------- */
+function drawProjects() {
+  const list = Object.values(projects).sort((a, b) => b.updated - a.updated);
+  const sel = $("[data-projects]");
+  sel.innerHTML = (projects[P.id] ? "" : `<option value="${P.id}" selected>${esc(P.name || "New project")} (not saved yet)</option>`) +
+    list.map(p => `<option value="${p.id}"${p.id === P.id ? " selected" : ""}>${esc(p.name || "Untitled project")}</option>`).join("");
+}
+function load(p) {
+  P = p;
+  for (const s of SECTIONS) P.rows[s.id] ||= [];
+  $("[data-name]").value = P.name;
+  for (const el of $$("[data-set]")) { const k = el.dataset.set; if (el.type === "checkbox") el.checked = !!P.set[k]; else el.value = P.set[k]; }
+  drawSections(); recalc(); drawProjects(); setStatus("");
+}
+$("[data-name]").addEventListener("input", e => { P.name = e.target.value; save(); });
+$("[data-projects]").addEventListener("change", e => { if (projects[e.target.value]) load(projects[e.target.value]); });
+$("[data-new]").addEventListener("click", () => { load(blank()); $("[data-name]").focus(); });
+for (const el of $$("[data-set]")) el.addEventListener("change", () => {
+  const k = el.dataset.set; P.set[k] = el.type === "checkbox" ? el.checked : el.value; recalc(); save();
+});
+$("[data-print]").addEventListener("click", () => {
+  $("[data-ptitle]").textContent = (P.name || "IT project") + " – budget";
+  $("[data-pdate]").textContent = "Prepared " + new Date().toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"}) + ". Indicative prices, excluding any vendor discounts.";
+  window.print();
+});
+$("[data-csv]").addEventListener("click", () => {
+  const c = compute(); const rows = [["Section", "Item", "Qty", "Unit price (INR)", "Total (INR)"]];
+  for (const s of SECTIONS) for (const r of P.rows[s.id]) {
+    const it = itemOf(s.id, r) || {}; const p = priceOf(s.id, r);
+    rows.push([s.name, [r.b, r.t, it.mp, it.r, r.m].filter(Boolean).join(" / "), r.qty, p, p * (+r.qty || 0)]);
+  }
+  for (const m of c.mat) rows.push(["Cabling and accessories", m.name, m.q, m.p, m.q * m.p]);
+  for (const l of c.ins) rows.push(["Installation", l.name, l.q, l.p, l.q * l.p]);
+  rows.push([], ["", "Subtotal", "", "", Math.round(c.sub)], ["", "Contingency " + (+P.set.cont || 0) + "%", "", "", Math.round(c.cont)]);
+  if (P.set.gst) rows.push(["", "GST 18%", "", "", Math.round(c.gst)]);
+  rows.push(["", "Total", "", "", Math.round(c.total)]);
+  const csv = rows.map(r => r.map(v => { v = String(v ?? ""); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], {type:"text/csv"}));
+  a.download = (P.name.trim().replace(/[\\/:*?"<>|]+/g, "-") || "it-project") + "-budget.csv";
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  setStatus("Downloaded " + a.download + ".");
+});
+
+load(P);
+</script>
+</body>
+</html>
