@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Office Edit Tools – Free tools for work</title>
+<title>Core Tools – Free tools for work</title>
 <meta name="description" content="Free online tools for PDFs, video and audio, plus remote access, security audits, IT asset management, Wi-Fi planning and IT project budgets for organisations.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,7 +105,7 @@ footer.site .legal{border-top:1px solid var(--line);padding:16px 20px}
 </head>
 <body>
 <header class="top"><div class="top-in">
-  <a class="mark" href="index.html"><span aria-hidden="true"></span>Office Edit Tools</a>
+  <a class="mark" href="index.html"><span aria-hidden="true"></span>Core Tools</a>
   <nav class="nav" aria-label="Sections">
     <a href="#files">File tools</a>
     <a href="#org">For organisations</a>
@@ -157,7 +157,7 @@ footer.site .legal{border-top:1px solid var(--line);padding:16px 20px}
     </ol>
   </section>
 
-  <section class="why" aria-label="Why Office Edit Tools">
+  <section class="why" aria-label="Why Core Tools">
     <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><p style="margin:0"><b>Your files stay with you</b><span>PDF, video and audio tools run in your browser.</span></p></div>
     <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 4h10M7 9h10M7 4c5 0 5 5 0 5l8 11"/></svg><p style="margin:0"><b>Built for India</b><span>Prices in rupees with GST, CERT-In and DPDP checks, Indian date formats.</span></p></div>
     <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg><p style="margin:0"><b>Simple by design</b><span>One clear button on every screen. Plain words, no jargon.</span></p></div>
@@ -166,7 +166,7 @@ footer.site .legal{border-top:1px solid var(--line);padding:16px 20px}
 
 <footer class="site">
   <div class="fgrid" data-footer></div>
-  <div class="legal">© 2026 Office Edit Tools. Free tools for work.</div>
+  <div class="legal">© 2026 Core Tools. Free tools for work.</div>
 </footer>
 
 <script>
@@ -282,7 +282,7 @@ for (const g of ["files", "org", "daily"]) {
 }
 $(".popular").insertAdjacentHTML("beforeend", TOOLS.filter(t => t.pop).map(t => `<a href="${t.url}">${esc(t.name.replace(" planner", ""))}</a>`).join(""));
 $("[data-count]").innerHTML = `<b>${TOOLS.filter(t => !t.soon).length} tools</b> across <b>${PORTALS.length} portals</b>, free to use`;
-$("[data-footer]").innerHTML = `<div><a class="mark" href="index.html"><span aria-hidden="true"></span>Office Edit Tools</a><p>Online tools for work. Files you edit stay on your device.</p></div>` +
+$("[data-footer]").innerHTML = `<div><a class="mark" href="index.html"><span aria-hidden="true"></span>Core Tools</a><p>Online tools for work. Files you edit stay on your device.</p></div>` +
   [["Files", ["pdf", "video", "audio"]], ["Plan", ["budget", "wifi"]], ["Protect", ["security", "remote"]], ["Manage", ["assets"]], ["Daily", ["office"]]].map(([h, ids]) =>
     `<div><h3>${h}</h3><ul>${ids.map(id => PORTALS.find(p => p.id === id)).map(p => `<li><a href="${p.url}"${p.ext?' target="_blank" rel="noopener"':''}>${esc(p.name)}</a></li>`).join("")}</ul></div>`).join("");
 
