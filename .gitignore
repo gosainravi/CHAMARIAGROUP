@@ -1,0 +1,16 @@
+# Local test files — never publish
+Layout.pdf
+*.pdf
+*.zip
+
+# OS and editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# Dev server
+__pycache__/
+*.py[cod]
+.claude/

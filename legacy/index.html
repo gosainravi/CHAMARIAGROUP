@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daftarbox – Free PDF, photo, document, audio and video tools</title>
+<meta name="description" content="Free online tools to merge, split, compress and sign PDFs, convert Word, images, contacts and spreadsheets, compress and resize photos, and edit audio and video. Files are processed on your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=Caveat:wght@500&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F4F5F7; --surface:#FFFFFF; --sunk:#ECEEF2; --ink:#15181E; --muted:#596070;
+  --line:#D8DBE2; --brand:#1D3B8F; --brand-ink:#FFFFFF; --brand-soft:#E3E9F8;
+  --hl:#FFE45C; --hl-ink:#15181E; --danger:#B42318; --ok:#17784A;
+  --wave:#1D3B8F; --sel:rgba(255,214,0,.38);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101319; --surface:#181C24; --sunk:#0C0F14; --ink:#E8EBF1; --muted:#9BA2B0;
+    --line:#2A303B; --brand:#93A9FF; --brand-ink:#0D1220; --brand-soft:#1E2640;
+    --hl:#EAD14B; --hl-ink:#15181E; --danger:#FF8F84; --ok:#71D39E;
+    --wave:#93A9FF; --sel:rgba(234,209,75,.30);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101319; --surface:#181C24; --sunk:#0C0F14; --ink:#E8EBF1; --muted:#9BA2B0;
+  --line:#2A303B; --brand:#93A9FF; --brand-ink:#0D1220; --brand-soft:#1E2640;
+  --hl:#EAD14B; --hl-ink:#15181E; --danger:#FF8F84; --ok:#71D39E;
+  --wave:#93A9FF; --sel:rgba(234,209,75,.30);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+img,canvas,video{max-width:100%}
+a{color:var(--brand)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+h1:focus,main:focus{outline:none}
+
+/* Header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:28px;height:60px}
+.mark{font-stretch:125%;font-weight:850;font-size:1.25rem;letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
+.mark span{display:inline-block;width:.62em;height:.62em;background:var(--hl);margin-right:.32em;vertical-align:.02em;border:2px solid var(--ink)}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1}
+.nav::-webkit-scrollbar{display:none}
+.nav a{white-space:nowrap;text-decoration:none;color:var(--muted);padding:8px 12px;border-radius:6px;font-weight:550;font-size:.95rem}
+.nav a:hover{color:var(--ink);background:var(--sunk)}
+.nav a[aria-current="page"]{color:var(--ink);background:var(--hl);color:var(--hl-ink)}
+
+main{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+
+/* Home hero */
+.hero{padding:56px 0 40px}
+.hero h1{font-stretch:125%;font-weight:850;font-size:clamp(2.5rem,7.4vw,5.6rem);line-height:.95;letter-spacing:-.035em;margin:0 0 20px;max-width:12ch}
+.hero > p{color:var(--muted);font-size:1.12rem;max-width:56ch;margin:0 0 28px}
+.drop{position:relative;border:2px dashed var(--line);border-radius:14px;background:var(--surface);padding:36px 28px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;transition:background .12s,border-color .12s}
+.drop.drag{background:var(--hl);border-color:var(--hl-ink);color:var(--hl-ink)}
+.drop.drag .drop-sub{color:var(--hl-ink)}
+.drop-txt{flex:1;min-width:220px}
+.drop-big{font-stretch:112%;font-weight:750;font-size:1.35rem;line-height:1.2;margin:0 0 4px}
+.drop-sub{color:var(--muted);margin:0;font-size:.95rem}
+.drop input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.picks{margin-top:18px}
+.picks h2{font-size:1.05rem;font-weight:650;margin:0 0 10px}
+.picks .row{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Directory */
+.cat{padding:40px 0 8px;border-top:2px solid var(--ink)}
+.cat:first-of-type{border-top-width:2px}
+.cat-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.cat h2{font-stretch:125%;font-weight:800;font-size:clamp(1.5rem,3.2vw,2.1rem);letter-spacing:-.02em;margin:0}
+.cat-head p{margin:0;color:var(--muted)}
+.tools{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));column-gap:28px}
+.tools li{border-top:1px solid var(--line)}
+.tools a{display:block;padding:14px 0 16px;text-decoration:none;color:var(--ink)}
+.tools a:hover .tn{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.tn{font-weight:700;font-size:1.05rem;display:block}
+.td{color:var(--muted);font-size:.93rem;display:block;margin-top:2px}
+.tag{display:inline-block;font-size:.75rem;font-weight:650;padding:1px 8px;border-radius:99px;background:var(--sunk);color:var(--muted);margin-left:6px;vertical-align:2px}
+
+/* Buttons and fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:8px;padding:11px 18px;font-weight:650;cursor:pointer;background:var(--brand);color:var(--brand-ink);text-decoration:none;line-height:1.2}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{background:var(--sunk);filter:none}
+.btn.small{padding:6px 11px;font-size:.88rem;border-radius:6px}
+.btn.wide{width:100%}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;width:32px;height:32px;display:inline-grid;place-items:center;cursor:pointer;padding:0}
+.icon-btn:hover{background:var(--sunk)}
+.icon-btn svg{width:16px;height:16px}
+label.f{display:block;margin:0 0 14px;font-weight:600;font-size:.92rem}
+label.f > span.h{display:block;font-weight:400;color:var(--muted);font-size:.85rem;margin-top:2px}
+.f input[type=text],.f input[type=number],.f select,.f textarea{display:block;width:100%;margin-top:6px;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-weight:400}
+.f input[type=range]{width:100%;margin-top:8px;accent-color:var(--brand)}
+.check{display:flex;gap:8px;align-items:flex-start;margin:0 0 14px;font-size:.92rem;font-weight:500}
+.check input{margin-top:4px;accent-color:var(--brand)}
+.radios{display:flex;flex-direction:column;gap:6px;margin:6px 0 0;font-weight:400}
+.radios label{display:flex;gap:8px;align-items:center}
+.radios input{accent-color:var(--brand)}
+
+/* Tool page */
+.crumbs{padding:28px 0 0;font-size:.92rem;color:var(--muted)}
+.crumbs a{color:var(--muted)}
+.tool-head{padding:10px 0 24px}
+.tool-head h1{font-stretch:125%;font-weight:850;font-size:clamp(2rem,5vw,3.4rem);letter-spacing:-.03em;line-height:1;margin:0 0 10px}
+.tool-head p{margin:0;color:var(--muted);max-width:62ch;font-size:1.05rem}
+.work{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+@media (max-width:860px){.work{grid-template-columns:1fr}}
+.opts{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px)}
+@media (max-width:860px){.opts{position:static}}
+.opts h2{font-size:1rem;margin:0 0 14px;font-weight:700}
+.note{font-size:.86rem;color:var(--muted);background:var(--sunk);border-radius:6px;padding:10px 12px;margin:0 0 14px}
+.files{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.files ul{list-style:none;margin:0;padding:0}
+.files li{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.files li:last-child{border-bottom:0}
+.fi-num{font-variant-numeric:tabular-nums;color:var(--muted);width:1.6em;text-align:right;font-size:.9rem}
+.fi-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:550}
+.fi-size{color:var(--muted);font-size:.88rem;white-space:nowrap}
+.fi-act{display:flex;gap:6px}
+.files-foot{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.files .drop{border:0;border-radius:10px}
+.status{min-height:1.4em;margin:12px 0 0;font-size:.92rem}
+.status.err{color:var(--danger);font-weight:550}
+.status.ok{color:var(--ok);font-weight:550}
+progress{width:100%;height:8px;margin-top:12px;accent-color:var(--brand)}
+.results{margin-top:28px;background:var(--surface);border:2px solid var(--ink);border-radius:10px;padding:20px}
+.results h2{font-stretch:115%;font-weight:800;font-size:1.4rem;margin:0 0 6px}
+.results .sum{margin:0 0 14px;color:var(--muted)}
+.results ul{list-style:none;margin:0 0 14px;padding:0}
+.results li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.results-foot{display:flex;gap:10px;flex-wrap:wrap}
+
+/* Organize thumbnails */
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px;padding:14px}
+.thumb{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:grab;user-select:none}
+.thumb.dragging{opacity:.4}
+.thumb.over{outline:2px dashed var(--brand);outline-offset:2px}
+.thumb-img{height:150px;display:grid;place-items:center;width:100%}
+.thumb canvas{max-height:146px;max-width:100%;box-shadow:0 0 0 1px var(--line);background:#fff;transition:transform .15s}
+.thumb-bar{display:flex;gap:4px;align-items:center;width:100%;justify-content:space-between}
+.thumb-n{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Sign */
+.sigpad{display:block;width:100%;height:170px;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;cursor:crosshair}
+.tabs{display:flex;gap:4px;margin:0 0 10px}
+.tabs button{border:1px solid var(--line);background:transparent;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:.9rem}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.place-wrap{position:relative;display:inline-block;max-width:100%;line-height:0;cursor:copy;box-shadow:0 0 0 1px var(--line)}
+.place-wrap canvas{display:block;background:#fff}
+.place-wrap img{position:absolute;pointer-events:none;outline:1px dashed var(--brand)}
+.stage{padding:14px;text-align:center;overflow:auto}
+.stage-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line)}
+
+/* Crop */
+.crop-wrap{position:relative;display:inline-block;max-width:100%;line-height:0;overflow:hidden;touch-action:none;cursor:crosshair;user-select:none;box-shadow:0 0 0 1px var(--line)}
+.crop-wrap canvas{display:block;max-width:100%;max-height:65vh;width:auto;height:auto}
+.crop-box{position:absolute;border:2px solid #fff;outline:1px dashed #000;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none}
+
+/* Audio / video */
+.wave-wrap{padding:14px}
+canvas.wave{display:block;width:100%;height:170px;background:var(--bg);border:1px solid var(--line);border-radius:8px;cursor:text;touch-action:none}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 14px 14px}
+.time{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.92rem;margin-left:auto}
+.vwrap{padding:14px}
+.vwrap video{display:block;width:100%;max-height:60vh;background:#000;border-radius:8px}
+.inline-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Remote */
+.soon{max-width:720px}
+.soon h2{font-size:1.15rem;margin:28px 0 8px}
+.soon p{max-width:64ch}
+.soon ul{padding-left:1.2em}
+.soon li{margin:4px 0}
+
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:.88rem}
+footer div{max-width:1180px;margin:0 auto;padding:22px 20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="mark" href="../index.html" title="All portals"><span aria-hidden="true"></span>Daftarbox</a>
+    <nav class="nav" id="nav" aria-label="Tool categories"></nav>
+  </div>
+</header>
+<main id="app" tabindex="-1"></main>
+<footer><div>Daftarbox. Free tools that run in your browser: your files are processed on your device and are never uploaded.</div></footer>
+
+<script>
+"use strict";
+/* ---------- Basics ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtSize = b => b < 1024 ? b + " B" : b < 1048576 ? (b/1024).toFixed(1) + " KB" : (b/1048576).toFixed(1) + " MB";
+const baseName = n => n.replace(/\.[^.]+$/, "");
+const extOf = n => ((n.match(/\.([^.]+)$/) || [, ""])[1]).toLowerCase();
+const fmtTime = s => { s = Math.max(0, s); const m = Math.floor(s/60); const r = (s - m*60).toFixed(2).padStart(5, "0"); return m + ":" + r; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const once = (el, ev) => new Promise((res, rej) => { el.addEventListener(ev, res, {once:true}); if (ev !== "error") el.addEventListener("error", () => rej(new Error("This file couldn't be opened by your browser.")), {once:true}); });
+const pdfBlob = bytes => new Blob([bytes], {type:"application/pdf"});
+const canvasBlob = (c, type, q) => new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error("The image couldn't be created. Try a lower quality setting.")), type, q));
+const ICON = {
+  up:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg>',
+  down:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/></svg>',
+  left:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 8H3M7.5 3.5 3 8l4.5 4.5"/></svg>',
+  right:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h10M8.5 3.5 13 8l-4.5 4.5"/></svg>',
+  x:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+  rot:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v3h-3"/></svg>'
+};
+
+/* ---------- Library loader (loaded only when a tool needs it) ---------- */
+const CDN = {
+  pdflib: ["https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"],
+  pdfjs: ["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js", "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"],
+  jszip: ["https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"],
+  mammoth: ["https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"],
+  xlsx: ["https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"]
+};
+const scriptP = {};
+function loadScript(url) {
+  if (scriptP[url]) return scriptP[url];
+  return scriptP[url] = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = url; s.async = false;
+    s.onload = res;
+    s.onerror = () => { delete scriptP[url]; s.remove(); rej(new Error("A required component didn't load. Check your internet connection and try again.")); };
+    document.head.appendChild(s);
+  });
+}
+async function need(...names) {
+  for (const n of names) for (const u of CDN[n]) await loadScript(u);
+  if (names.includes("pdfjs") && window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = CDN.pdfjs[0];
+}
+
+/* ---------- Saving files ---------- */
+const dlCap = (window.claude && typeof window.claude.use === "function")
+  ? window.claude.use("downloads").catch(() => null) : Promise.resolve(null);
+async function saveFile(name, blob) {
+  const dl = await dlCap;
+  if (dl) {
+    try { await dl.save({filename: name, data: blob}); return "saved"; }
+    catch (e) {
+      const code = e && e.code;
+      if (code === "declined") return "declined";
+      if (code === "rate_limited") throw new Error("A save is already waiting for your answer. Finish that one first.");
+      if (code === "rejected_extension" || code === "extension_not_enabled") {
+        await need("jszip");
+        const z = new JSZip(); z.file(name, blob);
+        return saveFile(baseName(name) + ".zip", await z.generateAsync({type:"blob"}));
+      }
+      if (code === "too_large") throw new Error("This file is too large to save here.");
+      /* any other code: fall back to a normal browser download */
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+  return "saved";
+}
+async function zipAll(outs) {
+  await need("jszip");
+  const z = new JSZip(); const used = {};
+  for (const o of outs) { let n = o.name; if (used[n]) n = baseName(n) + "-" + (used[n]++) + "." + extOf(n); else used[n] = 1; z.file(n, o.blob); }
+  return z.generateAsync({type:"blob"});
+}
+
+/* ---------- PDF helpers ---------- */
+async function loadPL(file) {
+  let doc;
+  try { doc = await PDFLib.PDFDocument.load(await file.arrayBuffer(), {ignoreEncryption:true}); }
+  catch (e) { throw new Error(file.name + " couldn't be read as a PDF. It may be damaged or not a real PDF."); }
+  if (doc.isEncrypted) throw new Error(file.name + " is password-protected. Remove the password first, then try again.");
+  return doc;
+}
+async function pdfjsOpen(file) {
+  await need("pdfjs");
+  const data = new Uint8Array(await file.arrayBuffer());
+  try { return await pdfjsLib.getDocument({data, isEvalSupported:false}).promise; }
+  catch (e) {
+    if (e && e.name === "PasswordException") throw new Error(file.name + " is password-protected. Remove the password first, then try again.");
+    throw new Error(file.name + " couldn't be read as a PDF. It may be damaged.");
+  }
+}
+async function renderPage(page, scale) {
+  let vp = page.getViewport({scale});
+  const maxPx = 14e6;
+  if (vp.width * vp.height > maxPx) { scale *= Math.sqrt(maxPx / (vp.width * vp.height)); vp = page.getViewport({scale}); }
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+  await page.render({canvasContext: ctx, viewport: vp}).promise;
+  return c;
+}
+async function subsetPdf(src, idxs) {
+  const d = await PDFLib.PDFDocument.create();
+  const ps = await d.copyPages(src, idxs);
+  ps.forEach(p => d.addPage(p));
+  return pdfBlob(await d.save());
+}
+function parseRanges(str, total) {
+  const s = (str || "").trim();
+  if (!s) throw new Error("Enter the pages, for example 1-3, 5.");
+  const groups = [];
+  for (const raw of s.split(/[,;]+/)) {
+    const tok = raw.trim(); if (!tok) continue;
+    let a, b; const m = tok.match(/^(\d*)\s*-\s*(\d*)$/);
+    if (m && (m[1] || m[2])) { a = m[1] ? +m[1] : 1; b = m[2] ? +m[2] : total; }
+    else if (/^\d+$/.test(tok)) { a = b = +tok; }
+    else throw new Error('"' + tok + '" isn\'t a page or a range. Use numbers like 2 or 4-7.');
+    if (a < 1 || b < 1) throw new Error("Page numbers start at 1.");
+    if (a > total || b > total) throw new Error("This PDF has " + total + " page" + (total === 1 ? "" : "s") + ", so page " + Math.max(a, b) + " doesn't exist.");
+    const idx = []; const dir = a <= b ? 1 : -1; for (let i = a; i !== b + dir; i += dir) idx.push(i - 1);
+    groups.push({label: a === b ? String(a) : a + "-" + b, idx});
+  }
+  if (!groups.length) throw new Error("Enter the pages, for example 1-3, 5.");
+  return groups;
+}
+/* The page as the reader sees it (after /Rotate), mapped to PDF space.
+   W/H: visible size. pt(vx, vy): visible point, top-left origin -> PDF point.
+   vec(dx, dy): visible y-up vector -> PDF vector. Draw with rotate: degrees(r) to appear upright. */
+function pageFrame(p) {
+  const b = p.getCropBox(); const r = ((p.getRotation().angle % 360) + 360) % 360;
+  const side = r === 90 || r === 270; const rad = r * Math.PI / 180;
+  const pt = (vx, vy) => r === 90 ? [b.x + vy, b.y + vx] : r === 180 ? [b.x + b.width - vx, b.y + vy]
+    : r === 270 ? [b.x + b.width - vy, b.y + b.height - vx] : [b.x + vx, b.y + b.height - vy];
+  const vec = (dx, dy) => [dx * Math.cos(rad) - dy * Math.sin(rad), dx * Math.sin(rad) + dy * Math.cos(rad)];
+  return {W: side ? b.height : b.width, H: side ? b.width : b.height, r, pt, vec};
+}
+
+/* ---------- Word (.docx) writer ---------- */
+const xmlEsc = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+async function makeDocx(paras) {
+  await need("jszip");
+  const body = paras.map(p => {
+    if (p.pageBreak) return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+    const rpr = (p.bold ? "<w:b/>" : "") + (p.sz ? '<w:sz w:val="' + p.sz + '"/><w:szCs w:val="' + p.sz + '"/>' : "");
+    return '<w:p><w:pPr><w:spacing w:after="120"/></w:pPr><w:r>' + (rpr ? "<w:rPr>" + rpr + "</w:rPr>" : "") + '<w:t xml:space="preserve">' + xmlEsc(p.text) + "</w:t></w:r></w:p>";
+  }).join("");
+  const z = new JSZip();
+  z.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  z.file("_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  z.file("word/document.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + body + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>');
+  return z.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+}
+
+/* ---------- Audio helpers ---------- */
+let sharedAC = null;
+function audioCtx() { if (!sharedAC) sharedAC = new (window.AudioContext || window.webkitAudioContext)(); return sharedAC; }
+async function decodeAudioFile(file) {
+  const ab = await file.arrayBuffer();
+  try { return await audioCtx().decodeAudioData(ab); }
+  catch (e) { throw new Error("Your browser can't read the audio in " + file.name + ". Try an MP3, WAV, M4A or OGG file."); }
+}
+function makeBuffer(channels, length, rate) { return new AudioBuffer({numberOfChannels: channels, length: Math.max(1, length), sampleRate: rate}); }
+function encodeWav(buf, gain = 1) {
+  const nc = buf.numberOfChannels, sr = buf.sampleRate, len = buf.length;
+  const dv = new DataView(new ArrayBuffer(44 + len * nc * 2));
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); dv.setUint32(4, 36 + len * nc * 2, true); w(8, "WAVE"); w(12, "fmt ");
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, nc, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * nc * 2, true); dv.setUint16(32, nc * 2, true); dv.setUint16(34, 16, true);
+  w(36, "data"); dv.setUint32(40, len * nc * 2, true);
+  const ch = []; for (let c = 0; c < nc; c++) ch.push(buf.getChannelData(c));
+  let o = 44;
+  for (let i = 0; i < len; i++) for (let c = 0; c < nc; c++) {
+    let s = ch[c][i] * gain; s = s < -1 ? -1 : s > 1 ? 1 : s;
+    dv.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2;
+  }
+  return new Blob([dv], {type:"audio/wav"});
+}
+
+/* ---------- Image helpers ---------- */
+const IMG_MIME = {jpg:"image/jpeg", png:"image/png", webp:"image/webp"};
+async function loadImg(f) {
+  try { return await createImageBitmap(f, {imageOrientation:"from-image"}); }
+  catch (e) { throw new Error(f.name + " couldn't be opened as an image. Try a JPG, PNG or WebP file."); }
+}
+function pickFmt(fmt, f) {
+  if (fmt && fmt !== "same") return fmt;
+  const e = extOf(f.name); return e === "png" || e === "gif" || e === "bmp" ? "png" : e === "webp" ? "webp" : "jpg";
+}
+function drawImg(src, w, h, fmt, sx = 0, sy = 0, sw = src.width, sh = src.height) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d");
+  if (fmt === "jpg") { g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); }
+  g.imageSmoothingQuality = "high"; g.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
+  return c;
+}
+async function encodeImg(c, fmt, q) {
+  const blob = await canvasBlob(c, IMG_MIME[fmt] || "image/jpeg", q);
+  const ext = Object.keys(IMG_MIME).find(k => IMG_MIME[k] === blob.type) || "png";
+  return {blob, ext};
+}
+/* Highest quality that fits under max bytes; scales the picture down when quality alone can't. */
+async function fitUnder(bmp, max, fmt) {
+  let w = bmp.width, h = bmp.height;
+  for (let round = 0; round < 10; round++) {
+    const c = drawImg(bmp, w, h, fmt);
+    try {
+      const top = await encodeImg(c, fmt, .92); if (top.blob.size <= max) return {...top, w, h};
+      const low = await encodeImg(c, fmt, .3);
+      if (low.blob.size <= max) {
+        let lo = .3, hi = .92, best = low;
+        for (let k = 0; k < 6; k++) { const q = (lo + hi) / 2; const r = await encodeImg(c, fmt, q); if (r.blob.size <= max) { best = r; lo = q; } else hi = q; }
+        return {...best, w, h};
+      }
+      const s = Math.min(.9, Math.sqrt(max / low.blob.size) * .95);
+      w = Math.round(w * s); h = Math.round(h * s);
+      if (w < 16 || h < 16) break;
+    } finally { c.width = c.height = 0; }
+  }
+  throw new Error("This image can't be made that small. Try a larger size limit.");
+}
+
+/* ---------- Categories and tools ---------- */
+const CATS = [
+  {id:"pdf", name:"PDF tools", blurb:"Merge, split, compress, sign and rearrange PDF files."},
+  {id:"convert", name:"Convert documents", blurb:"Move between PDF, Word, images, contacts and spreadsheets."},
+  {id:"photo", name:"Photo editing", blurb:"Compress, resize, crop and convert photos, or size them for online forms."},
+  {id:"video", name:"Video editing", blurb:"Trim and shrink videos, pull out the sound or a still."},
+  {id:"audio", name:"Audio editing", blurb:"Cut, fade, join and level audio clips."},
+  {id:"remote", name:"Remote access", blurb:"Help someone on their computer from yours."}
+];
+const EXT = {
+  pdf:["pdf"], img:["jpg","jpeg","png","webp","gif","bmp"], docx:["docx"], vcf:["vcf","vcard"],
+  sheet:["xlsx","xls","csv","ods"], audio:["mp3","wav","m4a","aac","ogg","oga","opus","flac","weba"],
+  video:["mp4","webm","mov","m4v","ogv","mkv"]
+};
+const TOOLS = [];
+const T = t => TOOLS.push(t);
+
+/* PDF ---------------------------------------------------------- */
+T({id:"merge", cat:"pdf", name:"Merge PDF", desc:"Combine several PDFs into one file, in the order you set.",
+  exts:EXT.pdf, multiple:true, min:2, libs:["pdflib"], action:"Merge PDF",
+  hint:"Use the arrows to change the order.",
+  async run(files, o, prog) {
+    const out = await PDFLib.PDFDocument.create();
+    for (let i = 0; i < files.length; i++) {
+      const src = await loadPL(files[i]);
+      (await out.copyPages(src, src.getPageIndices())).forEach(p => out.addPage(p));
+      prog((i + 1) / files.length);
+    }
+    return {files:[{name:"merged.pdf", blob:pdfBlob(await out.save())}], summary:"Merged " + files.length + " files into one PDF with " + out.getPageCount() + " pages."};
+  }});
+T({id:"split", cat:"pdf", name:"Split PDF", desc:"Break a PDF into separate files by page or by range.",
+  exts:EXT.pdf, libs:["pdflib"], action:"Split PDF",
+  options:() => `<label class="f">How to split<div class="radios">
+      <label><input type="radio" name="mode" value="each" checked> Every page as its own file</label>
+      <label><input type="radio" name="mode" value="ranges"> Custom ranges</label></div></label>
+    <label class="f">Ranges<input type="text" name="ranges" placeholder="1-3, 4-6, 9"><span class="h">Used with custom ranges. Each range becomes one file.</span></label>`,
+  async run(files, o, prog) {
+    const src = await loadPL(files[0]); const n = src.getPageCount(); const b = baseName(files[0].name);
+    const groups = o.mode === "ranges" ? parseRanges(o.ranges, n) : src.getPageIndices().map(i => ({label:String(i + 1), idx:[i]}));
+    const outs = [];
+    for (let i = 0; i < groups.length; i++) { outs.push({name:b + "_pages_" + groups[i].label + ".pdf", blob:await subsetPdf(src, groups[i].idx)}); prog((i + 1) / groups.length); }
+    return {files:outs, summary:"Created " + outs.length + " file" + (outs.length > 1 ? "s" : "") + " from " + n + " pages."};
+  }});
+T({id:"compress", cat:"pdf", name:"Compress PDF", desc:"Shrink a PDF so it fits email and upload limits.",
+  exts:EXT.pdf, libs:["pdflib","pdfjs"], action:"Compress PDF",
+  options:() => `<label class="f">Compression<select name="level">
+      <option value="strong">Smallest file (lower quality)</option>
+      <option value="balanced" selected>Recommended</option>
+      <option value="light">Best quality (larger file)</option></select></label>
+    <p class="note">Pages are rebuilt as images, so text in the result can't be selected or searched. Works best on scans and image-heavy PDFs.</p>`,
+  async run(files, o, prog) {
+    const f = files[0]; const cfg = {strong:[72, .5], balanced:[110, .65], light:[150, .78]}[o.level] || [110, .65];
+    const pdf = await pdfjsOpen(f); const out = await PDFLib.PDFDocument.create();
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i); const vp1 = page.getViewport({scale:1});
+      const c = await renderPage(page, cfg[0] / 72);
+      const jb = await canvasBlob(c, "image/jpeg", cfg[1]); c.width = c.height = 0;
+      const img = await out.embedJpg(await jb.arrayBuffer());
+      out.addPage([vp1.width, vp1.height]).drawImage(img, {x:0, y:0, width:vp1.width, height:vp1.height});
+      page.cleanup(); prog(i / pdf.numPages);
+    }
+    const bytes = await out.save(); pdf.destroy();
+    if (bytes.length >= f.size) return {files:[{name:f.name, blob:f}], summary:"This PDF is already well optimised, so compressing made it bigger. Here's your original file unchanged. Try the 'Smallest file' setting for more savings."};
+    const pct = Math.round((1 - bytes.length / f.size) * 100);
+    return {files:[{name:baseName(f.name) + "_compressed.pdf", blob:pdfBlob(bytes)}], summary:"Reduced from " + fmtSize(f.size) + " to " + fmtSize(bytes.length) + " (" + pct + "% smaller)."};
+  }});
+T({id:"organize", cat:"pdf", name:"Organize pages", desc:"Drag pages into a new order, rotate them or delete them.",
+  exts:EXT.pdf, custom:mountOrganize});
+T({id:"rotate", cat:"pdf", name:"Rotate PDF", desc:"Turn every page, or just some, the right way up.",
+  exts:EXT.pdf, libs:["pdflib"], action:"Rotate PDF",
+  options:() => `<label class="f">Rotate<select name="angle"><option value="90">90° clockwise</option><option value="180">180°</option><option value="270">90° anticlockwise</option></select></label>
+    <label class="f">Pages<input type="text" name="pages" placeholder="All pages"><span class="h">Leave empty for all pages, or enter pages like 1, 3-5.</span></label>`,
+  async run(files, o) {
+    const d = await loadPL(files[0]); const n = d.getPageCount();
+    const set = o.pages.trim() ? new Set(parseRanges(o.pages, n).flatMap(g => g.idx)) : null;
+    d.getPages().forEach((p, i) => { if (!set || set.has(i)) p.setRotation(PDFLib.degrees((p.getRotation().angle + +o.angle) % 360)); });
+    return {files:[{name:baseName(files[0].name) + "_rotated.pdf", blob:pdfBlob(await d.save())}], summary:"Rotated " + (set ? set.size : n) + " of " + n + " pages."};
+  }});
+T({id:"remove", cat:"pdf", name:"Remove pages", desc:"Delete the pages you don't need from a PDF.",
+  exts:EXT.pdf, libs:["pdflib"], action:"Remove pages",
+  options:() => `<label class="f">Pages to remove<input type="text" name="pages" placeholder="2, 5-7"></label>`,
+  async run(files, o) {
+    const src = await loadPL(files[0]); const n = src.getPageCount();
+    const del = new Set(parseRanges(o.pages, n).flatMap(g => g.idx));
+    const keep = src.getPageIndices().filter(i => !del.has(i));
+    if (!keep.length) throw new Error("That would remove every page. Leave at least one.");
+    return {files:[{name:baseName(files[0].name) + "_edited.pdf", blob:await subsetPdf(src, keep)}], summary:"Removed " + del.size + " page" + (del.size > 1 ? "s" : "") + ". " + keep.length + " remain."};
+  }});
+T({id:"extract", cat:"pdf", name:"Extract pages", desc:"Pull chosen pages out into a new PDF.",
+  exts:EXT.pdf, libs:["pdflib"], action:"Extract pages",
+  options:() => `<label class="f">Pages to keep<input type="text" name="pages" placeholder="1, 4-6"><span class="h">Pages appear in the order you type them.</span></label>`,
+  async run(files, o) {
+    const src = await loadPL(files[0]); const n = src.getPageCount();
+    const idx = [...new Set(parseRanges(o.pages, n).flatMap(g => g.idx))];
+    return {files:[{name:baseName(files[0].name) + "_extract.pdf", blob:await subsetPdf(src, idx)}], summary:"New PDF with " + idx.length + " page" + (idx.length > 1 ? "s" : "") + "."};
+  }});
+T({id:"pagenumbers", cat:"pdf", name:"Add page numbers", desc:"Stamp page numbers in the corner or centre of each page.",
+  exts:EXT.pdf, libs:["pdflib"], action:"Add page numbers",
+  options:() => `<label class="f">Position<select name="pos">
+      <option value="bc">Bottom centre</option><option value="br">Bottom right</option><option value="bl">Bottom left</option>
+      <option value="tc">Top centre</option><option value="tr">Top right</option><option value="tl">Top left</option></select></label>
+    <label class="f">Style<select name="fmt"><option value="n">1</option><option value="page">Page 1</option><option value="of">Page 1 of 10</option><option value="slash">1 / 10</option></select></label>
+    <div class="inline-fields"><label class="f">First number<input type="number" name="start" value="1" min="0"></label>
+    <label class="f">Text size<input type="number" name="size" value="11" min="6" max="36"></label></div>
+    <label class="check"><input type="checkbox" name="skip"> Don't number the first page (cover)</label>`,
+  async run(files, o) {
+    const d = await loadPL(files[0]); const font = await d.embedFont(PDFLib.StandardFonts.Helvetica);
+    const pages = d.getPages(); const skip = !!o.skip; const start = Number.isFinite(+o.start) ? +o.start : 1;
+    const size = Math.min(36, Math.max(6, +o.size || 11)); const count = pages.length - (skip ? 1 : 0); const last = start + count - 1;
+    pages.forEach((p, i) => {
+      if (skip && i === 0) return;
+      const n = start + i - (skip ? 1 : 0);
+      const text = {n:String(n), page:"Page " + n, of:"Page " + n + " of " + last, slash:n + " / " + last}[o.fmt] || String(n);
+      const F = pageFrame(p); const tw = font.widthOfTextAtSize(text, size);
+      const vx = o.pos[1] === "l" ? 36 : o.pos[1] === "r" ? F.W - 36 - tw : (F.W - tw) / 2;
+      const vy = o.pos[0] === "t" ? 28 + size : F.H - 24;
+      const [x, y] = F.pt(vx, vy);
+      p.drawText(text, {x, y, size, font, color:PDFLib.rgb(.22, .22, .25), rotate:PDFLib.degrees(F.r)});
+    });
+    return {files:[{name:baseName(files[0].name) + "_numbered.pdf", blob:pdfBlob(await d.save())}], summary:"Numbered " + count + " pages."};
+  }});
+T({id:"watermark", cat:"pdf", name:"Add watermark", desc:"Put a text watermark like CONFIDENTIAL across every page.",
+  exts:EXT.pdf, libs:["pdflib"], action:"Add watermark",
+  options:() => `<label class="f">Watermark text<input type="text" name="text" value="CONFIDENTIAL" maxlength="60"></label>
+    <div class="inline-fields"><label class="f">Text size<input type="number" name="size" value="64" min="10" max="200"></label>
+    <label class="f">Strength<select name="op"><option value=".12">Faint</option><option value=".22" selected>Medium</option><option value=".4">Strong</option></select></label></div>
+    <div class="inline-fields"><label class="f">Angle<select name="ang"><option value="45">Diagonal</option><option value="0">Straight</option></select></label>
+    <label class="f">Colour<select name="col"><option value="grey">Grey</option><option value="red">Red</option><option value="blue">Blue</option></select></label></div>`,
+  async run(files, o) {
+    const text = (o.text || "").trim(); if (!text) throw new Error("Enter the watermark text.");
+    const d = await loadPL(files[0]); const font = await d.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const safe = cleanForFont(font, text).text; const size = Math.min(200, Math.max(10, +o.size || 64));
+    const col = {grey:[.45,.45,.48], red:[.78,.1,.12], blue:[.12,.25,.6]}[o.col] || [.45,.45,.48];
+    const a = (+o.ang || 0) * Math.PI / 180; const w = font.widthOfTextAtSize(safe, size);
+    for (const p of d.getPages()) {
+      const F = pageFrame(p); const [cx, cy] = F.pt(F.W / 2, F.H / 2);
+      const [dx, dy] = F.vec(-(w/2) * Math.cos(a) + (size/3) * Math.sin(a), -(w/2) * Math.sin(a) - (size/3) * Math.cos(a));
+      p.drawText(safe, {x: cx + dx, y: cy + dy,
+        size, font, color:PDFLib.rgb(...col), opacity:+o.op || .22, rotate:PDFLib.degrees((+o.ang || 0) + F.r)});
+    }
+    return {files:[{name:baseName(files[0].name) + "_watermarked.pdf", blob:pdfBlob(await d.save())}], summary:"Watermark added to " + d.getPageCount() + " pages."};
+  }});
+T({id:"sign", cat:"pdf", name:"Sign PDF", desc:"Draw or type your signature and place it on any page.",
+  exts:EXT.pdf, custom:mountSign});
+
+/* Convert ------------------------------------------------------ */
+T({id:"pdf2word", cat:"convert", name:"PDF to Word", desc:"Turn a PDF's text into an editable Word document.",
+  exts:EXT.pdf, libs:["pdfjs","jszip"], action:"Convert to Word",
+  options:() => `<p class="note">Copies the text and paragraphs into Word. Exact layout, tables and pictures aren't kept. Scanned PDFs have no text to copy.</p>`,
+  async run(files, o, prog) {
+    const pdf = await pdfjsOpen(files[0]); const pages = []; const hs = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i); const tc = await page.getTextContent();
+      const lines = [];
+      for (const it of tc.items) {
+        if (typeof it.str !== "string" || !it.str.length) continue;
+        const y = it.transform[5], x = it.transform[4], h = Math.abs(it.transform[3]) || it.height || 10;
+        let ln = lines.find(l => Math.abs(l.y - y) < Math.max(2, Math.min(l.h, h) * .5));
+        if (!ln) { ln = {y, h, items:[]}; lines.push(ln); }
+        ln.h = Math.max(ln.h, h); ln.items.push({x, w:it.width || 0, s:it.str, h});
+      }
+      lines.sort((a, b) => b.y - a.y);
+      for (const l of lines) {
+        l.items.sort((a, b) => a.x - b.x); let t = "", end = null;
+        for (const it of l.items) {
+          if (end !== null && it.x - end > it.h * .2 && !t.endsWith(" ") && !it.s.startsWith(" ")) t += " ";
+          t += it.s; end = it.x + it.w;
+        }
+        l.text = t.replace(/\s+/g, " ").trim(); if (l.text) hs.push(l.h);
+      }
+      pages.push(lines.filter(l => l.text)); page.cleanup(); prog(i / pdf.numPages * .9);
+    }
+    pdf.destroy();
+    const total = pages.reduce((s, ls) => s + ls.reduce((a, l) => a + l.text.length, 0), 0);
+    if (total < 20) throw new Error("This PDF has no selectable text. It's probably a scan or photo, which needs OCR (coming soon).");
+    hs.sort((a, b) => a - b); const med = hs[Math.floor(hs.length / 2)] || 10;
+    const paras = [];
+    pages.forEach((ls, pi) => {
+      let cur = null, prev = null;
+      for (const l of ls) {
+        const big = l.h > med * 1.25;
+        const brk = !cur || !prev || (prev.y - l.y) > Math.max(prev.h, l.h) * 1.75 || big !== cur.big || /^[•\u2022\-–*]\s|^\d+[.)]\s/.test(l.text);
+        if (brk) { cur = {text:l.text, big, h:l.h}; paras.push(cur); }
+        else cur.text += (cur.text.endsWith("-") ? "" : " ") + l.text;
+        prev = l;
+      }
+      if (pi < pages.length - 1) paras.push({pageBreak:true});
+    });
+    const out = paras.map(p => p.pageBreak ? p : {text:p.text, bold:p.big, sz:p.big ? Math.min(48, Math.max(26, Math.round(p.h * 1.6))) : 22});
+    const blob = await makeDocx(out); prog(1);
+    return {files:[{name:baseName(files[0].name) + ".docx", blob}], summary:"Converted " + pages.length + " pages into an editable Word document."};
+  }});
+T({id:"word2pdf", cat:"convert", name:"Word to PDF", desc:"Turn a .docx document into a clean, printable PDF.",
+  exts:EXT.docx, libs:["mammoth","pdflib"], action:"Convert to PDF",
+  options:() => `<label class="f">Page size<select name="size"><option value="a4">A4</option><option value="letter">Letter</option></select></label>
+    <p class="note">Keeps headings, paragraphs, lists and table text in a clean layout. Pictures and exact Word styling aren't carried over. Older .doc files must be saved as .docx first.</p>`,
+  async run(files, o, prog) {
+    let html;
+    try { html = (await mammoth.convertToHtml({arrayBuffer: await files[0].arrayBuffer()})).value; }
+    catch (e) { throw new Error(files[0].name + " couldn't be read. Make sure it's a .docx file, not an older .doc."); }
+    prog(.3);
+    const dom = new DOMParser().parseFromString("<div>" + html + "</div>", "text/html").body.firstChild;
+    const blocks = [];
+    const walk = (el, depth) => {
+      for (const n of el.children) {
+        const tag = n.tagName.toLowerCase();
+        if (/^h[1-6]$/.test(tag)) blocks.push({t:n.textContent, kind:"h" + tag[1]});
+        else if (tag === "p") { const t = n.textContent; const bold = n.children.length === 1 && /^(strong|b)$/i.test(n.children[0].tagName) && n.children[0].textContent === t; blocks.push({t, kind: bold ? "pb" : "p"}); }
+        else if (tag === "ul" || tag === "ol") { let k = 0; for (const li of n.children) { if (li.tagName !== "LI") continue; k++; const own = [...li.childNodes].filter(c => !(c.nodeType === 1 && /^(UL|OL)$/.test(c.tagName))).map(c => c.textContent).join(""); blocks.push({t:own, kind:"li", depth, mark: tag === "ol" ? k + "." : "•"}); for (const sub of li.children) if (/^(UL|OL)$/.test(sub.tagName)) walk({children:[sub]}, depth + 1); } }
+        else if (tag === "table") { for (const tr of n.querySelectorAll("tr")) blocks.push({t:[...tr.children].map(c => c.textContent.trim()).join("   |   "), kind:"p"}); blocks.push({t:"", kind:"p"}); }
+        else if (n.children.length) walk(n, depth);
+        else if (n.textContent.trim()) blocks.push({t:n.textContent, kind:"p"});
+      }
+    };
+    walk(dom, 0);
+    if (!blocks.some(b => b.t.trim())) throw new Error("This document has no text to convert.");
+    const d = await PDFLib.PDFDocument.create();
+    const reg = await d.embedFont(PDFLib.StandardFonts.Helvetica), bold = await d.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const [W, H] = o.size === "letter" ? [612, 792] : [595.28, 841.89]; const M = 60;
+    let page = null, y = 0, replaced = 0;
+    const newPage = () => { page = d.addPage([W, H]); y = H - M; };
+    newPage();
+    const style = {h1:[bold, 20, 14, 8], h2:[bold, 16, 12, 6], h3:[bold, 13.5, 10, 4], h4:[bold, 12, 8, 4], h5:[bold, 11, 8, 4], h6:[bold, 11, 8, 4], p:[reg, 11, 0, 7], pb:[bold, 11, 0, 7], li:[reg, 11, 0, 3]};
+    for (const b of blocks) {
+      const [font, size, before, after] = style[b.kind] || style.p;
+      const indent = b.kind === "li" ? 18 + (b.depth || 0) * 18 : 0;
+      const c = cleanForFont(font, b.t.replace(/\s+/g, " ").trim()); replaced += c.bad;
+      const lh = size * 1.38;
+      if (!c.text) { y -= lh * .6; continue; }
+      y -= before;
+      const lines = wrapText(c.text, font, size, W - 2 * M - indent);
+      lines.forEach((ln, i) => {
+        if (y - lh < M) newPage();
+        if (i === 0 && b.kind === "li") page.drawText(cleanForFont(font, b.mark).text, {x:M + indent - 14, y:y - size, size, font});
+        page.drawText(ln, {x:M + indent, y:y - size, size, font, color:PDFLib.rgb(.08, .09, .11)});
+        y -= lh;
+      });
+      y -= after;
+    }
+    prog(1);
+    return {files:[{name:baseName(files[0].name) + ".pdf", blob:pdfBlob(await d.save())}],
+      summary:"Created a " + d.getPageCount() + "-page PDF." + (replaced ? " " + replaced + " characters this font can't show (for example Hindi or other non-Latin scripts) were replaced with ?." : "")};
+  }});
+T({id:"pdf2jpg", cat:"convert", name:"PDF to JPG", desc:"Save each PDF page as a JPG or PNG image.",
+  exts:EXT.pdf, libs:["pdfjs"], action:"Convert to images",
+  options:() => `<div class="inline-fields"><label class="f">Format<select name="fmt"><option value="jpg">JPG</option><option value="png">PNG</option></select></label>
+    <label class="f">Quality<select name="dpi"><option value="100">Standard</option><option value="150" selected>High</option><option value="220">Print</option></select></label></div>
+    <label class="f">Pages<input type="text" name="pages" placeholder="All pages"><span class="h">Leave empty for all pages.</span></label>`,
+  async run(files, o, prog) {
+    const pdf = await pdfjsOpen(files[0]); const n = pdf.numPages; const b = baseName(files[0].name);
+    const idx = o.pages.trim() ? [...new Set(parseRanges(o.pages, n).flatMap(g => g.idx))] : [...Array(n).keys()];
+    const png = o.fmt === "png"; const outs = [];
+    for (let k = 0; k < idx.length; k++) {
+      const page = await pdf.getPage(idx[k] + 1); const c = await renderPage(page, (+o.dpi || 150) / 72);
+      outs.push({name:b + "_page-" + (idx[k] + 1) + (png ? ".png" : ".jpg"), blob:await canvasBlob(c, png ? "image/png" : "image/jpeg", .9)});
+      c.width = c.height = 0; page.cleanup(); prog((k + 1) / idx.length);
+    }
+    pdf.destroy();
+    return {files:outs, summary:"Saved " + outs.length + " page" + (outs.length > 1 ? "s" : "") + " as " + (png ? "PNG" : "JPG") + " images."};
+  }});
+T({id:"jpg2pdf", cat:"convert", name:"JPG to PDF", desc:"Turn photos and scans (JPG, PNG, WebP) into one PDF.",
+  exts:EXT.img, multiple:true, min:1, libs:["pdflib"], action:"Convert to PDF",
+  hint:"Each image becomes one page. Use the arrows to change the order.",
+  options:() => `<label class="f">Page size<select name="size"><option value="fit">Same as the image</option><option value="a4" selected>A4</option><option value="letter">Letter</option></select></label>
+    <label class="f">Orientation<select name="orient"><option value="auto">Match each image</option><option value="p">Portrait</option><option value="l">Landscape</option></select></label>
+    <label class="f">Margin<select name="margin"><option value="0">None</option><option value="20" selected>Small</option><option value="45">Large</option></select></label>`,
+  async run(files, o, prog) {
+    const d = await PDFLib.PDFDocument.create(); const m = +o.margin || 0;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]; let img;
+      if (extOf(f.name) === "png") { try { img = await d.embedPng(await f.arrayBuffer()); } catch (e) {} }
+      if (!img) {
+        let bmp; try { bmp = await createImageBitmap(f, {imageOrientation:"from-image"}); } catch (e) { throw new Error(f.name + " couldn't be opened as an image."); }
+        const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+        const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0); bmp.close && bmp.close();
+        img = await d.embedJpg(await (await canvasBlob(c, "image/jpeg", .92)).arrayBuffer()); c.width = c.height = 0;
+      }
+      const iw = img.width * .75, ih = img.height * .75; let pw, ph;
+      if (o.size === "fit") { pw = iw + 2 * m; ph = ih + 2 * m; }
+      else {
+        [pw, ph] = o.size === "letter" ? [612, 792] : [595.28, 841.89];
+        const land = o.orient === "l" || (o.orient === "auto" && iw > ih);
+        if (land) [pw, ph] = [ph, pw];
+      }
+      const s = Math.min((pw - 2 * m) / iw, (ph - 2 * m) / ih, o.size === "fit" ? 1 : Infinity);
+      const w = iw * s, h = ih * s;
+      d.addPage([pw, ph]).drawImage(img, {x:(pw - w) / 2, y:(ph - h) / 2, width:w, height:h});
+      prog((i + 1) / files.length);
+    }
+    return {files:[{name:(files.length === 1 ? baseName(files[0].name) : "images") + ".pdf", blob:pdfBlob(await d.save())}], summary:"Created a PDF with " + files.length + " page" + (files.length > 1 ? "s" : "") + "."};
+  }});
+T({id:"vcf", cat:"convert", name:"VCF to CSV / Excel", desc:"Turn a phone contacts file (.vcf) into a spreadsheet.",
+  exts:EXT.vcf, libs:["xlsx"], action:"Convert contacts",
+  options:() => `<label class="f">Save as<select name="fmt"><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV</option><option value="both">Both</option></select></label>
+    <p class="note">Works with exports from Android, iPhone, Google Contacts and Outlook.</p>`,
+  async run(files, o) {
+    const rows = parseVcf(await files[0].text());
+    if (!rows.contacts.length) throw new Error("No contacts were found in this file. Make sure it's a .vcf contacts export.");
+    const aoa = [rows.header, ...rows.contacts]; const b = baseName(files[0].name); const outs = [];
+    if (o.fmt !== "xlsx") outs.push({name:b + ".csv", blob:new Blob(["\uFEFF" + toCsv(aoa)], {type:"text/csv"})});
+    if (o.fmt !== "csv") {
+      const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = rows.header.map(h => ({wch: Math.max(12, h.length + 2)}));
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Contacts");
+      outs.push({name:b + ".xlsx", blob:new Blob([XLSX.write(wb, {type:"array", bookType:"xlsx"})], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})});
+    }
+    return {files:outs, summary:"Found " + rows.contacts.length + " contact" + (rows.contacts.length > 1 ? "s" : "") + "."};
+  }});
+T({id:"excel", cat:"convert", name:"Excel ↔ CSV", desc:"Convert Excel sheets to CSV, or a CSV file to Excel.",
+  exts:EXT.sheet, libs:["xlsx"], action:"Convert spreadsheet",
+  options:() => `<p class="note">Excel files become one CSV per sheet. A CSV file becomes an Excel workbook.</p>`,
+  async run(files) {
+    const f = files[0]; const e = extOf(f.name); const b = baseName(f.name);
+    let wb;
+    try { wb = e === "csv" ? XLSX.read(await f.text(), {type:"string"}) : XLSX.read(new Uint8Array(await f.arrayBuffer()), {type:"array"}); }
+    catch (err) { throw new Error(f.name + " couldn't be read as a spreadsheet."); }
+    if (e === "csv") return {files:[{name:b + ".xlsx", blob:new Blob([XLSX.write(wb, {type:"array", bookType:"xlsx"})], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}], summary:"Converted CSV to an Excel workbook."};
+    const outs = wb.SheetNames.map(n => ({name:(wb.SheetNames.length > 1 ? b + "_" + n.replace(/[\\/:*?"<>|]+/g, "-") : b) + ".csv", blob:new Blob(["\uFEFF" + XLSX.utils.sheet_to_csv(wb.Sheets[n])], {type:"text/csv"})}));
+    return {files:outs, summary:"Converted " + outs.length + " sheet" + (outs.length > 1 ? "s" : "") + " to CSV."};
+  }});
+
+/* Photo -------------------------------------------------------- */
+const fmtOpts = (same = true) => (same ? '<option value="same">Same as the original</option>' : "") + '<option value="jpg">JPG</option><option value="png">PNG</option><option value="webp">WebP</option>';
+const pctWire = form => { const upd = () => $$("output[data-for]", form).forEach(o => { o.textContent = form.elements[o.dataset.for].value + "%"; }); form.addEventListener("input", upd); upd(); };
+T({id:"imgcompress", cat:"photo", name:"Compress image", desc:"Make photos smaller, or squeeze them under a size like 50 KB.",
+  exts:EXT.img, multiple:true, min:1, action:"Compress images",
+  hint:"Each image is compressed on its own.",
+  options:() => `<label class="f">How small<div class="radios">
+      <label><input type="radio" name="mode" value="q" checked> Pick a quality</label>
+      <label><input type="radio" name="mode" value="kb"> Under a file size</label></div></label>
+    <label class="f">Quality <output data-for="q"></output><input type="range" name="q" min="10" max="95" value="70"></label>
+    <label class="f">Maximum size (KB)<input type="number" name="kb" value="100" min="5"><span class="h">Used with "Under a file size". The picture is scaled down too if quality alone isn't enough.</span></label>
+    <label class="f">Save as<select name="fmt"><option value="jpg">JPG</option><option value="webp">WebP (smaller, newer)</option></select></label>`,
+  wire:pctWire,
+  async run(files, o, prog) {
+    const outs = []; let before = 0, after = 0, shrunk = 0;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]; const bmp = await loadImg(f);
+      let r;
+      if (o.mode === "kb") { r = await fitUnder(bmp, Math.max(5, +o.kb || 100) * 1024, o.fmt); if (r.w < bmp.width) shrunk++; }
+      else { const c = drawImg(bmp, bmp.width, bmp.height, o.fmt); r = await encodeImg(c, o.fmt, (+o.q || 70) / 100); c.width = c.height = 0; }
+      bmp.close();
+      outs.push({name:baseName(f.name) + "_compressed." + r.ext, blob:r.blob}); before += f.size; after += r.blob.size;
+      prog((i + 1) / files.length);
+    }
+    const pct = Math.round((1 - after / before) * 100);
+    return {files:outs, summary:fmtSize(before) + " before, " + fmtSize(after) + " after" + (pct > 0 ? " (" + pct + "% smaller)." : ". The originals were already well compressed.") + (shrunk ? " " + shrunk + " image" + (shrunk > 1 ? "s were" : " was") + " also scaled down to fit the size." : "")};
+  }});
+T({id:"imgresize", cat:"photo", name:"Resize image", desc:"Change the width and height of photos, by pixels or by percentage.",
+  exts:EXT.img, multiple:true, min:1, action:"Resize images",
+  hint:"Every image gets the same settings.",
+  options:() => `<label class="f">Resize by<div class="radios">
+      <label><input type="radio" name="mode" value="px" checked> Pixels</label>
+      <label><input type="radio" name="mode" value="pct"> Percentage</label></div></label>
+    <div class="inline-fields"><label class="f">Width (px)<input type="number" name="w" min="1" placeholder="Auto"></label>
+    <label class="f">Height (px)<input type="number" name="h" min="1" placeholder="Auto"></label></div>
+    <label class="check"><input type="checkbox" name="keep" checked> Keep the proportions (fits inside the width and height)</label>
+    <label class="f">Percentage <output data-for="pct"></output><input type="range" name="pct" min="5" max="200" value="50"></label>
+    <label class="f">Save as<select name="fmt">${fmtOpts()}</select></label>`,
+  wire:pctWire,
+  async run(files, o, prog) {
+    const W = Math.round(+o.w) || 0, H = Math.round(+o.h) || 0;
+    if (o.mode === "px" && !W && !H) throw new Error("Enter a width, a height or both.");
+    const outs = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]; const bmp = await loadImg(f); const bw = bmp.width, bh = bmp.height; let w, h;
+      if (o.mode === "pct") { const s = (+o.pct || 50) / 100; w = bw * s; h = bh * s; }
+      else if (o.keep) { const s = W && H ? Math.min(W / bw, H / bh) : W ? W / bw : H / bh; w = bw * s; h = bh * s; }
+      else { w = W || bw; h = H || bh; }
+      w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+      if (w > 16000 || h > 16000 || w * h > 100e6) throw new Error("That size is too large for the browser. Keep it under 16,000 pixels on each side.");
+      const fmt = pickFmt(o.fmt, f); const c = drawImg(bmp, w, h, fmt); bmp.close();
+      const r = await encodeImg(c, fmt, .92); c.width = c.height = 0;
+      outs.push({name:baseName(f.name) + "_" + w + "x" + h + "." + r.ext, blob:r.blob}); prog((i + 1) / files.length);
+    }
+    return {files:outs, summary:"Resized " + outs.length + " image" + (outs.length > 1 ? "s" : "") + "."};
+  }});
+T({id:"imgcrop", cat:"photo", name:"Crop image", desc:"Cut a photo down to the part you want, freely or to a fixed shape.",
+  exts:EXT.img, custom:mountCrop});
+T({id:"imgrotate", cat:"photo", name:"Rotate & flip image", desc:"Turn photos the right way up or mirror them.",
+  exts:EXT.img, multiple:true, min:1, action:"Rotate images",
+  options:() => `<label class="f">Rotate<select name="angle"><option value="90">90° clockwise</option><option value="180">180°</option><option value="270">90° anticlockwise</option><option value="0">Don't rotate</option></select></label>
+    <label class="f">Flip<select name="flip"><option value="">Don't flip</option><option value="h">Mirror left to right</option><option value="v">Upside down (top to bottom)</option></select></label>
+    <label class="f">Save as<select name="fmt">${fmtOpts()}</select></label>`,
+  async run(files, o, prog) {
+    const ang = +o.angle || 0; if (!ang && !o.flip) throw new Error("Choose a rotation or a flip.");
+    const outs = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]; const bmp = await loadImg(f); const fmt = pickFmt(o.fmt, f);
+      const side = ang === 90 || ang === 270; const c = document.createElement("canvas");
+      c.width = side ? bmp.height : bmp.width; c.height = side ? bmp.width : bmp.height;
+      const g = c.getContext("2d"); if (fmt === "jpg") { g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); }
+      g.translate(c.width / 2, c.height / 2); g.scale(o.flip === "h" ? -1 : 1, o.flip === "v" ? -1 : 1); g.rotate(ang * Math.PI / 180);
+      g.drawImage(bmp, -bmp.width / 2, -bmp.height / 2); bmp.close();
+      const r = await encodeImg(c, fmt, .92); c.width = c.height = 0;
+      outs.push({name:baseName(f.name) + "_rotated." + r.ext, blob:r.blob}); prog((i + 1) / files.length);
+    }
+    return {files:outs, summary:"Done with " + outs.length + " image" + (outs.length > 1 ? "s" : "") + "."};
+  }});
+T({id:"imgconvert", cat:"photo", name:"Convert image format", desc:"Change photos between JPG, PNG and WebP.",
+  exts:EXT.img, multiple:true, min:1, action:"Convert images",
+  options:() => `<label class="f">Convert to<select name="fmt">${fmtOpts(false)}</select></label>
+    <label class="f">Quality <output data-for="q"></output><input type="range" name="q" min="30" max="100" value="90"><span class="h">For JPG and WebP. PNG is always full quality.</span></label>
+    <p class="note">Transparent areas turn white in JPG, because JPG can't store transparency.</p>`,
+  wire:pctWire,
+  async run(files, o, prog) {
+    const outs = []; let fellBack = false;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]; const bmp = await loadImg(f); const c = drawImg(bmp, bmp.width, bmp.height, o.fmt); bmp.close();
+      const r = await encodeImg(c, o.fmt, (+o.q || 90) / 100); c.width = c.height = 0; if (r.ext !== o.fmt) fellBack = true;
+      outs.push({name:baseName(f.name) + "." + r.ext, blob:r.blob}); prog((i + 1) / files.length);
+    }
+    return {files:outs, summary:"Converted " + outs.length + " image" + (outs.length > 1 ? "s" : "") + "." + (fellBack ? " Your browser can't create WebP, so PNG was used instead." : "")};
+  }});
+const FORM_PRESETS = {
+  passport:{w:413, h:531, min:0, max:100, label:"Passport photo, 35×45 mm (413×531 px), up to 100 KB"},
+  photo:{w:200, h:230, min:20, max:50, label:"Small photo, 200×230 px, 20–50 KB"},
+  sign:{w:140, h:60, min:10, max:20, label:"Signature, 140×60 px, 10–20 KB"},
+  custom:{label:"Custom size"}
+};
+T({id:"formphoto", cat:"photo", name:"Photo & signature for forms", desc:"Resize a photo or signature to the exact pixels and KB an online form asks for.",
+  exts:EXT.img, action:"Make the image",
+  options:() => `<label class="f">Size<select name="preset">${Object.entries(FORM_PRESETS).map(([k, p]) => `<option value="${k}">${esc(p.label)}</option>`).join("")}</select></label>
+    <div class="inline-fields"><label class="f">Width (px)<input type="number" name="w" min="20" max="5000"></label>
+    <label class="f">Height (px)<input type="number" name="h" min="20" max="5000"></label>
+    <label class="f">Minimum KB<input type="number" name="min" min="0"></label>
+    <label class="f">Maximum KB<input type="number" name="max" min="2"></label></div>
+    <label class="f">If the shape is different<select name="fit"><option value="fill">Crop the edges to fill the size</option><option value="fit">Fit the whole picture, add white borders</option></select></label>
+    <p class="note">Each exam or form sets its own rules. Check the sizes in the official notice and change the numbers above to match.</p>`,
+  wire(form) {
+    const apply = () => { const p = FORM_PRESETS[form.elements.preset.value]; if (!p.w) return; for (const k of ["w", "h", "min", "max"]) form.elements[k].value = p[k]; };
+    form.elements.preset.addEventListener("change", apply);
+    form.addEventListener("input", e => { if (e.target.name !== "preset") form.elements.preset.value = "custom"; });
+    apply();
+  },
+  async run(files, o, prog) {
+    const W = Math.round(+o.w), H = Math.round(+o.h), maxB = (+o.max || 0) * 1024, minB = (+o.min || 0) * 1024;
+    if (!(W >= 20 && H >= 20 && W <= 5000 && H <= 5000)) throw new Error("Width and height must be between 20 and 5000 pixels.");
+    if (!maxB) throw new Error("Enter the maximum size in KB.");
+    if (minB > maxB) throw new Error("The minimum KB can't be more than the maximum.");
+    const f = files[0]; const bmp = await loadImg(f);
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.imageSmoothingQuality = "high";
+    const s = (o.fit === "fit" ? Math.min : Math.max)(W / bmp.width, H / bmp.height);
+    const dw = bmp.width * s, dh = bmp.height * s; g.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh); bmp.close();
+    prog(.4);
+    let best = await encodeImg(c, "jpg", .95);
+    if (best.blob.size > maxB) {
+      let lo = .05, hi = .95; best = null;
+      for (let k = 0; k < 9; k++) { const q = (lo + hi) / 2; const r = await encodeImg(c, "jpg", q); if (r.blob.size <= maxB) { best = r; lo = q; } else hi = q; }
+      if (!best) { const r = await encodeImg(c, "jpg", .02); if (r.blob.size > maxB) throw new Error("Even at the lowest quality this image is " + fmtSize(r.blob.size) + ". Use a smaller width and height or a higher maximum."); best = r; }
+    } else if (minB && best.blob.size < minB) { const r = await encodeImg(c, "jpg", 1); if (r.blob.size <= maxB) best = r; }
+    c.width = c.height = 0; prog(1);
+    const sz = best.blob.size;
+    return {files:[{name:baseName(f.name) + "_" + W + "x" + H + ".jpg", blob:best.blob}],
+      summary:W + "×" + H + " px, " + fmtSize(sz) + "." + (minB && sz < minB ? " This is below the " + o.min + " KB minimum even at top quality. Try a larger width and height." : "")};
+  }});
+
+/* Video -------------------------------------------------------- */
+T({id:"vtrim", cat:"video", name:"Trim & compress video", desc:"Cut a clip, lower the resolution and drop the sound if you like.",
+  exts:EXT.video, custom:mountVideoTrim});
+T({id:"vaudio", cat:"video", name:"Extract audio", desc:"Save the soundtrack of a video as an audio file.",
+  exts:EXT.video, action:"Extract audio",
+  options:() => `<p class="note">Saves the audio as a WAV file, which plays everywhere and keeps full quality.</p>`,
+  async run(files, o, prog) {
+    const buf = await decodeAudioFile(files[0]); prog(.7);
+    return {files:[{name:baseName(files[0].name) + ".wav", blob:encodeWav(buf)}], summary:"Extracted " + fmtTime(buf.duration) + " of audio."};
+  }});
+T({id:"vframe", cat:"video", name:"Save a frame", desc:"Pause on any moment and save it as a full-size image.",
+  exts:EXT.video, custom:mountFrameGrab});
+
+/* Audio -------------------------------------------------------- */
+T({id:"aedit", cat:"audio", name:"Audio editor", desc:"Trim, cut out parts, fade, change volume and normalise.",
+  exts:EXT.audio.concat(EXT.video), custom:mountAudioEditor});
+T({id:"ajoin", cat:"audio", name:"Join audio", desc:"Stitch several audio clips into one track.",
+  exts:EXT.audio, multiple:true, min:2, action:"Join audio",
+  hint:"Clips play in this order. Use the arrows to change it.",
+  options:() => `<label class="f">Gap between clips<select name="gap"><option value="0">No gap</option><option value="0.5">Half a second</option><option value="1">1 second</option><option value="2">2 seconds</option></select></label>`,
+  async run(files, o, prog) {
+    const bufs = [];
+    for (let i = 0; i < files.length; i++) { bufs.push(await decodeAudioFile(files[i])); prog((i + 1) / files.length * .8); }
+    const sr = bufs[0].sampleRate, nc = Math.max(...bufs.map(b => b.numberOfChannels)), gap = Math.round((+o.gap || 0) * sr);
+    const len = bufs.reduce((s, b) => s + b.length, 0) + gap * (bufs.length - 1);
+    const out = makeBuffer(nc, len, sr); let off = 0;
+    bufs.forEach((b, i) => {
+      for (let c = 0; c < nc; c++) out.getChannelData(c).set(b.getChannelData(Math.min(c, b.numberOfChannels - 1)), off);
+      off += b.length + (i < bufs.length - 1 ? gap : 0);
+    });
+    return {files:[{name:"joined.wav", blob:encodeWav(out)}], summary:"Joined " + bufs.length + " clips into " + fmtTime(out.duration) + " of audio."};
+  }});
+
+/* Remote ------------------------------------------------------- */
+T({id:"remote", cat:"remote", name:"Remote access", desc:"Connect to another computer with a code, to help or to work.",
+  soon:true, custom:mountRemote});
+
+/* ---------- Text helpers for PDF writing ---------- */
+const encCache = new WeakMap();
+function cleanForFont(font, text) {
+  let cache = encCache.get(font); if (!cache) { cache = new Map(); encCache.set(font, cache); }
+  const map = {"\u2011":"-","\u2212":"-","\u00A0":" ","\u2009":" ","\u200B":""};
+  let out = "", bad = 0;
+  for (const ch0 of String(text).replace(/\t/g, "    ")) {
+    const ch = map[ch0] !== undefined ? map[ch0] : ch0;
+    if (!ch) continue;
+    let ok = cache.get(ch);
+    if (ok === undefined) { try { font.encodeText(ch); font.widthOfTextAtSize(ch, 10); ok = true; } catch (e) { ok = false; } cache.set(ch, ok); }
+    if (ok) out += ch; else { out += "?"; bad++; }
+  }
+  return {text:out, bad};
+}
+function wrapText(text, font, size, maxW) {
+  const words = text.split(" "); const lines = []; let cur = "";
+  const fits = s => font.widthOfTextAtSize(s, size) <= maxW;
+  for (let w of words) {
+    const tryS = cur ? cur + " " + w : w;
+    if (fits(tryS)) { cur = tryS; continue; }
+    if (cur) { lines.push(cur); cur = ""; }
+    while (!fits(w)) { let k = w.length; while (k > 1 && !fits(w.slice(0, k))) k--; lines.push(w.slice(0, k)); w = w.slice(k); }
+    cur = w;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+/* ---------- VCF parsing ---------- */
+function decodeQP(s, charset) {
+  const bytes = []; s = s.replace(/=\r?\n/g, "");
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "=" && /^[0-9A-Fa-f]{2}$/.test(s.substr(i + 1, 2))) { bytes.push(parseInt(s.substr(i + 1, 2), 16)); i += 2; }
+    else bytes.push(s.charCodeAt(i) & 255);
+  }
+  try { return new TextDecoder(charset || "utf-8").decode(new Uint8Array(bytes)); } catch (e) { return new TextDecoder().decode(new Uint8Array(bytes)); }
+}
+function parseVcf(raw) {
+  let src = raw.replace(/\r\n?/g, "\n");
+  let prevLen; do { prevLen = src.length; src = src.replace(/(QUOTED-PRINTABLE[^\n]*)=\n/gi, "$1"); } while (src.length !== prevLen);
+  src = src.replace(/\n[ \t]/g, "");
+  const unesc = v => v.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1");
+  const cards = [];
+  let cur = null;
+  for (const line of src.split("\n")) {
+    if (/^BEGIN:VCARD/i.test(line)) { cur = {tel:[], email:[]}; continue; }
+    if (/^END:VCARD/i.test(line)) { if (cur) cards.push(cur); cur = null; continue; }
+    if (!cur) continue;
+    const ci = line.indexOf(":"); if (ci < 0) continue;
+    const left = line.slice(0, ci); let val = line.slice(ci + 1);
+    const parts = left.split(";"); const prop = parts[0].replace(/^[^.]*\./, "").toUpperCase();
+    const params = parts.slice(1).map(p => p.toUpperCase());
+    if (params.some(p => p.includes("QUOTED-PRINTABLE"))) { const cs = (parts.slice(1).find(p => /^CHARSET=/i.test(p)) || "").split("=")[1]; val = decodeQP(val, cs); }
+    const types = params.flatMap(p => p.replace(/^TYPE=/, "").split(",")).filter(t => t && !/=/.test(t) && !/^(PREF|INTERNET|VOICE|X-)/.test(t)).map(t => t.charAt(0) + t.slice(1).toLowerCase());
+    switch (prop) {
+      case "FN": cur.fn = unesc(val); break;
+      case "N": { const n = val.split(";").map(unesc); cur.last = n[0] || ""; cur.first = [n[1], n[2]].filter(Boolean).join(" "); break; }
+      case "TEL": cur.tel.push({v:unesc(val).replace(/^tel:/i, ""), t:types.join(", ")}); break;
+      case "EMAIL": cur.email.push({v:unesc(val), t:types.join(", ")}); break;
+      case "ORG": cur.org = val.split(";").map(unesc).filter(Boolean).join(", "); break;
+      case "TITLE": cur.title = unesc(val); break;
+      case "ADR": if (!cur.adr) cur.adr = val.split(";").map(unesc).map(s => s.trim()).filter(Boolean).join(", "); break;
+      case "BDAY": cur.bday = val; break;
+      case "NOTE": cur.note = unesc(val); break;
+      case "URL": cur.url = unesc(val); break;
+    }
+  }
+  const mt = Math.max(1, ...cards.map(c => c.tel.length)), me = Math.max(1, ...cards.map(c => c.email.length));
+  const header = ["Full name", "First name", "Last name"];
+  for (let i = 1; i <= mt; i++) header.push("Phone " + i, "Phone " + i + " type");
+  for (let i = 1; i <= me; i++) header.push("Email " + i);
+  header.push("Organisation", "Job title", "Address", "Birthday", "Website", "Notes");
+  const contacts = cards.map(c => {
+    const r = [c.fn || [c.first, c.last].filter(Boolean).join(" ") || "", c.first || "", c.last || ""];
+    for (let i = 0; i < mt; i++) r.push(c.tel[i] ? c.tel[i].v : "", c.tel[i] ? c.tel[i].t : "");
+    for (let i = 0; i < me; i++) r.push(c.email[i] ? c.email[i].v : "");
+    r.push(c.org || "", c.title || "", c.adr || "", c.bday || "", c.url || "", c.note || "");
+    return r;
+  });
+  return {header, contacts};
+}
+const toCsv = aoa => aoa.map(r => r.map(v => { v = String(v == null ? "" : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(",")).join("\r\n");
+
+/* ---------- Shared UI pieces ---------- */
+const accepts = (t, f) => t.exts.includes(extOf(f.name));
+function dropZone(t, {label} = {}) {
+  const accept = t.exts.map(e => "." + e).join(",");
+  const kinds = t.exts === EXT.pdf ? "PDF" : t.exts.slice(0, 5).map(e => e.toUpperCase()).join(", ");
+  return `<div class="drop" data-drop>
+    <div class="drop-txt"><p class="drop-big">${label || (t.multiple ? "Drop your files here" : "Drop your file here")}</p>
+    <p class="drop-sub">${esc(kinds)}${t.multiple ? ", several at once" : ""}. Processed on your device, never uploaded.</p></div>
+    <label class="btn"><input type="file" accept="${accept}" ${t.multiple ? "multiple" : ""}>Choose ${t.multiple ? "files" : "file"}</label></div>`;
+}
+function wireDrop(el, onFiles) {
+  const input = $("input[type=file]", el);
+  input.addEventListener("change", () => { if (input.files.length) onFiles([...input.files]); input.value = ""; });
+  let depth = 0;
+  el.addEventListener("dragenter", e => { e.preventDefault(); depth++; el.classList.add("drag"); });
+  el.addEventListener("dragover", e => { e.preventDefault(); });
+  el.addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; el.classList.remove("drag"); } });
+  el.addEventListener("drop", e => { e.preventDefault(); e.stopPropagation(); depth = 0; el.classList.remove("drag"); if (e.dataTransfer.files.length) onFiles([...e.dataTransfer.files]); });
+}
+function head(t) {
+  const c = CATS.find(c => c.id === t.cat);
+  return `<nav class="crumbs" aria-label="Breadcrumb"><a href="#/">All tools</a> / <a href="#/c/${c.id}">${esc(c.name)}</a></nav>
+    <div class="tool-head"><h1>${esc(t.name)}</h1><p>${esc(t.desc)}</p></div>`;
+}
+function setStatus(el, msg, kind) { el.textContent = msg || ""; el.className = "status" + (kind ? " " + kind : ""); }
+function showResults(host, r, onReset) {
+  host.hidden = false;
+  host.innerHTML = `<h2>Your file${r.files.length > 1 ? "s are" : " is"} ready</h2>${r.summary ? `<p class="sum">${esc(r.summary)}</p>` : ""}
+    <ul>${r.files.map((f, i) => `<li><span class="fi-name">${esc(f.name)}</span><span class="fi-size">${fmtSize(f.blob.size)}</span><button class="btn small" data-dl="${i}">Download</button></li>`).join("")}</ul>
+    <div class="results-foot">${r.files.length > 1 ? '<button class="btn" data-all>Download all (.zip)</button>' : ""}${onReset ? '<button class="btn ghost" data-reset>Start over</button>' : ""}</div>
+    <p class="status" data-rs role="status"></p>`;
+  const rs = $("[data-rs]", host);
+  const doSave = async (name, blobP, btn) => {
+    btn.disabled = true; setStatus(rs, "Preparing download…");
+    try { const res = await saveFile(name, await blobP()); setStatus(rs, res === "declined" ? "Download cancelled." : "Downloaded " + name + ".", res === "declined" ? "" : "ok"); }
+    catch (e) { setStatus(rs, e.message || "The download didn't work.", "err"); }
+    btn.disabled = false;
+  };
+  $$("[data-dl]", host).forEach(b => b.addEventListener("click", () => { const f = r.files[+b.dataset.dl]; doSave(f.name, async () => f.blob, b); }));
+  const all = $("[data-all]", host);
+  if (all) all.addEventListener("click", () => doSave("files.zip", () => zipAll(r.files), all));
+  const rst = $("[data-reset]", host); if (rst) rst.addEventListener("click", onReset);
+  host.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"});
+}
+
+/* ---------- Generic tool page ---------- */
+function mountGeneric(root, t, initial) {
+  let files = [];
+  root.innerHTML = head(t) + `<div class="work">
+      <div class="files" data-files></div>
+      <aside class="opts">${t.options ? "<h2>Options</h2>" : ""}<form data-opts onsubmit="return false">${t.options ? t.options() : ""}</form>
+        <button class="btn wide" data-go disabled>${esc(t.action)}</button>
+        <progress max="1" value="0" hidden></progress><p class="status" data-st role="status" aria-live="polite"></p></aside>
+    </div><section class="results" data-res hidden aria-live="polite"></section>`;
+  const filesEl = $("[data-files]", root), go = $("[data-go]", root), st = $("[data-st]", root), prog = $("progress", root), res = $("[data-res]", root), form = $("[data-opts]", root);
+  if (t.wire) t.wire(form);
+  const add = list => {
+    const bad = list.filter(f => !accepts(t, f));
+    const good = list.filter(f => accepts(t, f));
+    if (t.multiple) files.push(...good); else if (good.length) files = [good[0]];
+    setStatus(st, bad.length ? bad.map(f => f.name).join(", ") + (bad.length > 1 ? " aren't" : " isn't") + " supported here. Use " + t.exts.map(e => "." + e).join(", ") + "." : "", bad.length ? "err" : "");
+    res.hidden = true; draw();
+  };
+  const draw = () => {
+    if (!files.length) { filesEl.ondragover = filesEl.ondrop = null; filesEl.innerHTML = dropZone(t); wireDrop($("[data-drop]", filesEl), add); }
+    else {
+      filesEl.innerHTML = `<ul>${files.map((f, i) => `<li><span class="fi-num">${i + 1}</span><span class="fi-name" title="${esc(f.name)}">${esc(f.name)}</span><span class="fi-size">${fmtSize(f.size)}</span>
+        <span class="fi-act">${t.multiple ? `<button class="icon-btn" data-up="${i}" aria-label="Move ${esc(f.name)} up" ${i === 0 ? "disabled" : ""}>${ICON.up}</button><button class="icon-btn" data-down="${i}" aria-label="Move ${esc(f.name)} down" ${i === files.length - 1 ? "disabled" : ""}>${ICON.down}</button>` : ""}
+        <button class="icon-btn" data-rm="${i}" aria-label="Remove ${esc(f.name)}">${ICON.x}</button></span></li>`).join("")}</ul>
+        <div class="files-foot">${t.multiple ? `<label class="btn ghost small"><input type="file" class="sr" accept="${t.exts.map(e => "." + e).join(",")}" multiple data-more>Add more files</label>` : `<label class="btn ghost small"><input type="file" class="sr" accept="${t.exts.map(e => "." + e).join(",")}" data-more>Choose a different file</label>`}
+        ${t.hint && t.multiple ? `<span class="td">${esc(t.hint)}</span>` : ""}</div>`;
+      $$("[data-up]", filesEl).forEach(b => b.onclick = () => { const i = +b.dataset.up; [files[i - 1], files[i]] = [files[i], files[i - 1]]; draw(); });
+      $$("[data-down]", filesEl).forEach(b => b.onclick = () => { const i = +b.dataset.down; [files[i + 1], files[i]] = [files[i], files[i + 1]]; draw(); });
+      $$("[data-rm]", filesEl).forEach(b => b.onclick = () => { files.splice(+b.dataset.rm, 1); res.hidden = true; draw(); });
+      const more = $("[data-more]", filesEl); more.onchange = () => { add([...more.files]); };
+      filesEl.ondragover = e => e.preventDefault();
+      filesEl.ondrop = e => { e.preventDefault(); if (e.dataTransfer.files.length) add([...e.dataTransfer.files]); };
+    }
+    go.disabled = files.length < (t.min || 1);
+    if (t.multiple && files.length && files.length < (t.min || 1)) setStatus(st, "Add at least " + t.min + " files.");
+  };
+  go.addEventListener("click", async () => {
+    const o = {}; for (const el of form.elements) { if (!el.name) continue; if (el.type === "radio") { if (el.checked) o[el.name] = el.value; } else if (el.type === "checkbox") o[el.name] = el.checked; else o[el.name] = el.value; }
+    go.disabled = true; prog.hidden = false; prog.value = 0; setStatus(st, "Working…");
+    try {
+      if (t.libs) { setStatus(st, "Loading the tool…"); await need(...t.libs); setStatus(st, "Working…"); }
+      const r = await t.run(files, o, p => prog.value = p);
+      setStatus(st, "Done.", "ok");
+      showResults(res, r, () => { files = []; res.hidden = true; setStatus(st, ""); draw(); window.scrollTo(0, 0); });
+    } catch (e) { console.error(e); setStatus(st, e.message || "Something went wrong with this file.", "err"); }
+    finally { prog.hidden = true; go.disabled = files.length < (t.min || 1); }
+  });
+  draw();
+  if (initial && initial.length) add(initial);
+}
+
+/* ---------- Organize pages ---------- */
+function mountOrganize(root, t, initial) {
+  let file = null, pages = [];
+  root.innerHTML = head(t) + `<div class="work"><div class="files" data-files></div>
+    <aside class="opts"><h2>How it works</h2><p class="note">Drag pages to reorder them. Use the buttons under each page to move, rotate or delete it.</p>
+    <button class="btn wide" data-go disabled>Save PDF</button><progress max="1" value="0" hidden></progress>
+    <p class="status" data-st role="status" aria-live="polite"></p></aside></div><section class="results" data-res hidden></section>`;
+  const filesEl = $("[data-files]", root), go = $("[data-go]", root), st = $("[data-st]", root), res = $("[data-res]", root), prog = $("progress", root);
+  const reset = () => { file = null; pages = []; res.hidden = true; setStatus(st, ""); go.disabled = true; filesEl.innerHTML = dropZone(t); wireDrop($("[data-drop]", filesEl), f => load(f[0])); };
+  async function load(f) {
+    if (!f || !accepts(t, f)) { setStatus(st, "Choose a PDF file.", "err"); return; }
+    file = f; setStatus(st, "Loading pages…"); res.hidden = true;
+    filesEl.innerHTML = `<div class="stage-bar"><span class="fi-name">${esc(f.name)}</span><label class="btn ghost small"><input type="file" class="sr" accept=".pdf" data-other>Choose a different file</label></div><div class="thumbs" data-th></div>`;
+    $("[data-other]", filesEl).onchange = e => e.target.files[0] && load(e.target.files[0]);
+    try {
+      const pdf = await pdfjsOpen(f); pages = [];
+      const th = $("[data-th]", filesEl);
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i); const vp = page.getViewport({scale:1});
+        const c = await renderPage(page, Math.min(1, 260 / Math.max(vp.width, vp.height)));
+        pages.push({src:i - 1, rot:0, canvas:c}); page.cleanup();
+        if (i === 1 || i % 6 === 0 || i === pdf.numPages) { draw(); setStatus(st, "Loading pages… " + i + " of " + pdf.numPages); }
+      }
+      pdf.destroy(); setStatus(st, pages.length + " pages."); go.disabled = false; draw();
+    } catch (e) { setStatus(st, e.message, "err"); }
+  }
+  let dragFrom = null;
+  function draw() {
+    const th = $("[data-th]", filesEl); if (!th) return;
+    th.innerHTML = "";
+    pages.forEach((p, i) => {
+      const el = document.createElement("figure"); el.className = "thumb"; el.draggable = true; el.style.margin = "0";
+      el.innerHTML = `<div class="thumb-img"></div><div class="thumb-bar"><span class="thumb-n">${i + 1}</span>
+        <span><button class="icon-btn" data-a="l" aria-label="Move page ${i + 1} earlier" ${i === 0 ? "disabled" : ""}>${ICON.left}</button>
+        <button class="icon-btn" data-a="r" aria-label="Move page ${i + 1} later" ${i === pages.length - 1 ? "disabled" : ""}>${ICON.right}</button>
+        <button class="icon-btn" data-a="rot" aria-label="Rotate page ${i + 1}">${ICON.rot}</button>
+        <button class="icon-btn" data-a="del" aria-label="Delete page ${i + 1}">${ICON.x}</button></span></div>`;
+      p.canvas.style.transform = "rotate(" + p.rot + "deg)";
+      $(".thumb-img", el).appendChild(p.canvas);
+      el.addEventListener("click", e => {
+        const a = e.target.closest("[data-a]"); if (!a) return; const k = a.dataset.a;
+        if (k === "l") [pages[i - 1], pages[i]] = [pages[i], pages[i - 1]];
+        if (k === "r") [pages[i + 1], pages[i]] = [pages[i], pages[i + 1]];
+        if (k === "rot") p.rot = (p.rot + 90) % 360;
+        if (k === "del") { if (pages.length === 1) { setStatus(st, "A PDF needs at least one page.", "err"); return; } pages.splice(i, 1); }
+        draw();
+      });
+      el.addEventListener("dragstart", () => { dragFrom = i; el.classList.add("dragging"); });
+      el.addEventListener("dragend", () => el.classList.remove("dragging"));
+      el.addEventListener("dragover", e => { e.preventDefault(); el.classList.add("over"); });
+      el.addEventListener("dragleave", () => el.classList.remove("over"));
+      el.addEventListener("drop", e => { e.preventDefault(); el.classList.remove("over"); if (dragFrom === null || dragFrom === i) return; const [m] = pages.splice(dragFrom, 1); pages.splice(i, 0, m); dragFrom = null; draw(); });
+      th.appendChild(el);
+    });
+  }
+  go.addEventListener("click", async () => {
+    go.disabled = true; setStatus(st, "Saving…");
+    try {
+      await need("pdflib"); const src = await loadPL(file); const d = await PDFLib.PDFDocument.create();
+      const copied = await d.copyPages(src, pages.map(p => p.src));
+      copied.forEach((pg, i) => { if (pages[i].rot) pg.setRotation(PDFLib.degrees((pg.getRotation().angle + pages[i].rot) % 360)); d.addPage(pg); });
+      setStatus(st, "Done.", "ok");
+      showResults(res, {files:[{name:baseName(file.name) + "_organized.pdf", blob:pdfBlob(await d.save())}], summary:"Saved " + pages.length + " pages in the new order."}, reset);
+    } catch (e) { setStatus(st, e.message, "err"); }
+    go.disabled = false;
+  });
+  reset();
+  if (initial && initial[0]) load(initial[0]);
+}
+
+/* ---------- Sign PDF ---------- */
+function trimCanvas(c) {
+  const g = c.getContext("2d"); const {width:w, height:h} = c; const d = g.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return null;
+  const pad = 6; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+  const o = document.createElement("canvas"); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1;
+  o.getContext("2d").drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height); return o;
+}
+function mountSign(root, t, initial) {
+  let file = null, pdf = null, cur = 1, marks = [], sig = null, scaleCss = 1, pageSizes = {};
+  root.innerHTML = head(t) + `<div class="work"><div class="files" data-files></div>
+    <aside class="opts"><h2>Your signature</h2>
+      <div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="draw">Draw</button><button role="tab" aria-selected="false" data-tab="type">Type</button></div>
+      <div data-pane="draw"><canvas class="sigpad" data-pad aria-label="Signature drawing area"></canvas>
+        <div class="bar" style="padding:8px 0 0"><select data-ink aria-label="Ink colour" class="btn ghost small"><option value="#111111">Black ink</option><option value="#1D3B8F">Blue ink</option></select><button class="btn ghost small" data-clear>Clear</button></div></div>
+      <div data-pane="type" hidden><label class="f">Your name<input type="text" data-name maxlength="40" placeholder="Ravi Kumar"></label>
+        <label class="f">Style<select data-font><option value="Caveat">Handwritten</option><option value="Dancing Script">Script</option></select></label></div>
+      <label class="f" style="margin-top:14px">Signature size<input type="range" data-size min="10" max="50" value="24"></label>
+      <p class="note">Click on the page to place your signature. Click again to add more. Use Undo to remove the last one.</p>
+      <button class="btn wide" data-go disabled>Sign PDF</button>
+      <p class="status" data-st role="status" aria-live="polite"></p></aside></div><section class="results" data-res hidden></section>`;
+  const filesEl = $("[data-files]", root), go = $("[data-go]", root), st = $("[data-st]", root), res = $("[data-res]", root);
+  const pad = $("[data-pad]", root); let drawn = false;
+  const sizePad = () => { const r = pad.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; pad.width = Math.max(300, r.width) * dpr; pad.height = 170 * dpr; const g = pad.getContext("2d"); g.scale(dpr, dpr); g.lineCap = g.lineJoin = "round"; g.lineWidth = 2.6; drawn = false; };
+  requestAnimationFrame(sizePad);
+  let down = false;
+  pad.addEventListener("pointerdown", e => { down = true; pad.setPointerCapture(e.pointerId); const g = pad.getContext("2d"); g.strokeStyle = $("[data-ink]", root).value; g.beginPath(); const r = pad.getBoundingClientRect(); g.moveTo(e.clientX - r.left, e.clientY - r.top); });
+  pad.addEventListener("pointermove", e => { if (!down) return; const g = pad.getContext("2d"); const r = pad.getBoundingClientRect(); g.lineTo(e.clientX - r.left, e.clientY - r.top); g.stroke(); drawn = true; });
+  pad.addEventListener("pointerup", () => { down = false; refreshSig(); });
+  $("[data-clear]", root).onclick = () => { sizePad(); refreshSig(); };
+  let mode = "draw";
+  $$("[data-tab]", root).forEach(b => b.onclick = () => { mode = b.dataset.tab; $$("[data-tab]", root).forEach(x => x.setAttribute("aria-selected", x === b)); $$("[data-pane]", root).forEach(p => p.hidden = p.dataset.pane !== mode); if (mode === "draw") requestAnimationFrame(() => { if (!drawn) sizePad(); }); refreshSig(); });
+  $("[data-name]", root).oninput = refreshSig; $("[data-font]", root).onchange = refreshSig; $("[data-size]", root).oninput = () => { refreshSig(); };
+  async function refreshSig() {
+    if (mode === "draw") sig = drawn ? trimCanvas(pad) : null;
+    else {
+      const name = $("[data-name]", root).value.trim(); const font = $("[data-font]", root).value;
+      if (!name) sig = null; else {
+        try { await document.fonts.load("80px '" + font + "'"); } catch (e) {}
+        const c = document.createElement("canvas"); c.width = 1200; c.height = 220; const g = c.getContext("2d");
+        g.font = "96px '" + font + "', cursive"; g.fillStyle = "#111"; g.textBaseline = "middle"; g.fillText(name, 20, 110); sig = trimCanvas(c);
+      }
+    }
+    sig && (sig.dataUrl = sig.toDataURL("image/png"));
+    drawMarks(); go.disabled = !(file && marks.length && sig);
+  }
+  const reset = () => { file = null; pdf && pdf.destroy(); pdf = null; marks = []; res.hidden = true; go.disabled = true; setStatus(st, ""); filesEl.innerHTML = dropZone(t); wireDrop($("[data-drop]", filesEl), f => load(f[0])); };
+  async function load(f) {
+    if (!f || !accepts(t, f)) { setStatus(st, "Choose a PDF file.", "err"); return; }
+    file = f; marks = []; res.hidden = true; setStatus(st, "Opening…");
+    try { pdf && pdf.destroy(); pdf = await pdfjsOpen(f); } catch (e) { setStatus(st, e.message, "err"); return; }
+    filesEl.innerHTML = `<div class="stage-bar"><span class="fi-name">${esc(f.name)}</span>
+      <button class="icon-btn" data-prev aria-label="Previous page">${ICON.left}</button><span class="thumb-n" data-pn></span><button class="icon-btn" data-next aria-label="Next page">${ICON.right}</button>
+      <button class="btn ghost small" data-undo>Undo</button><label class="btn ghost small"><input type="file" class="sr" accept=".pdf" data-other>Choose a different file</label></div>
+      <div class="stage"><div class="place-wrap" data-wrap><canvas data-pc></canvas></div></div>`;
+    $("[data-other]", filesEl).onchange = e => e.target.files[0] && load(e.target.files[0]);
+    $("[data-prev]", filesEl).onclick = () => { if (cur > 1) { cur--; showPage(); } };
+    $("[data-next]", filesEl).onclick = () => { if (cur < pdf.numPages) { cur++; showPage(); } };
+    $("[data-undo]", filesEl).onclick = () => { marks.pop(); drawMarks(); go.disabled = !(marks.length && sig); };
+    $("[data-wrap]", filesEl).addEventListener("click", e => {
+      if (!sig) { setStatus(st, "Draw or type your signature first.", "err"); return; }
+      const r = e.currentTarget.getBoundingClientRect();
+      marks.push({page:cur, fx:(e.clientX - r.left) / r.width, fy:(e.clientY - r.top) / r.height, wf:+$("[data-size]", root).value / 100, ar:sig.height / sig.width, url:sig.dataUrl});
+      setStatus(st, marks.length + " signature" + (marks.length > 1 ? "s" : "") + " placed."); drawMarks(); go.disabled = false;
+    });
+    cur = 1; await showPage(); setStatus(st, "Click on the page where the signature should go.");
+  }
+  async function showPage() {
+    const page = await pdf.getPage(cur); const vp = page.getViewport({scale:1}); pageSizes[cur] = vp;
+    const avail = Math.min(900, (filesEl.clientWidth || 600) - 28); const c = await renderPage(page, Math.max(.4, avail / vp.width) * (window.devicePixelRatio || 1));
+    const pc = $("[data-pc]", filesEl); pc.width = c.width; pc.height = c.height; pc.getContext("2d").drawImage(c, 0, 0);
+    pc.style.width = Math.min(avail, vp.width * Math.max(.4, avail / vp.width)) + "px";
+    $("[data-pn]", filesEl).textContent = "Page " + cur + " of " + pdf.numPages; page.cleanup(); drawMarks();
+  }
+  function drawMarks() {
+    const wrap = $("[data-wrap]", filesEl); if (!wrap) return;
+    $$("img", wrap).forEach(i => i.remove());
+    const pc = $("[data-pc]", wrap); const W = pc.getBoundingClientRect().width || pc.clientWidth; const H = W * (pc.height / pc.width);
+    marks.filter(m => m.page === cur).forEach(m => { const img = new Image(); img.src = m.url; img.alt = ""; const w = m.wf * W; img.style.width = w + "px"; img.style.left = (m.fx * W - w / 2) + "px"; img.style.top = (m.fy * H - w * m.ar / 2) + "px"; wrap.appendChild(img); });
+  }
+  go.addEventListener("click", async () => {
+    go.disabled = true; setStatus(st, "Signing…");
+    try {
+      await need("pdflib"); const d = await loadPL(file); const cache = {};
+      for (const m of marks) {
+        const png = cache[m.url] || (cache[m.url] = await d.embedPng(Uint8Array.from(atob(m.url.split(",")[1]), ch => ch.charCodeAt(0))));
+        const pg = d.getPage(m.page - 1); const F = pageFrame(pg);
+        const w = m.wf * F.W, h = w * m.ar;
+        const [cx, cy] = F.pt(m.fx * F.W, m.fy * F.H); const [dx, dy] = F.vec(w / 2, h / 2);
+        pg.drawImage(png, {x:cx - dx, y:cy - dy, width:w, height:h, rotate:PDFLib.degrees(F.r)});
+      }
+      setStatus(st, "Done.", "ok");
+      showResults(res, {files:[{name:baseName(file.name) + "_signed.pdf", blob:pdfBlob(await d.save())}], summary:"Added " + marks.length + " signature" + (marks.length > 1 ? "s" : "") + "."}, reset);
+    } catch (e) { setStatus(st, e.message, "err"); }
+    go.disabled = false;
+  });
+  reset();
+  if (initial && initial[0]) load(initial[0]);
+}
+
+/* ---------- Crop image ---------- */
+function mountCrop(root, t, initial) {
+  let file = null, bmp = null, box = null, ratio = 0, drag = null;
+  root.innerHTML = head(t) + `<div class="work"><div class="files" data-files></div>
+    <aside class="opts"><h2>Options</h2>
+      <label class="f">Shape<select data-ratio><option value="0">Free</option><option value="1">Square (1:1)</option><option value="${4/3}">Landscape 4:3</option><option value="${3/4}">Portrait 3:4</option><option value="${16/9}">Wide 16:9</option><option value="${35/45}">Passport (35:45)</option></select></label>
+      <div class="inline-fields"><label class="f">Left (px)<input type="number" min="0" data-k="x"></label><label class="f">Top (px)<input type="number" min="0" data-k="y"></label>
+        <label class="f">Width (px)<input type="number" min="1" data-k="w"></label><label class="f">Height (px)<input type="number" min="1" data-k="h"></label></div>
+      <label class="f">Save as<select data-fmt>${fmtOpts()}</select></label>
+      <p class="note">Drag on the picture to draw the crop area. Drag its edges or corners to resize it, or drag inside it to move it.</p>
+      <button class="btn wide" data-go disabled>Crop image</button>
+      <p class="status" data-st role="status" aria-live="polite"></p></aside></div><section class="results" data-res hidden></section>`;
+  const filesEl = $("[data-files]", root), go = $("[data-go]", root), st = $("[data-st]", root), res = $("[data-res]", root);
+  const inp = k => $(`[data-k="${k}"]`, root);
+  const clampBox = () => {
+    const IW = bmp.width, IH = bmp.height;
+    box.w = Math.max(1, Math.min(IW, Math.round(box.w))); box.h = Math.max(1, Math.min(IH, Math.round(box.h)));
+    if (ratio) { if (box.w / ratio > IH) box.w = Math.round(IH * ratio); box.h = Math.max(1, Math.round(box.w / ratio)); }
+    box.x = Math.max(0, Math.min(IW - box.w, Math.round(box.x))); box.y = Math.max(0, Math.min(IH - box.h, Math.round(box.y)));
+  };
+  const centred = () => {
+    const IW = bmp.width, IH = bmp.height;
+    if (!ratio) return {x:0, y:0, w:IW, h:IH};
+    let w = IW, h = IW / ratio; if (h > IH) { h = IH; w = IH * ratio; }
+    return {x:(IW - w) / 2, y:(IH - h) / 2, w, h};
+  };
+  function show() {
+    const el = $("[data-box]", filesEl); if (!el || !box) return;
+    const IW = bmp.width, IH = bmp.height;
+    Object.assign(el.style, {left:box.x / IW * 100 + "%", top:box.y / IH * 100 + "%", width:box.w / IW * 100 + "%", height:box.h / IH * 100 + "%"});
+    for (const k of ["x", "y", "w", "h"]) inp(k).value = box[k];
+    $("[data-dim]", filesEl).textContent = box.w + " × " + box.h + " px";
+  }
+  const reset = () => { file = null; bmp && bmp.close(); bmp = null; box = null; res.hidden = true; go.disabled = true; setStatus(st, ""); filesEl.innerHTML = dropZone(t); wireDrop($("[data-drop]", filesEl), f => load(f[0])); };
+  async function load(f) {
+    if (!f || !accepts(t, f)) { setStatus(st, "Choose an image such as JPG, PNG or WebP.", "err"); return; }
+    let b; try { b = await loadImg(f); } catch (e) { setStatus(st, e.message, "err"); return; }
+    bmp && bmp.close(); bmp = b; file = f; res.hidden = true;
+    filesEl.innerHTML = `<div class="stage-bar"><span class="fi-name">${esc(f.name)}</span><span class="fi-size" data-dim></span>
+      <label class="btn ghost small"><input type="file" class="sr" accept="${t.exts.map(e => "." + e).join(",")}" data-other>Choose a different file</label></div>
+      <div class="stage"><div class="crop-wrap" data-wrap><canvas data-pc></canvas><div class="crop-box" data-box></div></div></div>`;
+    $("[data-other]", filesEl).onchange = e => e.target.files[0] && load(e.target.files[0]);
+    const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const pv = drawImg(bmp, Math.max(1, Math.round(bmp.width * s)), Math.max(1, Math.round(bmp.height * s)), "png");
+    const pc = $("[data-pc]", filesEl); pc.width = pv.width; pc.height = pv.height; pc.getContext("2d").drawImage(pv, 0, 0); pv.width = pv.height = 0;
+    wireCrop($("[data-wrap]", filesEl));
+    box = centred(); clampBox(); show(); go.disabled = false;
+    setStatus(st, "Original size " + bmp.width + " × " + bmp.height + " px.");
+  }
+  function wireCrop(wrap) {
+    const at = e => { const r = wrap.getBoundingClientRect(); return {x:Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * bmp.width, y:Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) * bmp.height}; };
+    /* What a pointer at p would grab: box edges (resize), inside (move) or nothing (draw new). */
+    const hit = p => {
+      if (!box) return null; const tol = 12 * bmp.width / wrap.getBoundingClientRect().width;
+      const inY = p.y > box.y - tol && p.y < box.y + box.h + tol, inX = p.x > box.x - tol && p.x < box.x + box.w + tol;
+      const ed = {l:inY && Math.abs(p.x - box.x) < tol, r:inY && Math.abs(p.x - box.x - box.w) < tol, t:inX && Math.abs(p.y - box.y) < tol, b:inX && Math.abs(p.y - box.y - box.h) < tol};
+      if (ed.l || ed.r || ed.t || ed.b) return {edges:ed};
+      const full = box.w >= bmp.width && box.h >= bmp.height;
+      return !full && p.x > box.x && p.x < box.x + box.w && p.y > box.y && p.y < box.y + box.h ? {move:true} : null;
+    };
+    const CUR = {l:"ew-resize", r:"ew-resize", t:"ns-resize", b:"ns-resize", lt:"nwse-resize", rb:"nwse-resize", rt:"nesw-resize", lb:"nesw-resize"};
+    wrap.addEventListener("pointerdown", e => {
+      wrap.setPointerCapture(e.pointerId); const p = at(e); const h = hit(p);
+      if (h && h.edges) drag = {edges:h.edges, s:{...box}};
+      else if (h) drag = {move:true, ox:p.x - box.x, oy:p.y - box.y};
+      else drag = {move:false, sx:p.x, sy:p.y, prev:box && {...box}};
+    });
+    wrap.addEventListener("pointermove", e => {
+      const p = at(e);
+      if (!drag) { const h = hit(p); wrap.style.cursor = !h ? "crosshair" : h.move ? "move" : CUR[(h.edges.l ? "l" : h.edges.r ? "r" : "") + (h.edges.t ? "t" : h.edges.b ? "b" : "")]; return; }
+      if (drag.move) { box.x = p.x - drag.ox; box.y = p.y - drag.oy; clampBox(); show(); return; }
+      if (drag.edges) {
+        const {l, r, t, b} = drag.edges, s = drag.s; let x0 = s.x, y0 = s.y, x1 = s.x + s.w, y1 = s.y + s.h;
+        if (l) x0 = Math.min(p.x, x1 - 4); if (r) x1 = Math.max(p.x, x0 + 4); if (t) y0 = Math.min(p.y, y1 - 4); if (b) y1 = Math.max(p.y, y0 + 4);
+        if (ratio && (l || r)) { const h = (x1 - x0) / ratio; if (t) y0 = y1 - h; else if (b) y1 = y0 + h; else { const cy = s.y + s.h / 2; y0 = cy - h / 2; y1 = cy + h / 2; } }
+        else if (ratio) { const w = (y1 - y0) * ratio, cx = s.x + s.w / 2; x0 = cx - w / 2; x1 = cx + w / 2; }
+        x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(bmp.width, x1); y1 = Math.min(bmp.height, y1);
+        if (ratio) { const w = Math.min(x1 - x0, (y1 - y0) * ratio); if (l) x0 = x1 - w; else x1 = x0 + w; const h = w / ratio; if (t) y0 = y1 - h; else y1 = y0 + h; }
+        box = {x:x0, y:y0, w:x1 - x0, h:y1 - y0}; clampBox(); show(); return;
+      }
+      const dx = p.x - drag.sx, dy = p.y - drag.sy;
+      const maxW = dx >= 0 ? bmp.width - drag.sx : drag.sx, maxH = dy >= 0 ? bmp.height - drag.sy : drag.sy;
+      let w = Math.min(Math.abs(dx), maxW), h = Math.min(Math.abs(dy), maxH);
+      if (ratio) { h = w / ratio; if (h > maxH) { h = maxH; w = h * ratio; } }
+      if (w < 2 || h < 2) return;
+      box = {x:dx >= 0 ? drag.sx : drag.sx - w, y:dy >= 0 ? drag.sy : drag.sy - h, w, h}; clampBox(); show();
+    });
+    const end = () => { if (drag && !drag.move && !drag.edges && (!box || box.w < 4 || box.h < 4)) box = drag.prev || centred(); drag = null; if (box) { clampBox(); show(); } };
+    wrap.addEventListener("pointerup", end); wrap.addEventListener("pointercancel", end);
+  }
+  $("[data-ratio]", root).onchange = e => { ratio = +e.target.value || 0; if (bmp) { box = centred(); clampBox(); show(); } };
+  for (const k of ["x", "y", "w", "h"]) inp(k).addEventListener("change", () => {
+    if (!bmp) return; const v = +inp(k).value; if (!isFinite(v)) return;
+    box[k] = v; if (ratio && k === "h") box.w = v * ratio; clampBox(); show();
+  });
+  go.addEventListener("click", async () => {
+    if (!bmp || !box) return; go.disabled = true;
+    try {
+      const fmt = pickFmt($("[data-fmt]", root).value, file);
+      const c = drawImg(bmp, box.w, box.h, fmt, box.x, box.y, box.w, box.h);
+      const r = await encodeImg(c, fmt, .92); c.width = c.height = 0;
+      setStatus(st, "Done.", "ok");
+      showResults(res, {files:[{name:baseName(file.name) + "_cropped." + r.ext, blob:r.blob}], summary:"Cropped to " + box.w + " × " + box.h + " px."}, reset);
+    } catch (e) { setStatus(st, e.message, "err"); }
+    go.disabled = false;
+  });
+  reset();
+  if (initial && initial[0]) load(initial[0]);
+}
+
+/* ---------- Audio editor ---------- */
+function mountAudioEditor(root, t, initial) {
+  let buf = null, name = "", hist = [], sel = null, cursor = 0, src = null, playT0 = 0, playOff = 0, playEnd = 0, raf = 0, peaks = null;
+  root.innerHTML = head(t) + `<div class="work"><div class="files" data-files></div>
+    <aside class="opts"><h2>Edit</h2>
+      <div class="inline-fields"><label class="f">Start (sec)<input type="number" step="0.01" min="0" data-a></label><label class="f">End (sec)<input type="number" step="0.01" min="0" data-b></label></div>
+      <div class="bar" style="padding:0 0 14px"><button class="btn ghost small" data-op="all">Select all</button><button class="btn ghost small" data-op="none">Clear selection</button></div>
+      <div class="bar" style="padding:0 0 14px"><button class="btn ghost small" data-op="keep">Keep selection</button><button class="btn ghost small" data-op="cut">Delete selection</button>
+        <button class="btn ghost small" data-op="fin">Fade in</button><button class="btn ghost small" data-op="fout">Fade out</button>
+        <button class="btn ghost small" data-op="norm">Normalise</button><button class="btn ghost small" data-op="undo">Undo</button></div>
+      <p class="note">Drag across the waveform to select. Fades use the selection, or the first or last 3 seconds when nothing is selected.</p>
+      <label class="f">Volume <output data-vo>100%</output><input type="range" min="0" max="200" value="100" data-vol></label>
+      <button class="btn wide" data-go disabled>Save as WAV</button>
+      <p class="status" data-st role="status" aria-live="polite"></p></aside></div><section class="results" data-res hidden></section>`;
+  const filesEl = $("[data-files]", root), st = $("[data-st]", root), go = $("[data-go]", root), res = $("[data-res]", root);
+  const inA = $("[data-a]", root), inB = $("[data-b]", root), vol = $("[data-vol]", root);
+  vol.oninput = () => { $("[data-vo]", root).textContent = vol.value + "%"; if (src && src._g) src._g.gain.value = vol.value / 100; };
+  const reset = () => { stop(); buf = null; hist = []; sel = null; res.hidden = true; go.disabled = true; setStatus(st, ""); filesEl.innerHTML = dropZone(t); wireDrop($("[data-drop]", filesEl), f => load(f[0])); };
+  async function load(f) {
+    if (!f || !accepts(t, f)) { setStatus(st, "Choose an audio file such as MP3, WAV or M4A.", "err"); return; }
+    stop(); setStatus(st, "Opening…");
+    try { buf = await decodeAudioFile(f); } catch (e) { setStatus(st, e.message, "err"); return; }
+    name = baseName(f.name); hist = []; sel = null; cursor = 0; res.hidden = true;
+    filesEl.innerHTML = `<div class="stage-bar"><span class="fi-name">${esc(f.name)}</span><label class="btn ghost small"><input type="file" class="sr" accept="${t.exts.map(e => "." + e).join(",")}" data-other>Open another file</label></div>
+      <div class="wave-wrap"><canvas class="wave" data-wave aria-label="Audio waveform. Drag to select a part."></canvas></div>
+      <div class="bar"><button class="btn small" data-play>Play</button><button class="btn ghost small" data-stop>Stop</button><span class="time" data-time></span></div>`;
+    $("[data-other]", filesEl).onchange = e => e.target.files[0] && load(e.target.files[0]);
+    $("[data-play]", filesEl).onclick = play; $("[data-stop]", filesEl).onclick = stop;
+    wireWave(); changed(); go.disabled = false; setStatus(st, "Loaded " + fmtTime(buf.duration) + " of audio.");
+  }
+  function changed() { peaks = null; if (sel && (sel.b > buf.duration)) sel = null; syncInputs(); draw(); }
+  function syncInputs() { inA.value = sel ? sel.a.toFixed(2) : ""; inB.value = sel ? sel.b.toFixed(2) : ""; inA.max = inB.max = buf ? buf.duration.toFixed(2) : 0; }
+  const fromInputs = () => { if (!buf) return; const a = parseFloat(inA.value), b = parseFloat(inB.value); if (isFinite(a) && isFinite(b) && b > a) { sel = {a:Math.max(0, a), b:Math.min(buf.duration, b)}; draw(); } };
+  inA.onchange = fromInputs; inB.onchange = fromInputs;
+  function wireWave() {
+    const cv = $("[data-wave]", filesEl); let startX = null, moved = false;
+    const tAt = e => { const r = cv.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * buf.duration; };
+    cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); startX = tAt(e); moved = false; });
+    cv.addEventListener("pointermove", e => { if (startX === null) return; const tt = tAt(e); if (Math.abs(tt - startX) > buf.duration / 400) { moved = true; sel = {a:Math.min(startX, tt), b:Math.max(startX, tt)}; syncInputs(); draw(); } });
+    cv.addEventListener("pointerup", e => { if (!moved && startX !== null) { cursor = startX; sel = null; syncInputs(); draw(); } startX = null; });
+    new ResizeObserver(() => { peaks = null; draw(); }).observe(cv);
+  }
+  function draw(ph) {
+    const cv = $("[data-wave]", filesEl); if (!cv || !buf) return;
+    const dpr = window.devicePixelRatio || 1, W = Math.max(1, Math.round(cv.clientWidth * dpr)), H = Math.round(170 * dpr);
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; peaks = null; }
+    const cs = getComputedStyle(document.documentElement); const g = cv.getContext("2d");
+    g.clearRect(0, 0, W, H);
+    if (!peaks) {
+      peaks = new Float32Array(W * 2); const d0 = buf.getChannelData(0), d1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : d0; const step = buf.length / W;
+      for (let x = 0; x < W; x++) { let mn = 1, mx = -1; const s = Math.floor(x * step), e = Math.min(buf.length, Math.floor((x + 1) * step) || s + 1); const inc = Math.max(1, Math.floor((e - s) / 200));
+        for (let i = s; i < e; i += inc) { const v = (d0[i] + d1[i]) / 2; if (v < mn) mn = v; if (v > mx) mx = v; } peaks[x * 2] = mn; peaks[x * 2 + 1] = mx; }
+    }
+    const pxT = tt => tt / buf.duration * W;
+    if (sel) { g.fillStyle = cs.getPropertyValue("--sel").trim(); g.fillRect(pxT(sel.a), 0, Math.max(1, pxT(sel.b) - pxT(sel.a)), H); }
+    g.fillStyle = cs.getPropertyValue("--wave").trim(); const mid = H / 2;
+    for (let x = 0; x < W; x++) { const a = peaks[x * 2], b = peaks[x * 2 + 1]; g.fillRect(x, mid - b * mid * .95, 1, Math.max(1, (b - a) * mid * .95)); }
+    const p = ph !== undefined ? ph : cursor;
+    g.fillStyle = cs.getPropertyValue("--ink").trim(); g.fillRect(pxT(p), 0, Math.max(1, dpr), H);
+    const tm = $("[data-time]", filesEl); if (tm) tm.textContent = fmtTime(p) + " / " + fmtTime(buf.duration) + (sel ? "   selected " + fmtTime(sel.b - sel.a) : "");
+  }
+  function play() {
+    if (!buf) return; stop(); const ac = audioCtx(); ac.resume();
+    const s = ac.createBufferSource(); s.buffer = buf; const gn = ac.createGain(); gn.gain.value = vol.value / 100; s.connect(gn).connect(ac.destination); s._g = gn;
+    const from = sel ? sel.a : (cursor >= buf.duration - .05 ? 0 : cursor); const to = sel ? sel.b : buf.duration;
+    s.start(0, from, to - from); src = s; playT0 = ac.currentTime; playOff = from; playEnd = to;
+    s.onended = () => { if (src === s) { src = null; cancelAnimationFrame(raf); draw(); } };
+    const tick = () => { if (!src) return; const p = playOff + (ac.currentTime - playT0); draw(Math.min(p, playEnd)); raf = requestAnimationFrame(tick); }; tick();
+  }
+  function stop() { if (src) { const s = src; src = null; try { s.stop(); } catch (e) {} } cancelAnimationFrame(raf); if (buf) draw(); }
+  const S = tt => Math.round(tt * buf.sampleRate);
+  function sliceOut(a, b, keep) {
+    const nc = buf.numberOfChannels, sa = S(a), sb = S(b);
+    const len = keep ? sb - sa : buf.length - (sb - sa);
+    if (len < 10) throw new Error(keep ? "Select a longer part first." : "That would delete all the audio.");
+    const out = makeBuffer(nc, len, buf.sampleRate);
+    for (let c = 0; c < nc; c++) { const d = buf.getChannelData(c), o = out.getChannelData(c); if (keep) o.set(d.subarray(sa, sb)); else { o.set(d.subarray(0, sa)); o.set(d.subarray(sb), sa); } }
+    return out;
+  }
+  function copyBuf(b) { const o = makeBuffer(b.numberOfChannels, b.length, b.sampleRate); for (let c = 0; c < b.numberOfChannels; c++) o.getChannelData(c).set(b.getChannelData(c)); return o; }
+  root.addEventListener("click", e => {
+    const op = e.target.closest("[data-op]"); if (!op) return; if (!buf) { setStatus(st, "Open an audio file first.", "err"); return; }
+    stop(); const k = op.dataset.op;
+    try {
+      if (k === "all") { sel = {a:0, b:buf.duration}; syncInputs(); draw(); return; }
+      if (k === "none") { sel = null; syncInputs(); draw(); return; }
+      if (k === "undo") { if (!hist.length) { setStatus(st, "Nothing to undo."); return; } buf = hist.pop(); sel = null; changed(); setStatus(st, "Undone."); return; }
+      if ((k === "keep" || k === "cut") && !sel) throw new Error("Select a part of the waveform first.");
+      const before = buf; let next;
+      if (k === "keep") { next = sliceOut(sel.a, sel.b, true); sel = null; cursor = 0; }
+      else if (k === "cut") { next = sliceOut(sel.a, sel.b, false); cursor = sel.a; sel = null; }
+      else if (k === "fin" || k === "fout") {
+        next = copyBuf(buf); const a = sel ? sel.a : (k === "fin" ? 0 : Math.max(0, buf.duration - 3)), b = sel ? sel.b : (k === "fin" ? Math.min(3, buf.duration) : buf.duration);
+        const sa = S(a), sb = S(b), n = Math.max(1, sb - sa);
+        for (let c = 0; c < next.numberOfChannels; c++) { const d = next.getChannelData(c); for (let i = sa; i < sb; i++) { const r = (i - sa) / n; d[i] *= k === "fin" ? r : 1 - r; } }
+      } else if (k === "norm") {
+        let pk = 0; for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > pk) pk = v; } }
+        if (pk < 1e-4) throw new Error("This audio is silent."); const gn = .98 / pk; next = copyBuf(buf);
+        for (let c = 0; c < next.numberOfChannels; c++) { const d = next.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] *= gn; }
+      }
+      hist.push(before); if (hist.length > 15) hist.shift(); buf = next; changed();
+      setStatus(st, {keep:"Kept the selection.", cut:"Deleted the selection.", fin:"Fade in added.", fout:"Fade out added.", norm:"Volume normalised."}[k] + " Length now " + fmtTime(buf.duration) + ".");
+    } catch (err) { setStatus(st, err.message, "err"); }
+  });
+  go.addEventListener("click", () => {
+    if (!buf) return; stop();
+    const r = {files:[{name:name + "_edited.wav", blob:encodeWav(buf, vol.value / 100)}], summary:"Saved " + fmtTime(buf.duration) + " of audio" + (vol.value !== "100" ? " at " + vol.value + "% volume" : "") + "."};
+    setStatus(st, "Done.", "ok"); showResults(res, r);
+  });
+  reset();
+  if (initial && initial[0]) load(initial[0]);
+}
+
+/* ---------- Video: trim & compress ---------- */
+function pickMime() {
+  if (!window.MediaRecorder) return null;
+  for (const m of ["video/mp4;codecs=avc1,mp4a.40.2", "video/mp4;codecs=avc1", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"]) if (MediaRecorder.isTypeSupported(m)) return m;
+  return "";
+}
+function mountVideoTrim(root, t, initial) {
+  let file = null, url = null, dur = 0;
+  root.innerHTML = head(t) + `<div class="work"><div class="files" data-files></div>
+    <aside class="opts"><h2>Options</h2>
+      <div class="inline-fields"><label class="f">Start (sec)<input type="number" step="0.1" min="0" value="0" data-a></label><label class="f">End (sec)<input type="number" step="0.1" min="0" data-b></label></div>
+      <div class="bar" style="padding:0 0 14px"><button class="btn ghost small" data-seta>Start at playhead</button><button class="btn ghost small" data-setb>End at playhead</button></div>
+      <label class="f">Resolution<select data-res><option value="0">Keep original</option><option value="1080">1080p</option><option value="720" selected>720p</option><option value="480">480p</option><option value="360">360p</option></select></label>
+      <label class="f">File size<select data-br><option value="6000000">Larger, best quality</option><option value="2500000" selected>Balanced</option><option value="1000000">Smallest</option></select></label>
+      <label class="check"><input type="checkbox" data-mute> Remove the sound</label>
+      <p class="note">Export plays the clip through in real time, so a 2-minute clip takes about 2 minutes. Keep this tab open and visible while it runs.</p>
+      <button class="btn wide" data-go disabled>Export video</button><progress max="1" value="0" hidden></progress>
+      <p class="status" data-st role="status" aria-live="polite"></p></aside></div><section class="results" data-out hidden></section>`;
+  const filesEl = $("[data-files]", root), st = $("[data-st]", root), go = $("[data-go]", root), out = $("[data-out]", root), prog = $("progress", root);
+  const inA = $("[data-a]", root), inB = $("[data-b]", root);
+  if (pickMime() === null) setStatus(st, "This browser can't export video. Use a recent Chrome, Edge, Firefox or Safari.", "err");
+  const reset = () => { file = null; if (url) URL.revokeObjectURL(url); url = null; out.hidden = true; go.disabled = true; setStatus(st, ""); filesEl.innerHTML = dropZone(t); wireDrop($("[data-drop]", filesEl), f => load(f[0])); };
+  async function load(f) {
+    if (!f || !accepts(t, f)) { setStatus(st, "Choose a video file such as MP4, MOV or WebM.", "err"); return; }
+    file = f; if (url) URL.revokeObjectURL(url); url = URL.createObjectURL(f); out.hidden = true;
+    filesEl.innerHTML = `<div class="stage-bar"><span class="fi-name">${esc(f.name)}</span><span class="fi-size">${fmtSize(f.size)}</span><label class="btn ghost small"><input type="file" class="sr" accept="${t.exts.map(e => "." + e).join(",")}" data-other>Choose a different file</label></div>
+      <div class="vwrap"><video controls playsinline preload="metadata" data-v></video></div>`;
+    $("[data-other]", filesEl).onchange = e => e.target.files[0] && load(e.target.files[0]);
+    const v = $("[data-v]", filesEl); v.src = url;
+    try { await once(v, "loadedmetadata"); } catch (e) { setStatus(st, "Your browser can't play this video format. Try an MP4 or WebM file.", "err"); return; }
+    dur = v.duration; inA.value = 0; inB.value = dur.toFixed(1); inA.max = inB.max = dur.toFixed(1);
+    setStatus(st, "Length " + fmtTime(dur) + ", " + v.videoWidth + "×" + v.videoHeight + "."); go.disabled = pickMime() === null;
+  }
+  $("[data-seta]", root).onclick = () => { const v = $("[data-v]", filesEl); if (v) inA.value = v.currentTime.toFixed(1); };
+  $("[data-setb]", root).onclick = () => { const v = $("[data-v]", filesEl); if (v) inB.value = v.currentTime.toFixed(1); };
+  go.addEventListener("click", async () => {
+    const a = Math.max(0, +inA.value || 0), b = Math.min(dur, +inB.value || dur);
+    if (!(b - a > .3)) { setStatus(st, "The end must be after the start.", "err"); return; }
+    const mute = $("[data-mute]", root).checked; const ac = mute ? null : new (window.AudioContext || window.webkitAudioContext)();
+    const pv = $("[data-v]", filesEl); pv && pv.pause();
+    go.disabled = true; prog.hidden = false; prog.value = 0; setStatus(st, "Exporting… keep this tab open.");
+    const v = document.createElement("video"); v.src = url; v.playsInline = true; v.preload = "auto";
+    v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none";
+    document.body.appendChild(v);
+    try {
+      await once(v, "loadedmetadata");
+      const maxH = +$("[data-res]", root).value; const sc = maxH && v.videoHeight > maxH ? maxH / v.videoHeight : 1;
+      const cw = Math.round(v.videoWidth * sc / 2) * 2, ch = Math.round(v.videoHeight * sc / 2) * 2;
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch; const g = c.getContext("2d");
+      const tracks = [...c.captureStream(30).getVideoTracks()];
+      if (ac) { const node = ac.createMediaElementSource(v); const dest = ac.createMediaStreamDestination(); node.connect(dest); tracks.push(...dest.stream.getAudioTracks()); await ac.resume(); }
+      const mt = pickMime(); const br = +$("[data-br]", root).value;
+      const rec = new MediaRecorder(new MediaStream(tracks), Object.assign({videoBitsPerSecond:br, audioBitsPerSecond:128000}, mt ? {mimeType:mt} : {}));
+      const chunks = []; rec.ondataavailable = e => e.data && e.data.size && chunks.push(e.data);
+      const stopped = new Promise(r => rec.onstop = r);
+      const sk = once(v, "seeked"); v.currentTime = a; await Promise.race([sk, sleep(1500)]); g.drawImage(v, 0, 0, cw, ch);
+      rec.start(1000);
+      await v.play();
+      await new Promise(res => {
+        let done = false; const fin = () => { if (!done) { done = true; res(); } };
+        v.addEventListener("ended", fin, {once:true});
+        const tick = () => { if (done) return; g.drawImage(v, 0, 0, cw, ch); prog.value = Math.min(1, (v.currentTime - a) / (b - a)); if (v.currentTime >= b) { fin(); return; } if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(tick); else requestAnimationFrame(tick); };
+        tick();
+        const guard = setInterval(() => { if (done) { clearInterval(guard); return; } if (v.currentTime >= b || v.ended) { clearInterval(guard); fin(); } }, 250);
+      });
+      v.pause(); rec.stop(); await stopped; tracks.forEach(tr => tr.stop());
+      const type = (rec.mimeType || mt || "video/webm"); const ext = type.includes("mp4") ? "mp4" : "webm";
+      const blob = new Blob(chunks, {type:type.split(";")[0]});
+      setStatus(st, "Done.", "ok");
+      showResults(out, {files:[{name:baseName(file.name) + "_trimmed." + ext, blob}], summary:"Exported " + fmtTime(b - a) + " at " + cw + "×" + ch + (mute ? " without sound" : "") + ". " + fmtSize(file.size) + " original, " + fmtSize(blob.size) + " now."});
+    } catch (e) { console.error(e); setStatus(st, (e && e.name === "NotAllowedError") ? "Your browser blocked playback. Click Export video again." : (e.message || "The export didn't finish."), "err"); }
+    finally { v.remove(); ac && ac.close(); prog.hidden = true; go.disabled = false; }
+  });
+  reset();
+  if (initial && initial[0]) load(initial[0]);
+}
+
+/* ---------- Video: save a frame ---------- */
+function mountFrameGrab(root, t, initial) {
+  let file = null, url = null;
+  root.innerHTML = head(t) + `<div class="work"><div class="files" data-files></div>
+    <aside class="opts"><h2>Options</h2><p class="note">Play or scrub the video to the moment you want, then save it. The image is saved at the video's full resolution.</p>
+      <label class="f">Format<select data-fmt><option value="jpg">JPG</option><option value="png">PNG</option></select></label>
+      <button class="btn wide" data-go disabled>Save this frame</button><p class="status" data-st role="status" aria-live="polite"></p></aside></div><section class="results" data-out hidden></section>`;
+  const filesEl = $("[data-files]", root), st = $("[data-st]", root), go = $("[data-go]", root), out = $("[data-out]", root);
+  const reset = () => { if (url) URL.revokeObjectURL(url); url = null; file = null; go.disabled = true; out.hidden = true; filesEl.innerHTML = dropZone(t); wireDrop($("[data-drop]", filesEl), f => load(f[0])); };
+  async function load(f) {
+    if (!f || !accepts(t, f)) { setStatus(st, "Choose a video file such as MP4, MOV or WebM.", "err"); return; }
+    file = f; if (url) URL.revokeObjectURL(url); url = URL.createObjectURL(f);
+    filesEl.innerHTML = `<div class="stage-bar"><span class="fi-name">${esc(f.name)}</span><label class="btn ghost small"><input type="file" class="sr" accept="${t.exts.map(e => "." + e).join(",")}" data-other>Choose a different file</label></div><div class="vwrap"><video controls playsinline preload="auto" data-v></video></div>`;
+    $("[data-other]", filesEl).onchange = e => e.target.files[0] && load(e.target.files[0]);
+    const v = $("[data-v]", filesEl); v.src = url;
+    try { await once(v, "loadeddata"); go.disabled = false; setStatus(st, ""); } catch (e) { setStatus(st, "Your browser can't play this video format.", "err"); }
+  }
+  go.addEventListener("click", async () => {
+    const v = $("[data-v]", filesEl); if (!v || !v.videoWidth) return; v.pause();
+    const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0);
+    const png = $("[data-fmt]", root).value === "png";
+    try {
+      const blob = await canvasBlob(c, png ? "image/png" : "image/jpeg", .93);
+      const stamp = fmtTime(v.currentTime).replace(/[:.]/g, "-");
+      showResults(out, {files:[{name:baseName(file.name) + "_" + stamp + (png ? ".png" : ".jpg"), blob}], summary:"Frame at " + fmtTime(v.currentTime) + ", " + c.width + "×" + c.height + "."});
+    } catch (e) { setStatus(st, e.message, "err"); }
+  });
+  reset();
+  if (initial && initial[0]) load(initial[0]);
+}
+
+/* ---------- Remote access (coming soon) ---------- */
+function mountRemote(root, t) {
+  root.innerHTML = head(t) + `<div class="soon">
+    <p class="note" style="font-size:1rem">Remote access is being built and isn't available yet. The other tools on this site work today.</p>
+    <h2>What it will do</h2>
+    <ul><li>Share a short code so someone can see and control your screen, only while you allow it.</li>
+    <li>Connect to your own office or home computer while you're away.</li>
+    <li>Send files both ways during a session.</li>
+    <li>See who is connected at all times, and end the session with one click.</li></ul>
+    <h2>Why it needs an app</h2>
+    <p>A web page can share your screen but can't let someone else move your mouse or type. So the computer being controlled will run a small app, while the person helping can join from a browser.</p>
+    <h2>Staying safe</h2>
+    <p>Only give a code to someone you know and trust. Banks, the police and government offices will never ask you to install a remote access app.</p></div>`;
+}
+
+/* ---------- Pages ---------- */
+let handoff = null;
+function renderHome(root, catFilter) {
+  const cats = catFilter ? CATS.filter(c => c.id === catFilter) : CATS;
+  root.innerHTML = (catFilter ? "" : `<section class="hero"><h1>Drop a file. Pick what to do.</h1>
+      <p>Free tools for PDFs, photos, documents, audio and video. Everything runs in your browser, so your files never leave your device.</p>
+      <div class="drop" data-drop><div class="drop-txt"><p class="drop-big">Drop any file here to see what you can do with it</p>
+        <p class="drop-sub">PDF, Word, photos, contacts (.vcf), spreadsheets, audio and video.</p></div>
+        <label class="btn"><input type="file" multiple>Choose files</label></div>
+      <div class="picks" data-picks hidden></div></section>`) +
+    (catFilter ? `<nav class="crumbs"><a href="#/">All tools</a></nav>` : "") +
+    cats.map(c => `<section class="cat" id="cat-${c.id}"><div class="cat-head"><h2>${esc(c.name)}</h2><p>${esc(c.blurb)}</p></div>
+      <ul class="tools">${TOOLS.filter(t => t.cat === c.id).map(t => `<li><a href="#/t/${t.id}"><span class="tn">${esc(t.name)}${t.soon ? '<span class="tag">Coming soon</span>' : ""}</span><span class="td">${esc(t.desc)}</span></a></li>`).join("")}</ul></section>`).join("");
+  if (catFilter) { root.querySelector(".cat").style.marginTop = "18px"; return; }
+  const picks = $("[data-picks]", root);
+  wireDrop($("[data-drop]", root), files => {
+    const e = extOf(files[0].name);
+    const list = TOOLS.filter(t => !t.soon && t.exts && t.exts.includes(e));
+    picks.hidden = false;
+    if (!list.length) { picks.innerHTML = `<h2>There's no tool for .${esc(e || "this")} files yet.</h2><p class="td">Supported: PDF, DOCX, JPG, PNG, WebP, GIF, BMP, VCF, XLSX, CSV, MP3, WAV, M4A, MP4, MOV, WebM.</p>`; return; }
+    const label = files.length > 1 ? files.length + " files" : files[0].name;
+    picks.innerHTML = `<h2>What do you want to do with ${esc(label)}?</h2><div class="row">${list.map(t => `<button class="btn ghost" data-t="${t.id}">${esc(t.name)}</button>`).join("")}</div>`;
+    $$("[data-t]", picks).forEach(b => b.onclick = () => { handoff = files; location.hash = "#/t/" + b.dataset.t; });
+  });
+}
+function route() {
+  const app = $("#app"); const h = location.hash.replace(/^#\/?/, "");
+  const [kind, id] = h.split("/");
+  let active = null;
+  if (kind === "t" && TOOLS.find(t => t.id === id)) {
+    const t = TOOLS.find(t => t.id === id); active = t.cat;
+    const initial = handoff; handoff = null;
+    (t.custom ? t.custom : mountGeneric)(app, t, initial);
+    document.title = t.name + " – Daftarbox";
+  } else if (kind === "c" && CATS.find(c => c.id === id)) {
+    active = id; renderHome(app, id); document.title = CATS.find(c => c.id === id).name + " – Daftarbox";
+  } else { renderHome(app); document.title = "Daftarbox – Free PDF, photo, document, audio and video tools"; }
+  $$("#nav a").forEach(a => { if (a.dataset.c === active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  window.scrollTo(0, 0);
+  const h1 = $("h1", app); if (h1) { h1.tabIndex = -1; h1.focus({preventScroll:true}); }
+}
+$("#nav").innerHTML = CATS.map(c => `<a href="#/c/${c.id}" data-c="${c.id}">${esc(c.name)}</a>`).join("");
+window.addEventListener("hashchange", route);
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => e.preventDefault());
+route();
+</script>
+</body>
+</html>

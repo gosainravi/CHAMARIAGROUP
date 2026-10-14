@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Security audit – Daftarbox</title>
+<meta name="description" content="Free security checks for Indian organisations: test your email domain (SPF, DKIM, DMARC, DNSSEC), take a guided self-assessment covering CERT-In and DPDP, and print a report with a prioritised action plan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/site.css?v=20261005">
+<style>
+[hidden]{display:none!important}
+.view h1:focus{outline:none}
+.muted{color:var(--muted)}
+.tiny{font-size:.84rem}
+.sec-h2{font-stretch:112%;font-weight:800;font-size:1.4rem;letter-spacing:-.015em;margin:0 0 6px}
+.sec-lead{color:var(--muted);margin:0 0 18px;max-width:62ch}
+.ic{width:20px;height:20px;flex:none}
+
+/* ---------- Home ---------- */
+.hero-cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.hero-cta .btn{padding:13px 22px;font-size:1.02rem}
+.trust{display:flex;gap:8px 18px;justify-content:center;flex-wrap:wrap;margin:18px 0 0;padding:0;list-style:none;color:var(--muted);font-size:.88rem}
+.trust li{display:flex;gap:6px;align-items:center}
+.trust svg{width:16px;height:16px;color:var(--ok)}
+.home-tools{margin-top:18px}
+.home-tools .tgrid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.tcard .meta{display:block;margin-top:12px;font-size:.8rem;font-weight:650;color:var(--accent)}
+.strip{margin-top:44px;padding:28px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
+.strip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px 22px;margin:0;padding:0;list-style:none}
+.strip-grid li{display:flex;gap:12px;align-items:flex-start}
+.strip-grid .si{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent)}
+.strip-grid .si svg{width:18px;height:18px}
+.strip-grid b{display:block;font-size:.96rem}
+.strip-grid span{display:block;color:var(--muted);font-size:.86rem;line-height:1.45}
+.frameworks{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:.84rem;color:var(--muted)}
+.frameworks .pill{font-size:.78rem}
+.steps3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:36px 0 0;padding:0;list-style:none;counter-reset:s}
+.steps3 li{counter-increment:s;padding:4px 0 0 46px;position:relative}
+.steps3 li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--ink);color:var(--bg)}
+.steps3 b{display:block}
+.steps3 span{color:var(--muted);font-size:.9rem}
+
+/* ---------- Domain check ---------- */
+.dform{max-width:720px;margin:0 auto}
+.dbar{display:flex;gap:10px;padding:10px;background:var(--surface);border:2px solid var(--line);border-radius:16px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}
+.dbar:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.dbar input{flex:1;min-width:0;border:0;background:transparent;font-size:1.2rem;padding:10px 12px;outline:none}
+.dbar .btn{font-size:1.1rem;padding:14px 26px;border-radius:11px;white-space:nowrap}
+@media (max-width:520px){.dbar{flex-direction:column}.dbar .btn{width:100%}}
+.dhelp{display:flex;gap:6px 14px;flex-wrap:wrap;justify-content:center;margin:12px 0 0;font-size:.86rem;color:var(--muted)}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.spinner{width:18px;height:18px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .8s linear infinite;display:inline-block;vertical-align:-3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dstatus{text-align:center}
+
+.rhead{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.grade{width:92px;height:92px;flex:none;border-radius:20px;display:grid;place-items:center;font-stretch:120%;font-weight:900;font-size:3.2rem;line-height:1;
+  background:var(--sunk);color:var(--ink);border:2px solid currentColor}
+.grade.g-A,.grade.g-B{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface))}
+.grade.g-C{color:var(--warn);background:var(--warn-bg)}
+.grade.g-D,.grade.g-F{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
+.rhead h2{margin:0 0 4px}
+.rhead .counts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.rhead-main{flex:1;min-width:220px}
+.chks{list-style:none;margin:20px 0 0;padding:0}
+.chk{border-top:1px solid var(--line);padding:14px 0}
+.chk-h{display:grid;grid-template-columns:84px minmax(0,1fr);gap:4px 12px;align-items:start}
+.chk-h .pill{justify-self:start;margin-top:2px}
+.chk-h b{display:block;font-size:1rem}
+.chk-h p{margin:2px 0 0;color:var(--muted);font-size:.94rem}
+@media (max-width:480px){.chk-h{grid-template-columns:1fr}}
+.chk details{margin:8px 0 0 96px}
+@media (max-width:480px){.chk details{margin-left:0}}
+summary{cursor:pointer;font-weight:600;font-size:.9rem;color:var(--accent);width:fit-content}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.chk .dbody{margin-top:10px;padding:14px;border-radius:10px;background:var(--sunk);font-size:.92rem}
+.dbody h4{margin:0 0 6px;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.dbody ul{margin:0 0 12px;padding-left:18px}
+.dbody p{margin:0 0 8px}
+pre.rec{margin:0 0 12px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:.82rem;white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere}
+.recwrap{position:relative}
+.recwrap .copy{position:absolute;top:6px;right:6px}
+.recwrap pre{padding-right:70px}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.warn{padding:2px 9px;margin:0;border-radius:99px;font-size:.76rem;font-weight:650}  /* shared .warn box styles otherwise leak into warning pills */
+.later{margin-top:22px;padding:18px;border:1px dashed var(--line);border-radius:var(--radius)}
+.later h3{margin:0 0 4px;font-size:1.05rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.later ul{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:.92rem}
+
+/* ---------- Assessment ---------- */
+.start-card{max-width:560px;margin:0 auto;padding:26px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.start-card .btn.big{width:100%;font-size:1.15rem;padding:16px}
+.facts{display:flex;gap:8px 16px;flex-wrap:wrap;justify-content:center;margin:14px 0 0;padding:0;list-style:none;color:var(--muted);font-size:.86rem}
+.resume{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 16px;border-radius:12px;background:var(--accent-soft);margin:0 0 18px}
+.resume p{flex:1;min-width:200px;margin:0;font-size:.94rem}
+.q-progress{max-width:100%;margin:0 0 18px}
+.q-progress .row{display:flex;justify-content:space-between;gap:10px;font-size:.88rem;color:var(--muted);flex-wrap:wrap}
+.q-progress .bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;margin-top:8px}
+.q-progress .bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.area-head h2{font-stretch:112%;font-weight:800;font-size:1.5rem;margin:0 0 2px;letter-spacing:-.015em}
+.area-head p{margin:0 0 6px;color:var(--muted)}
+fieldset.qq{border:0;border-top:1px solid var(--line);margin:0;padding:18px 0;min-width:0}
+fieldset.qq legend{float:left;width:100%;padding:0;margin:0 0 12px;font-weight:650;font-size:1.02rem;display:flex;gap:10px}
+fieldset.qq legend .qn{flex:none;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:.8rem;background:var(--sunk);color:var(--muted)}
+fieldset.qq.done legend .qn{background:var(--accent);color:var(--accent-ink)}
+.ans{clear:both;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.ans{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ans label{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 8px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-weight:600;font-size:.94rem;background:var(--surface);text-align:center;transition:border-color .12s,background .12s}
+.ans label:hover{border-color:var(--ink)}
+.ans input{position:absolute;opacity:0;width:1px;height:1px}
+.ans label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.ans label:has(input[value=yes]:checked){border-color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,var(--surface));color:var(--ok)}
+.ans label:has(input[value=partly]:checked){border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
+.ans label:has(input[value=no]:checked){border-color:var(--danger);background:color-mix(in srgb,var(--danger) 11%,var(--surface));color:var(--danger)}
+.ans label:has(input[value=na]:checked){border-color:var(--muted);background:var(--sunk);color:var(--ink)}
+.qq details{margin-top:10px}
+.qq details p{margin:8px 0 0;font-size:.92rem;color:var(--muted);max-width:70ch}
+.qq .ref{font-size:.8rem}
+.q-nav{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:8px;padding-top:16px;border-top:1px solid var(--line)}
+.q-nav .btn{min-width:130px}
+.arealist{list-style:none;margin:0 0 14px;padding:0}
+.arealist button{width:100%;display:flex;gap:10px;align-items:center;justify-content:space-between;text-align:left;padding:7px 9px;border:0;border-radius:7px;background:none;cursor:pointer;font-size:.9rem;color:var(--ink)}
+.arealist button:hover{background:var(--sunk)}
+.arealist button[aria-current="step"]{background:var(--accent-soft);font-weight:700}
+.arealist .cnt{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.arealist .cnt.full{color:var(--ok);font-weight:700}
+
+/* ---------- Reports ---------- */
+.rep-head{display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin:8px 0 12px}
+.rep-head h2{margin:0}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:30px}
+.tablewrap table.t td,.tablewrap table.t th{white-space:nowrap}
+.tablewrap td.name{white-space:normal;min-width:160px;font-weight:600}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.empty{padding:26px;text-align:center;color:var(--muted)}
+.gmini{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;font-weight:850;border:1.5px solid currentColor}
+.gmini.g-A,.gmini.g-B{color:var(--ok)}.gmini.g-C{color:var(--warn)}.gmini.g-D,.gmini.g-F{color:var(--danger)}
+.lvl{font-weight:700}
+.lvl.start{color:var(--danger)}.lvl.dev{color:var(--warn)}.lvl.good,.lvl.strong{color:var(--ok)}
+
+/* ---------- Report document ---------- */
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:clamp(18px,4vw,36px);box-shadow:var(--shadow)}
+.doc-top{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px}
+.doc-top h1{font-stretch:115%;font-weight:850;font-size:clamp(1.6rem,3.6vw,2.3rem);letter-spacing:-.025em;line-height:1.08;margin:0 0 4px}
+.doc-top .kicker{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin:0 0 6px}
+.doc-actions{display:flex;gap:8px;flex-wrap:wrap}
+.doc h2{font-stretch:110%;font-weight:800;font-size:1.25rem;margin:30px 0 10px;letter-spacing:-.01em}
+.overview{display:grid;grid-template-columns:auto minmax(0,1fr);gap:26px;align-items:center;margin:18px 0 6px}
+@media (max-width:640px){.overview{grid-template-columns:1fr;justify-items:center}}
+.ring{width:170px;height:170px}
+.ring .track{stroke:var(--sunk)}
+.ring .val{stroke:var(--accent);transition:stroke-dashoffset .8s ease}
+.ring text{fill:var(--ink);font-family:inherit}
+.ring .big{font-size:40px;font-weight:850}
+.ring .small{font-size:12px;fill:var(--muted);font-weight:600}
+.overview .stats{margin:0;width:100%}
+.chart{max-width:680px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .lbl{fill:var(--ink);font-size:13px;font-family:inherit}
+.chart .pct{fill:var(--ink);font-size:12px;font-weight:700;font-family:inherit}
+.chart .bg{fill:var(--sunk)}
+.chart .b-start{fill:var(--danger)}.chart .b-dev{fill:var(--warn)}.chart .b-good{fill:var(--accent)}.chart .b-strong{fill:var(--ok)}
+.chart .b-na{fill:var(--line)}
+.chart .grid{stroke:var(--line);stroke-dasharray:3 3}
+.chart .axis{fill:var(--muted);font-size:11px;font-family:inherit}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin:8px 0 0;padding:0;list-style:none}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:0}
+.legend .k-start{background:var(--danger)}.legend .k-dev{background:var(--warn)}.legend .k-good{background:var(--accent)}.legend .k-strong{background:var(--ok)}
+.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:0;padding:0;list-style:none}
+.quick li{padding:14px;border-radius:12px;background:var(--accent-soft);font-size:.92rem}
+.quick b{display:block;margin-bottom:4px}
+.plan{list-style:none;margin:0;padding:0;counter-reset:p}
+.plan>li{counter-increment:p;display:grid;grid-template-columns:34px minmax(0,1fr);gap:4px 12px;padding:14px 0;border-top:1px solid var(--line);break-inside:avoid}
+.plan>li::before{content:counter(p);width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:.82rem;font-weight:800;background:var(--sunk);color:var(--muted)}
+.plan .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.plan .gap{font-weight:650;margin:0}
+.plan .fixtxt{margin:4px 0 0;color:var(--muted);font-size:.94rem}
+.eff{font-size:.74rem;font-weight:700;padding:2px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.answers table.t td:first-child{width:60%}
+.answers h3{font-size:1rem;margin:18px 0 6px}
+.disclaimer{display:flex;gap:10px;align-items:flex-start}
+.disclaimer svg{width:18px;height:18px;flex:none;margin-top:1px}
+.print-only{display:none}
+.cmp td .delta{font-weight:700}
+.cmp .up{color:var(--ok)}.cmp .down{color:var(--danger)}
+.minibar{display:inline-block;height:8px;border-radius:99px;background:var(--accent);vertical-align:middle;margin-right:8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:.92rem;z-index:50;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+
+@media print{
+  @page{margin:14mm}
+  main{padding:0;max-width:none}
+  .doc{border:0;box-shadow:none;padding:0;border-radius:0}
+  .print-only{display:block}
+  .doc-actions,.chk details summary{display:none}
+  .chk details{margin-left:0}
+  .ring .val,.chart rect,.minibar,.legend i,.grade,.pill,.quick li{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .doc h2{break-after:avoid}
+  .chk,.plan>li{break-inside:avoid}
+  a{color:inherit;text-decoration:none}
+}
+</style>
+</head>
+<body class="p-security">
+<a class="sr" href="#main">Skip to content</a>
+<header class="top">
+  <div class="top-in">
+    <a class="mark" href="../index.html"><span aria-hidden="true"></span>Daftarbox</a>
+    <a class="portal-name" href="index.html#/">Security audit</a>
+    <nav class="nav" aria-label="Security audit tools">
+      <a href="#/" data-nav="home">Home</a>
+      <a href="#/email" data-nav="email">Email &amp; domain check</a>
+      <a href="#/assess" data-nav="assess">Self-assessment</a>
+      <a href="#/reports" data-nav="reports">Reports</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+
+  <!-- ===================== HOME ===================== -->
+  <section class="view" data-view="home">
+    <div class="p-hero">
+      <span class="eyebrow">Free · No sign-up · Runs in your browser</span>
+      <h1 tabindex="-1">Find and fix your organisation’s security gaps</h1>
+      <p>Check your email domain in seconds, answer simple questions about how you work, and get a clear action plan — written for Indian businesses, not security experts.</p>
+      <div class="hero-cta">
+        <a class="btn" href="#/email">Check my domain</a>
+        <a class="btn ghost" href="#/assess">Start the self-assessment</a>
+      </div>
+      <ul class="trust" aria-label="Good to know">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Answers stay on this device</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Covers CERT-In and DPDP</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Printable PDF report</li>
+      </ul>
+    </div>
+
+    <div class="home-tools">
+      <ul class="tgrid">
+        <li class="tcard">
+          <div class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>
+          <h3><a href="#/email">Email &amp; domain security check</a> <span class="badge new">New</span></h3>
+          <p>See if criminals could send fake email in your name. Get a grade and exact records to fix it.</p>
+          <span class="meta">Live check · about 10 seconds</span>
+        </li>
+        <li class="tcard">
+          <div class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></div>
+          <h3><a href="#/assess">Organisation self-assessment</a></h3>
+          <p>47 plain-English questions across 13 areas. Get a score, maturity chart and a prioritised to-do list.</p>
+          <span class="meta">About 15 minutes · save and resume</span>
+        </li>
+        <li class="tcard">
+          <div class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></div>
+          <h3><a href="#/reports">Reports</a></h3>
+          <p>Open, compare and print your saved checks and assessments. Save them as PDF for your team.</p>
+          <span class="meta" id="home-report-count">Saved on this device</span>
+        </li>
+      </ul>
+    </div>
+
+    <section class="strip" aria-labelledby="wwc">
+      <h2 class="sec-h2" id="wwc">What we check</h2>
+      <p class="sec-lead">The basics that stop most real-world attacks on small and mid-sized organisations — plus the Indian rules you are expected to follow.</p>
+      <ul class="strip-grid">
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><div><b>Email spoofing</b><span>SPF, DKIM and DMARC — can someone fake your email?</span></div></li>
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><div><b>Domain safety</b><span>DNSSEC, CAA, MTA-STS and TLS reporting.</span></div></li>
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><div><b>Accounts &amp; MFA</b><span>Logins, admin rights and leavers.</span></div></li>
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span><div><b>Backups &amp; ransomware</b><span>Offline copies and tested restores.</span></div></li>
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div><b>CERT-In rules</b><span>6-hour incident reporting, 180-day logs, NIC/NPL time sync.</span></div></li>
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><div><b>DPDP Act</b><span>Consent, breach notice, deletion and children’s data.</span></div></li>
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span><div><b>Devices &amp; patching</b><span>Updates, antivirus, encryption and screen locks.</span></div></li>
+        <li><span class="si" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a14 14 0 0 1 20 0"/><circle cx="12" cy="19.5" r="1"/></svg></span><div><b>Network &amp; Wi-Fi</b><span>Firewall, default passwords, guest Wi-Fi, remote access.</span></div></li>
+      </ul>
+      <div class="frameworks"><span>Built on ideas from</span>
+        <span class="pill">CIS Controls v8 IG1</span><span class="pill">NIST CSF 2.0</span><span class="pill">ISO 27001 themes</span><span class="pill">CERT-In Directions 2022</span><span class="pill">DPDP Act 2023 &amp; Rules 2025</span>
+      </div>
+    </section>
+
+    <ol class="steps3" aria-label="How it works">
+      <li><b>Check your domain</b><span>A quick outside-in look at your email and DNS set-up.</span></li>
+      <li><b>Answer the questions</b><span>Yes, Partly, No or Not applicable — one area at a time.</span></li>
+      <li><b>Follow the plan</b><span>Fix the biggest risks first. Print the report for your team.</span></li>
+    </ol>
+  </section>
+
+  <!-- ===================== EMAIL & DOMAIN CHECK ===================== -->
+  <section class="view" data-view="email" hidden>
+    <div class="crumbs"><a href="#/">Security audit</a> › Email &amp; domain check</div>
+    <div class="t-head">
+      <h1 tabindex="-1">Email &amp; domain security check</h1>
+      <p>Type your organisation’s domain. We read its public DNS records and tell you, in plain words, what is protected and what to fix.</p>
+    </div>
+    <form class="dform" id="dform" novalidate>
+      <label class="sr" for="dinput">Your domain name</label>
+      <div class="dbar">
+        <input id="dinput" name="domain" type="text" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="yourcompany.in" aria-describedby="dhelp dstatus">
+        <button class="btn" id="dgo" type="submit">Check now</button>
+      </div>
+      <div class="dhelp" id="dhelp"><span>Try an example:</span>
+        <button type="button" class="linkbtn" data-try="gov.in">gov.in</button>
+        <button type="button" class="linkbtn" data-try="zoho.in">zoho.in</button>
+        <button type="button" class="linkbtn" data-try="cloudflare.com">cloudflare.com</button>
+      </div>
+      <p class="status dstatus" id="dstatus" role="status" aria-live="polite"></p>
+    </form>
+    <div id="dresult"></div>
+    <p class="note tiny" style="max-width:720px;margin:26px auto 0;text-align:center">We ask Cloudflare’s public DNS (falling back to Google’s) for your domain’s public records. Nothing else leaves your browser. Results are saved only on this device, in <a href="#/reports">Reports</a>.</p>
+  </section>
+
+  <!-- ===================== SELF-ASSESSMENT ===================== -->
+  <section class="view" data-view="assess" hidden>
+    <div id="assess-root"></div>
+  </section>
+
+  <!-- ===================== REPORTS LIST ===================== -->
+  <section class="view" data-view="reports" hidden>
+    <div class="crumbs"><a href="#/">Security audit</a> › Reports</div>
+    <div class="t-head">
+      <h1 tabindex="-1">Your reports</h1>
+      <p>Everything you have saved on this device. Open a report to print it or save it as PDF, or pick two assessments to compare progress.</p>
+    </div>
+    <div id="reports-root"></div>
+  </section>
+
+  <!-- ===================== SINGLE REPORT / COMPARE ===================== -->
+  <section class="view" data-view="report" hidden>
+    <div class="crumbs noprint"><a href="#/">Security audit</a> › <a href="#/reports">Reports</a> › <span id="report-crumb">Report</span></div>
+    <div id="report-root" style="margin-top:18px"></div>
+  </section>
+
+  <section class="view" data-view="notfound" hidden>
+    <div class="t-head"><h1 tabindex="-1">Page not found</h1><p>That link does not lead anywhere. <a href="#/">Go to the Security audit home</a>.</p></div>
+  </section>
+</main>
+
+<dialog id="confirm" aria-labelledby="confirm-title">
+  <form method="dialog">
+    <div class="d-h"><h2 id="confirm-title">Are you sure?</h2></div>
+    <div class="d-b"><p id="confirm-msg" style="margin:0"></p></div>
+    <div class="d-f"><button class="btn ghost" value="cancel">Cancel</button><button class="btn" value="ok" id="confirm-ok">Delete</button></div>
+  </form>
+</dialog>
+
+<footer class="site"><div>Daftarbox Security audit — free self-check tools for organisations. This is a self-assessment, not a certified audit. Your answers stay in this browser. <a href="../index.html">All Daftarbox tools</a></div></footer>
+
+<script src="sec-data.js?v=20261005"></script>
+<script src="sec-logic.js?v=20261005"></script>
+<script src="sec-app.js?v=20261005"></script>
+</body>
+</html>

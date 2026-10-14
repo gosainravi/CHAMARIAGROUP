@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDF tools – Daftarbox</title>
+<meta name="description" content="Free PDF tools that run in your browser: merge, split, compress, convert, edit, crop and sign PDFs. Your files never leave your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=Caveat:wght@500&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/site.css?v=202610086">
+<link rel="stylesheet" href="editor.css?v=202610086">
+<style>
+/* ---- Home ---- */
+.trust{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:40px 0 0;padding:0;list-style:none}
+.trust li{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+.trust svg{flex:none;width:22px;height:22px;color:var(--accent);margin-top:2px}
+.trust b{display:block;font-size:.98rem}
+.trust span{color:var(--muted);font-size:.9rem}
+.more{margin-top:64px;padding-top:28px;border-top:1px solid var(--line)}
+.more h2{font-size:1.15rem;margin:0 0 14px;font-weight:750}
+.empty-cat{text-align:center;color:var(--muted)}
+.tcard.is-soon .ti{background:var(--sunk);color:var(--muted)}
+
+/* ---- Picker ---- */
+.picker .privacy{display:flex;align-items:center;gap:6px;margin:6px 0 0;color:var(--muted);font-size:.88rem;text-align:center}
+.picker .privacy svg{width:15px;height:15px;flex:none;color:var(--ok)}
+body.dropping::after{content:"Drop your files to add them";position:fixed;inset:12px;z-index:50;display:grid;place-items:center;border:3px dashed var(--accent);border-radius:20px;
+  background:color-mix(in srgb,var(--accent-soft) 88%,transparent);color:var(--accent);font-weight:800;font-size:1.5rem;pointer-events:none}
+
+/* ---- File list ---- */
+.box-h h2{font-size:1rem;margin:0;font-weight:700}
+.box-h .sp{flex:1}
+.flist{list-style:none;margin:0;padding:0}
+.flist li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.flist li:last-child{border-bottom:0}
+.fl-n{font-variant-numeric:tabular-nums;color:var(--muted);width:1.4em;text-align:right;font-size:.88rem;flex:none}
+.fl-th{flex:none;width:42px;height:54px;border-radius:5px;border:1px solid var(--line);background:var(--sunk);display:grid;place-items:center;overflow:hidden;color:var(--muted)}
+.fl-th canvas,.fl-th img{display:block;max-width:100%;max-height:100%;object-fit:contain;background:#fff}
+.fl-th svg{width:20px;height:20px}
+.fl-txt{flex:1;min-width:0}
+.fl-txt .fname{display:block}
+.fl-meta{color:var(--muted);font-size:.85rem}
+.fl-act{display:flex;gap:6px;flex:none}
+.box-f{margin:0;padding:10px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:.88rem}
+@media (max-width:480px){.flist li{flex-wrap:wrap;gap:8px 10px}.fl-act{width:100%;justify-content:flex-end}}
+.opts .btn.go{font-size:1.05rem;padding:14px 18px;margin-top:4px}
+.opts hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+.opts .seg{display:flex;width:100%;margin:6px 0 0}
+.opts .seg button{flex:1;padding:8px 6px}
+.f input[type=color]{display:block;margin-top:6px;width:100%;height:38px;padding:2px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+.f input[type=file]{display:block;margin-top:6px;max-width:100%;font-size:.88rem}
+.inl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+div.f,fieldset.fs{display:block;margin:0 0 14px;font-weight:600;font-size:.92rem;border:0;padding:0;min-width:0}
+fieldset.fs legend{padding:0}
+.btn svg{width:18px;height:18px;flex:none}
+.btn.small svg{width:16px;height:16px}
+a.sr:focus{position:fixed;left:12px;top:12px;width:auto;height:auto;clip:auto;z-index:60;background:var(--surface);color:var(--accent);padding:8px 14px;border-radius:8px;border:2px solid var(--accent)}
+
+/* ---- Results ---- */
+.res-head{display:flex;gap:14px;align-items:flex-start;margin:0 0 10px}
+.res-ok{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.res-ok svg{width:22px;height:22px}
+.results li .btn{flex:none}
+.results li svg.fi{width:20px;height:20px;color:var(--accent);flex:none}
+
+/* ---- Page thumbnails (organise) ---- */
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;padding:14px}
+@media (max-width:420px){.thumbs{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}}
+.thumb{margin:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:grab;user-select:none;position:relative}
+.thumb.dragging{opacity:.4}
+.thumb.over{outline:2px dashed var(--accent);outline-offset:2px}
+.thumb.gone{opacity:.45}
+.thumb-img{height:150px;display:grid;place-items:center;width:100%}
+.thumb canvas{max-height:140px;max-width:100%;box-shadow:0 0 0 1px var(--line);background:#fff;transition:transform .15s}
+.thumb-bar{display:flex;gap:3px;align-items:center;justify-content:center;flex-wrap:wrap;width:100%}
+.thumb-n{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+.thumb .icon-btn{width:30px;height:30px}
+
+/* ---- Page viewer (crop, edit, sign) ---- */
+.pv-bar .pn{font-size:.9rem;color:var(--muted);font-variant-numeric:tabular-nums;min-width:8.5em;text-align:center}
+.pv-stage{background:var(--sunk);padding:16px;display:flex;overflow:auto;border-radius:0 0 var(--radius) var(--radius)}
+.pv-wrap{position:relative;margin:0 auto;line-height:0;box-shadow:0 1px 3px rgba(0,0,0,.18),0 8px 24px rgba(0,0,0,.1);flex:none}
+.pv-wrap canvas{display:block;background:#fff;max-width:none}
+.pv-layer{position:absolute;inset:0}
+.pv-layer.placing{cursor:copy}
+.pv-strip{display:flex;gap:8px;overflow-x:auto;padding:10px 14px;border-top:1px solid var(--line)}
+.pv-strip button{flex:none;border:2px solid transparent;background:var(--bg);border-radius:6px;padding:3px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.75rem;color:var(--muted);line-height:1.2}
+.pv-strip button[aria-current="true"]{border-color:var(--accent);color:var(--ink);font-weight:700}
+.pv-strip canvas{display:block;height:64px;width:auto;background:#fff;box-shadow:0 0 0 1px var(--line)}
+.pv-strip .ph{display:block;width:46px;height:64px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+
+/* Movable items on a page */
+.ov{position:absolute;cursor:move;touch-action:none;line-height:1.2;outline:1px dashed transparent;outline-offset:1px}
+.ov:hover{outline-color:var(--accent)}
+.ov.sel,.ov:focus-visible{outline:2px solid var(--accent)}
+.ov img{display:block;width:100%;height:100%;pointer-events:none}
+.ov .tx{white-space:pre;display:block;pointer-events:none}
+.ov-x,.ov-h{position:absolute;display:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--surface);background:var(--accent);color:var(--accent-ink);padding:0;cursor:pointer;place-items:center;line-height:1}
+.ov-x{top:-12px;right:-12px}
+.ov-x svg{width:11px;height:11px}
+.ov-h{bottom:-11px;right:-11px;cursor:nwse-resize;touch-action:none}
+.ov.sel .ov-x,.ov.sel .ov-h,.ov:hover .ov-x,.ov:hover .ov-h,.ov:focus-within .ov-x{display:grid}
+
+/* ---- Edit PDF workspace ---- */
+.ed-main{overflow:visible}
+.ed-tools{display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:thin;position:sticky;top:60px;z-index:6;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;-webkit-overflow-scrolling:touch}
+.ed-tools .tg{display:flex;gap:3px;align-items:center;flex:none;padding-right:8px;border-right:1px solid var(--line)}
+.ed-tools .tg:last-child{border-right:0;padding-right:0}
+.tbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:46px;height:48px;padding:4px 6px;border:1px solid transparent;border-radius:8px;background:none;color:var(--ink);cursor:pointer;font-size:.68rem;font-weight:650;line-height:1.1}
+.tbtn.sq{min-width:36px;width:36px;height:36px;padding:0}
+.tbtn svg{width:20px;height:20px}
+.tbtn b{font-size:1rem}
+.tbtn:hover{background:var(--sunk)}
+.tbtn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.tbtn:disabled{opacity:.35;cursor:not-allowed;background:none}
+.ed-tools select,.ed-tools input[type=number]{height:36px;border:1px solid var(--line);border-radius:7px;background:var(--bg);padding:0 6px}
+.ed-tools input[type=number]{width:66px}
+.ed-tools input[type=color]{width:38px;height:36px;padding:2px;border:1px solid var(--line);border-radius:7px;background:var(--bg);cursor:pointer}
+.ed-tools .btn.small{white-space:nowrap}
+.zl{font-size:.8rem;color:var(--muted);min-width:3.2em;text-align:center;font-variant-numeric:tabular-nums}
+.ed-hint{margin:0;padding:7px 12px;font-size:.86rem;color:var(--muted);border-bottom:1px solid var(--line);background:var(--bg)}
+.ed .pv-stage{touch-action:pan-x pan-y;max-height:calc(100vh - 150px)}
+.ed-drawing .pv-layer{cursor:crosshair;touch-action:none}
+.ed-drawing .tb,.ed-drawing .ov,.ed-drawing .tb-grip{pointer-events:none}
+.tb-layer{position:absolute;inset:0;pointer-events:none}
+.tb{position:absolute;pointer-events:auto;white-space:pre;color:transparent;caret-color:transparent;cursor:text;border-radius:1px;outline:1px solid transparent;outline-offset:1px;min-width:4px}
+.tb:hover{outline-color:color-mix(in srgb,var(--accent) 65%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.tb.on,.tb:focus{color:var(--tb-fg);background:var(--tb-bg);caret-color:var(--tb-fg)}
+.tb.on{outline:1px dashed color-mix(in srgb,var(--accent) 75%,transparent)}
+.tb:focus{outline:2px solid var(--accent)}
+.tb.new:empty::before{content:attr(data-ph);color:#8a8f99}
+.lowc{position:absolute;height:0;border-bottom:2px dotted #E07B00;pointer-events:none;margin-top:1px}
+.tb-grip{position:absolute;display:none;place-items:center;width:28px;height:24px;transform:translateY(-100%);border:0;border-radius:6px 6px 0 0;background:var(--accent);color:var(--accent-ink);cursor:move;touch-action:none;pointer-events:auto;padding:0}
+.tb-grip svg{width:16px;height:16px}
+.tb-grip.show{display:grid}
+.ed-prev{position:absolute;pointer-events:none}
+.ed-prev-shape{border:2px solid var(--c)}
+.ed-prev-hl{background:var(--c);opacity:.42}
+.ed-prev-rect{background:var(--c);outline:1px dashed #888}
+.rec{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 14px;background:var(--bg)}
+.rec-row{display:flex;gap:8px;align-items:center;font-size:.9rem;font-weight:600}
+.rec progress{margin:8px 0}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin 1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:880px){.ed-tools{top:60px}.ed .pv-stage{max-height:none}}
+/* Crop */
+.crop-box{position:absolute;border:2px solid var(--accent);box-shadow:0 0 0 9999px rgba(10,12,16,.5);pointer-events:none}
+.pv-wrap.cropping{overflow:hidden;touch-action:none;cursor:crosshair;user-select:none}
+
+/* Sign */
+.sigpad{display:block;width:100%;height:160px;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;cursor:crosshair}
+.sig-prev{display:grid;place-items:center;min-height:70px;border:1px dashed var(--line);border-radius:8px;background:#fff;margin:0 0 14px;padding:8px}
+.sig-prev img{max-height:60px;max-width:100%}
+.sig-prev span{color:#596070;font-size:.85rem}
+
+/* Coming soon page */
+.soon{max-width:680px;margin:0 auto 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+.soon h2{font-size:1.1rem;margin:22px 0 6px}
+.soon h2:first-of-type{margin-top:4px}
+.soon p,.soon li{color:var(--ink)}
+.soon ul{padding-left:1.2em;margin:0}
+.soon li{margin:4px 0}
+</style>
+</head>
+<body class="p-pdf">
+<header class="top">
+  <div class="top-in">
+    <a class="mark" href="../index.html"><span aria-hidden="true"></span>Daftarbox</a>
+    <a class="portal-name" href="index.html#/">PDF tools</a>
+    <nav class="nav" id="nav" aria-label="PDF tool categories">
+      <a href="#/" data-c="all">All tools</a>
+      <a href="#/c/organise" data-c="organise">Organise</a>
+      <a href="#/c/optimise" data-c="optimise">Optimise</a>
+      <a href="#/c/convert" data-c="convert">Convert</a>
+      <a href="#/c/edit" data-c="edit">Edit</a>
+      <a href="#/c/secure" data-c="secure">Sign &amp; secure</a>
+    </nav>
+  </div>
+</header>
+<main id="app" tabindex="-1">
+  <noscript><p class="warn" style="margin-top:30px">These tools need JavaScript. Please turn it on in your browser settings and reload the page.</p></noscript>
+</main>
+<footer class="site"><div>Daftarbox PDF tools are free and run in your browser. Your files are processed on your own device and are never uploaded. <a href="../index.html">All Daftarbox tools</a></div></footer>
+
+<script src="core.js?v=202610086"></script>
+<script src="ocr.js?v=202610086"></script>
+<script src="cstream.js?v=202610086"></script>
+<script src="layout.js?v=202610086"></script>
+<script src="fontface.js?v=202610086"></script>
+<script src="scan.js?v=202610086"></script>
+<script src="ui.js?v=202610086"></script>
+<script src="editors.js?v=202610086"></script>
+<script src="scanmatch.js?v=202610086"></script>
+<script src="editor.js?v=202610086"></script>
+<script src="tools.js?v=202610086"></script>
+</body>
+</html>
