@@ -183,7 +183,7 @@ footer a:hover{color:var(--accent)}
 
     <div class="form-group">
       <label>Remote ID (9-digit code)</label>
-      <input type="text" id="remote-id" placeholder="e.g. 452 388 663" maxlength="11" oninput="fmtID(this)">
+      <input type="text" id="remote-id" placeholder="e.g. 452388663 or 452 388 663" maxlength="12">
     </div>
     <div class="form-group">
       <label>One-time password</label>
@@ -289,13 +289,7 @@ let sessions = [];
 function initPeer() {
   const digits = String(Math.floor(100000000 + Math.random() * 900000000));
   const id = 'ct-' + digits;
-  peer = new Peer(id, {
-    host: '0.peerjs.com', port: 443, secure: true, path: '/',
-    config: { iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]}
-  });
+  peer = new Peer(id);
 
   peer.on('open', pid => {
     myID = pid.replace('ct-','').replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3');
@@ -448,10 +442,9 @@ function toggleFS() {
   else document.exitFullscreen();
 }
 
-// ── ID formatter ──
+// ── ID formatter — allow free typing, only strip on connect ──
 function fmtID(el) {
-  let v = el.value.replace(/\D/g,'').slice(0,9);
-  el.value = v.replace(/(\d{3})(\d{1,3})?(\d{1,3})?/,(_,a,b,c)=>c?`${a} ${b} ${c}`:b?`${a} ${b}`:a);
+  // no reformatting while typing — just let user type freely
 }
 
 // ── History ──
