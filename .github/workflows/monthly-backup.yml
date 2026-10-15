@@ -1,0 +1,21 @@
+name: Monthly Backup to backup-chamariagroup-portal
+
+on:
+  schedule:
+    - cron: '0 2 1 * *'   # 1st of every month at 2:00 AM UTC
+  workflow_dispatch:        # allow manual trigger from GitHub Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror repo to backup
+        run: |
+          git clone --mirror https://github.com/gosainravi/CHAMARIAGROUP.git mirror
+          cd mirror
+          git tag "backup-$(date +%Y-%m-%d)"
+          git push --prune \
+            "https://x-access-token:${{ secrets.BACKUP_TOKEN }}@github.com/gosainravi/backup-chamariagroup-portal.git" \
+            "refs/heads/*:refs/heads/*" \
+            "refs/tags/*:refs/tags/*"
+          echo "✅ Backup complete — $(date)"
