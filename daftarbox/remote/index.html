@@ -334,30 +334,37 @@ function initPeer() {
     try { peer.reconnect(); } catch(e) {}
   });
 
-  // Helper receives data connection from controller — verify OTP then call back with stream
+  // Helper receives data connection from controller — verify OTP, then controller calls us for video
   peer.on('connection', conn => {
-    conn.on('open', () => {
-      eventDC = conn; // reuse for receiving control events
-    });
+    conn.on('open', () => { eventDC = conn; });
     conn.on('data', data => {
       if (data.type === 'auth') {
         if (data.otp === myOTP) {
-          conn.send({ type: 'auth-ok' });
-          setTimeout(() => {
-            if (!localStream) { conn.send({ type: 'no-stream' }); return; }
-            const call = peer.call(conn.peer, localStream);
-            ctrlMediaCall = call;
-            call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
-          }, 400);
+          if (!localStream) {
+            conn.send({ type: 'no-stream' });
+          } else {
+            conn.send({ type: 'auth-ok' });
+          }
         } else {
           conn.send({ type: 'auth-fail' });
           conn.close();
         }
       } else {
-        // Control event — relay to local agent
         relayToAgent(data);
       }
     });
+  });
+
+  // Helper answers incoming media calls with screen stream
+  peer.on('call', call => {
+    if (localStream) {
+      call.answer(localStream);
+      ctrlMediaCall = call;
+      setHelperStatus('connected', 'Connected — sharing screen');
+      call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for connection'));
+    } else {
+      call.close();
+    }
   });
 }
 
@@ -403,14 +410,6 @@ async function startShare() {
     document.getElementById('share-btn').style.display = 'none';
     document.getElementById('stop-btn').style.display = '';
     localStream.getVideoTracks()[0].onended = stopShare;
-    // Register call handler — once only, re-registered each share session
-    peer.once('call', call => {
-      if (!localStream) return;
-      call.answer(localStream);
-      ctrlMediaCall = call;
-      setHelperStatus('connected', 'Connected — sharing screen');
-      call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
-    });
   } catch(e) {
     if (e.name !== 'NotAllowedError') alert('Screen capture failed: ' + e.message);
   }
@@ -442,7 +441,31 @@ function doConnect() {
   ctrlDC.on('open', () => ctrlDC.send({ type:'auth', otp }));
   ctrlDC.on('data', data => {
     if (data.type === 'auth-ok') {
-      setCtrlStatus('waiting', 'Authenticated — waiting for screen…');
+      setCtrlStatus('waiting', 'Authenticated — connecting video…');
+      // Controller calls helper directly for video stream
+      const mediaCall = peer.call(peerId, new MediaStream());
+      ctrlMediaCall = mediaCall;
+      mediaCall.on('stream', stream => {
+        const vid = document.getElementById('remote-video');
+        vid.srcObject = stream;
+        document.getElementById('video-wrap').classList.add('show');
+        document.getElementById('how-preview').classList.remove('show');
+        document.getElementById('ctrl-toggle').style.display = 'flex';
+        document.getElementById('ov-ctrl').style.display = '';
+        setCtrlStatus('connected', 'Connected — viewing screen');
+        document.getElementById('disconnect-btn').style.display = '';
+        document.getElementById('connect-btn').style.display = 'none';
+        attachControlListeners();
+        logSession(rawID);
+      });
+      mediaCall.on('error', e => { console.error('media call error', e); });
+      mediaCall.on('close', () => cleanupCtrl());
+      setTimeout(() => {
+        if (document.getElementById('ctrl-status-text').textContent === 'Authenticated — connecting video…') {
+          alert('Video connection timed out. Check both devices have the page open and screen is being shared.');
+          resetConnect();
+        }
+      }, 15000);
     } else if (data.type === 'no-stream') {
       alert('The other person hasn\'t clicked "Share my screen" yet.');
       resetConnect();
@@ -452,26 +475,6 @@ function doConnect() {
     }
   });
   ctrlDC.on('error', () => { alert('Cannot reach that ID. Make sure they have this page open.'); resetConnect(); });
-
-  // Step 2: wait for helper to call us with their screen
-  peer.once('call', call => {
-    call.answer();
-    call.on('stream', stream => {
-      const vid = document.getElementById('remote-video');
-      vid.srcObject = stream;
-      document.getElementById('video-wrap').classList.add('show');
-      document.getElementById('how-preview').classList.remove('show');
-      document.getElementById('ctrl-toggle').style.display = 'flex';
-      document.getElementById('ov-ctrl').style.display = '';
-      setCtrlStatus('connected', 'Connected — viewing screen');
-      document.getElementById('disconnect-btn').style.display = '';
-      document.getElementById('connect-btn').style.display = 'none';
-      ctrlMediaCall = call;
-      attachControlListeners();
-      logSession(rawID);
-    });
-    call.on('close', () => cleanupCtrl());
-  });
 }
 function resetConnect() {
   setCtrlStatus('idle','Not connected');
