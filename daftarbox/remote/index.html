@@ -286,17 +286,12 @@ let sessions = [];
 // ── PeerJS init ──
 function initPeer() {
   const digits = String(Math.floor(100000000 + Math.random() * 900000000));
-  // SS-Connect dedicated peer server (Render.com)
-  const PEER_HOST = 'ss-connect-peer.onrender.com';
   peer = new Peer('ct-' + digits, {
-    host: PEER_HOST,
-    port: 443,
-    path: '/peerjs',
-    secure: true,
     config: {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
       ]
     },
     debug: 0
@@ -394,10 +389,11 @@ async function startShare() {
     document.getElementById('share-btn').style.display = 'none';
     document.getElementById('stop-btn').style.display = '';
     localStream.getVideoTracks()[0].onended = stopShare;
-    // Register call handler now that we have a stream to share
-    peer.on('call', call => {
+    // Register call handler — once only, re-registered each share session
+    peer.once('call', call => {
       if (!localStream) return;
       call.answer(localStream);
+      ctrlMediaCall = call;
       setHelperStatus('connected', 'Connected — sharing screen');
       call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
     });
