@@ -286,7 +286,16 @@ let sessions = [];
 // ── PeerJS init ──
 function initPeer() {
   const digits = String(Math.floor(100000000 + Math.random() * 900000000));
-  peer = new Peer('ct-' + digits);
+  peer = new Peer('ct-' + digits, {
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+      ]
+    },
+    debug: 0
+  });
 
   peer.on('open', pid => {
     myID  = pid.replace('ct-','').replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3');
@@ -301,8 +310,14 @@ function initPeer() {
   });
 
   peer.on('error', e => {
-    document.getElementById('conn-indicator').textContent = '🔴 Peer network: error — refresh and try again';
-    console.error(e);
+    console.error('PeerJS error:', e.type, e);
+    if (e.type === 'unavailable-id' || e.type === 'network' || e.type === 'server-error') {
+      document.getElementById('conn-indicator').textContent = '🔴 Reconnecting…';
+      setHelperStatus('idle', 'Reconnecting…');
+      setTimeout(initPeer, 3000); // auto retry
+    } else {
+      document.getElementById('conn-indicator').textContent = '🔴 Error: ' + e.type;
+    }
   });
 
   // Helper receives data connection from controller — verify OTP then call back with stream
