@@ -311,13 +311,18 @@ function initPeer() {
 
   peer.on('error', e => {
     console.error('PeerJS error:', e.type, e);
-    if (e.type === 'unavailable-id' || e.type === 'network' || e.type === 'server-error') {
-      document.getElementById('conn-indicator').textContent = '🔴 Reconnecting…';
-      setHelperStatus('idle', 'Reconnecting…');
-      setTimeout(initPeer, 3000); // auto retry
-    } else {
-      document.getElementById('conn-indicator').textContent = '🔴 Error: ' + e.type;
+    document.getElementById('conn-indicator').textContent = '🔴 Error: ' + e.type;
+    if (e.type === 'unavailable-id') {
+      // ID collision — just retry with new ID
+      peer.destroy();
+      setTimeout(initPeer, 1000);
     }
+  });
+
+  peer.on('disconnected', () => {
+    document.getElementById('conn-indicator').textContent = '🟡 Reconnecting…';
+    // Try to reconnect to same server before giving up
+    try { peer.reconnect(); } catch(e) {}
   });
 
   // Helper receives data connection from controller — verify OTP then call back with stream
