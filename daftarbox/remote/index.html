@@ -307,20 +307,26 @@ function initPeer() {
     console.error(e);
   });
 
-  // Incoming connection (someone wants to view our screen)
+  // Controller calls us to receive our stream — answer with our screen
   peer.on('call', call => {
     if (!localStream) { call.close(); return; }
     call.answer(localStream);
-    setHelperStatus('connected', 'Helper connected — sharing');
-    call.on('close', () => setHelperStatus('idle', 'Session ended'));
+    setHelperStatus('connected', 'Connected — sharing screen');
+    call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
   });
 
+  // Incoming data connection: verify OTP, then CALL the controller with our stream
   peer.on('connection', conn => {
-    // Data channel: verify OTP
     conn.on('data', data => {
       if (data.type === 'auth') {
         if (data.otp === myOTP) {
           conn.send({ type: 'auth-ok' });
+          // Wait a moment then call the controller so they receive our stream
+          setTimeout(() => {
+            if (!localStream) { conn.send({ type: 'no-stream' }); return; }
+            const call = peer.call(conn.peer, localStream);
+            call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
+          }, 500);
         } else {
           conn.send({ type: 'auth-fail' });
           conn.close();
@@ -378,27 +384,18 @@ function doConnect() {
   setCtrlStatus('waiting', 'Connecting…');
   document.getElementById('connect-btn').disabled = true;
 
-  // Data channel for OTP auth
+  // Step 1: open data channel, send OTP for auth
   const dc = peer.connect(peerId);
   dc.on('open', () => dc.send({ type: 'auth', otp }));
   dc.on('data', data => {
     if (data.type === 'auth-ok') {
-      // Auth passed — make media call
-      const call = peer.call(peerId, new MediaStream()); // dummy stream
-      call.on('stream', stream => {
-        const vid = document.getElementById('remote-video');
-        vid.srcObject = stream;
-        document.getElementById('video-wrap').classList.add('show');
-        document.getElementById('how-preview').classList.remove('show');
-        setCtrlStatus('connected', 'Connected — viewing screen');
-        document.getElementById('disconnect-btn').style.display = '';
-        document.getElementById('connect-btn').style.display = 'none';
-        ctrlConn = call;
-        logSession(rawID);
-      });
-      call.on('close', () => cleanupCtrl());
-    } else {
-      alert('Wrong password. Ask the other person to check their one-time password.');
+      setCtrlStatus('waiting', 'Authenticated — waiting for screen stream…');
+    } else if (data.type === 'no-stream') {
+      alert('The other person has not clicked "Share my screen" yet. Ask them to click it first.');
+      setCtrlStatus('idle', 'Not connected');
+      document.getElementById('connect-btn').disabled = false;
+    } else if (data.type === 'auth-fail') {
+      alert('Wrong password. Check the one-time password shown on their screen.');
       setCtrlStatus('idle', 'Not connected');
       document.getElementById('connect-btn').disabled = false;
     }
@@ -407,6 +404,23 @@ function doConnect() {
     alert('Could not reach that ID. Make sure the other person has this page open.');
     setCtrlStatus('idle', 'Not connected');
     document.getElementById('connect-btn').disabled = false;
+  });
+
+  // Step 2: helper will call us back with their screen stream — receive it here
+  peer.on('call', call => {
+    call.answer(); // no stream from controller side — we're just receiving
+    call.on('stream', stream => {
+      const vid = document.getElementById('remote-video');
+      vid.srcObject = stream;
+      document.getElementById('video-wrap').classList.add('show');
+      document.getElementById('how-preview').classList.remove('show');
+      setCtrlStatus('connected', 'Connected — viewing screen');
+      document.getElementById('disconnect-btn').style.display = '';
+      document.getElementById('connect-btn').style.display = 'none';
+      ctrlConn = call;
+      logSession(rawID);
+    });
+    call.on('close', () => cleanupCtrl());
   });
 }
 function doDisconnect() {
