@@ -60,27 +60,23 @@ def build_ui(stop_event):
     except Exception:
         pass
 
-    pad = {"padx": 24, "pady": 0}
-
     tk.Label(root, text="SS-Connect", bg="#0f1117", fg="#4f6ef7",
              font=("Segoe UI", 18, "bold")).pack(pady=(24,2))
     tk.Label(root, text="Remote Control Agent  v1.0", bg="#0f1117", fg="#6b7280",
              font=("Segoe UI", 11)).pack()
 
-    sep = tk.Frame(root, bg="#2d3148", height=1)
-    sep.pack(fill="x", padx=24, pady=16)
+    tk.Frame(root, bg="#2d3148", height=1).pack(fill="x", padx=24, pady=16)
 
     global ui_status_var, ui_conn_var
     ui_status_var = tk.StringVar(value="⏳  Starting…")
     ui_conn_var   = tk.StringVar(value="No controller connected")
 
     tk.Label(root, textvariable=ui_status_var, bg="#0f1117", fg="#e8eaf6",
-             font=("Segoe UI", 12, "bold")).pack(**pad)
+             font=("Segoe UI", 12, "bold")).pack(padx=24)
     tk.Label(root, textvariable=ui_conn_var, bg="#0f1117", fg="#6b7280",
-             font=("Segoe UI", 10)).pack(pady=(4,0), **pad)
+             font=("Segoe UI", 10)).pack(padx=24, pady=(4,0))
 
-    sep2 = tk.Frame(root, bg="#2d3148", height=1)
-    sep2.pack(fill="x", padx=24, pady=16)
+    tk.Frame(root, bg="#2d3148", height=1).pack(fill="x", padx=24, pady=16)
 
     def on_stop():
         stop_event.set()
