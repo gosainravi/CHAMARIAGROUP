@@ -305,14 +305,6 @@ function initPeer() {
     console.error(e);
   });
 
-  // Helper receives incoming media call from controller — answer with our screen
-  peer.on('call', call => {
-    if (!localStream) { call.close(); return; }
-    call.answer(localStream);
-    setHelperStatus('connected', 'Connected — sharing screen');
-    call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
-  });
-
   // Helper receives data connection from controller — verify OTP then call back with stream
   peer.on('connection', conn => {
     conn.on('open', () => {
@@ -382,6 +374,13 @@ async function startShare() {
     document.getElementById('share-btn').style.display = 'none';
     document.getElementById('stop-btn').style.display = '';
     localStream.getVideoTracks()[0].onended = stopShare;
+    // Register call handler now that we have a stream to share
+    peer.on('call', call => {
+      if (!localStream) return;
+      call.answer(localStream);
+      setHelperStatus('connected', 'Connected — sharing screen');
+      call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
+    });
   } catch(e) {
     if (e.name !== 'NotAllowedError') alert('Screen capture failed: ' + e.message);
   }
@@ -425,8 +424,8 @@ function doConnect() {
   ctrlDC.on('error', () => { alert('Cannot reach that ID. Make sure they have this page open.'); resetConnect(); });
 
   // Step 2: wait for helper to call us with their screen
-  peer.on('call', call => {
-    call.answer();
+  peer.once('call', call => {
+    call.answer(new MediaStream());
     call.on('stream', stream => {
       const vid = document.getElementById('remote-video');
       vid.srcObject = stream;
