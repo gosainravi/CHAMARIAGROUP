@@ -15,7 +15,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
 
-/* ── NAV ── */
 nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0;padding:0 24px;height:56px;position:sticky;top:0;z-index:100}
 .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--text);text-decoration:none;margin-right:32px}
 .brand-dot{width:14px;height:14px;background:var(--accent);border-radius:3px}
@@ -25,27 +24,21 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex
 .nav-tab.active{color:#fff;background:var(--accent)}
 .badge{background:var(--red);color:#fff;font-size:10px;padding:1px 5px;border-radius:99px;margin-left:4px}
 
-/* ── LAYOUT ── */
 .page{display:none;flex:1;padding:32px 24px;max-width:1200px;margin:0 auto;width:100%}
 .page.active{display:flex;gap:24px}
-
-/* ── PANELS ── */
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;flex:1}
 .panel-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:20px}
 
-/* ── YOUR ID CARD ── */
 .id-card{background:var(--surface2);border-radius:10px;padding:20px;margin-bottom:16px}
 .id-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
 .id-value{font-size:32px;font-weight:700;letter-spacing:.12em;color:var(--text);font-family:'Courier New',monospace}
 .id-value.loading{color:var(--muted);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
-.otp-row{display:flex;align-items:center;gap:12px;margin-top:4px}
 .otp-value{font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:var(--amber);letter-spacing:.1em}
-.otp-meta{font-size:11px;color:var(--muted)}
-.refresh-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .15s}
+.otp-meta{font-size:11px;color:var(--muted);margin-top:6px}
+.refresh-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer}
 .refresh-btn:hover{color:var(--text);border-color:var(--accent)}
 
-/* ── STATUS CHIP ── */
 .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:99px;font-weight:500;margin-bottom:16px}
 .status.idle{background:#1f2937;color:var(--muted)}
 .status.waiting{background:#1c2a1c;color:var(--green)}
@@ -54,7 +47,6 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex
 .status.waiting .status-dot{animation:blink 1s step-end infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-/* ── SHARE BTN ── */
 .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;width:100%;justify-content:center}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-primary:hover{background:#3d5be0}
@@ -63,16 +55,26 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex
 .btn-danger:hover{background:#dc2626}
 .btn-outline{background:none;border:1px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-green{background:var(--green);color:#000}
+.btn-green:hover{background:#16a34a;color:#fff}
 .btn+.btn{margin-top:10px}
 
-/* ── CONNECT FORM ── */
 .form-group{margin-bottom:16px}
 label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
 input[type=text],input[type=password]{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:11px 14px;font-size:15px;font-family:'Courier New',monospace;letter-spacing:.06em;outline:none;transition:border .15s}
 input:focus{border-color:var(--accent)}
 input::placeholder{color:var(--muted);font-family:'Segoe UI',sans-serif;letter-spacing:0;font-size:13px}
 
-/* ── CONNECT CARD (permission preview) ── */
+/* control mode toggle */
+.ctrl-toggle{display:flex;gap:8px;margin-bottom:16px}
+.ctrl-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:13px;cursor:pointer;transition:all .15s}
+.ctrl-btn.active{border-color:var(--accent);background:#1a2040;color:var(--text)}
+
+/* agent status bar */
+.agent-bar{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px}
+.agent-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
+.agent-dot.on{background:var(--green)}
+
 .connect-preview{background:var(--surface2);border-radius:10px;padding:16px;margin-top:16px;display:none}
 .connect-preview.show{display:block}
 .preview-title{font-weight:600;margin-bottom:8px;font-size:14px}
@@ -81,33 +83,23 @@ input::placeholder{color:var(--muted);font-family:'Segoe UI',sans-serif;letter-s
 .connected-bar{background:#ef444430;border:1px solid var(--red);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin:10px 0;font-size:13px}
 .end-btn{background:var(--red);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer}
 
-/* ── VIDEO AREA ── */
-.video-wrap{display:none;margin-top:16px;background:#000;border-radius:10px;overflow:hidden;position:relative;aspect-ratio:16/9}
+/* video */
+.video-wrap{display:none;margin-top:16px;background:#000;border-radius:10px;overflow:hidden;position:relative}
 .video-wrap.show{display:block}
-.video-wrap video{width:100%;height:100%;object-fit:contain}
+.video-wrap video{width:100%;height:100%;display:block;object-fit:contain}
+.video-wrap.ctrl-active video{cursor:none}
 .video-overlay{position:absolute;top:8px;right:8px;display:flex;gap:6px}
 .ov-btn{background:#000a;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer}
+.ctrl-cursor{position:absolute;width:18px;height:18px;border:2px solid var(--red);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);display:none}
+.video-wrap.ctrl-active .ctrl-cursor{display:block}
 
-/* ── HELP TEXT ── */
 .help-box{background:#1c2030;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;color:var(--muted);margin-top:16px;line-height:1.6}
 .help-box b{color:var(--text)}
 
-/* ── NOTICE ── */
-.notice{background:#2d1f00;border:1px solid var(--amber);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--amber);margin-bottom:16px}
-
-/* ── HISTORY PAGE ── */
-.hist-row{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px}
-.hist-row:last-child{border:none}
-.hist-id{font-family:'Courier New',monospace;color:var(--accent);min-width:100px}
-.hist-time{color:var(--muted);margin-left:auto}
-.hist-dur{color:var(--muted);font-size:11px}
-
-/* ── STAY SAFE PAGE ── */
 .safe-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
 .safe-card h3{font-size:15px;margin-bottom:8px;color:var(--green)}
 .safe-card p{font-size:13px;color:var(--muted);line-height:1.6}
 
-/* ── FOOTER ── */
 footer{background:var(--surface);border-top:1px solid var(--border);padding:14px 24px;font-size:12px;color:var(--muted);display:flex;gap:16px;align-items:center}
 footer a{color:var(--muted);text-decoration:none}
 footer a:hover{color:var(--accent)}
@@ -121,23 +113,22 @@ footer a:hover{color:var(--accent)}
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
   <a class="brand" href="../index.html">
     <span class="brand-dot"></span>Core Tools
   </a>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showTab('connect')">Connect</button>
-    <button class="nav-tab" onclick="showTab('preview')">Screen preview</button>
-    <button class="nav-tab" onclick="showTab('history')">History <span class="badge" id="hist-count">0</span></button>
-    <button class="nav-tab" onclick="showTab('safe')">Stay safe</button>
+    <button class="nav-tab active" onclick="showTab('connect',this)">Connect</button>
+    <button class="nav-tab" onclick="showTab('preview',this)">Screen preview</button>
+    <button class="nav-tab" onclick="showTab('history',this)">History <span class="badge" id="hist-count">0</span></button>
+    <button class="nav-tab" onclick="showTab('safe',this)">Stay safe</button>
   </div>
 </nav>
 
-<!-- ══ CONNECT PAGE ══ -->
+<!-- ══ CONNECT ══ -->
 <div class="page active" id="page-connect">
 
-  <!-- LEFT: Get help (helper mode) -->
+  <!-- LEFT: helper side -->
   <div class="panel" style="max-width:340px;flex:none">
     <div class="panel-title">Get help — share your screen</div>
 
@@ -150,12 +141,16 @@ footer a:hover{color:var(--accent)}
       <div class="id-value loading" id="my-id">— — —</div>
     </div>
 
-    <div class="id-card" style="margin-top:0">
+    <div class="id-card">
       <div class="id-label">One-time password <button class="refresh-btn" onclick="refreshOTP()">↺ New</button></div>
-      <div class="otp-row">
-        <div class="otp-value" id="my-otp">——————</div>
-      </div>
-      <div class="otp-meta" style="margin-top:6px">Read both codes to your helper. They expire when the session ends.</div>
+      <div class="otp-value" id="my-otp">——————</div>
+      <div class="otp-meta">Read both codes to your helper. They expire when the session ends.</div>
+    </div>
+
+    <!-- Agent status (for keyboard/mouse control) -->
+    <div class="agent-bar" id="agent-bar">
+      <span class="agent-dot" id="agent-dot"></span>
+      <span id="agent-text">Remote agent: not running</span>
     </div>
 
     <button class="btn btn-primary" id="share-btn" onclick="startShare()" disabled>
@@ -165,15 +160,34 @@ footer a:hover{color:var(--accent)}
       ⏹ Stop sharing
     </button>
 
+    <!-- SS-Connect download -->
+    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-top:12px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">
+        SS-Connect — for keyboard &amp; mouse control
+      </div>
+      <a class="btn btn-green" href="https://github.com/gosainravi/CHAMARIAGROUP/releases/latest/download/SS-Connect.exe"
+         style="text-decoration:none;margin-bottom:0" download>
+        ⬇ Download for Windows (.exe)
+      </a>
+      <a class="btn btn-outline" href="https://github.com/gosainravi/CHAMARIAGROUP/releases/latest/download/SS-Connect.dmg"
+         style="text-decoration:none;margin-top:8px" download>
+        ⬇ Download for Mac (.dmg)
+      </a>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px">
+        No Python needed · Double-click to run · Close window to stop
+      </div>
+    </div>
+
     <div class="help-box">
-      <b>How it works</b><br>
-      1. Read your <b>ID</b> and <b>password</b> to your helper.<br>
-      2. Click <b>Share my screen</b> — your browser will ask permission.<br>
-      3. Your helper sees your screen. You can end at any time.
+      <b>Steps for full control:</b><br>
+      1. Download &amp; run <b>SS-Connect</b> above.<br>
+      2. It shows a green status window — keep it open.<br>
+      3. Click <b>Share my screen</b> below.<br>
+      4. Your helper gets keyboard &amp; mouse control.
     </div>
   </div>
 
-  <!-- RIGHT: Connect (controller mode) -->
+  <!-- RIGHT: controller side -->
   <div class="panel">
     <div class="panel-title">Connect to a remote computer</div>
 
@@ -190,109 +204,92 @@ footer a:hover{color:var(--accent)}
       <input type="password" id="remote-otp" placeholder="Password from the other person" maxlength="20">
     </div>
 
-    <button class="btn btn-primary" id="connect-btn" onclick="doConnect()">
-      🔗 Connect
-    </button>
-    <button class="btn btn-danger" id="disconnect-btn" onclick="doDisconnect()" style="display:none">
-      ✖ End session
-    </button>
+    <button class="btn btn-primary" id="connect-btn" onclick="doConnect()">🔗 Connect</button>
+    <button class="btn btn-danger" id="disconnect-btn" onclick="doDisconnect()" style="display:none">✖ End session</button>
 
-    <!-- Video area -->
+    <!-- Control mode toggle (shown when connected) -->
+    <div class="ctrl-toggle" id="ctrl-toggle" style="display:none;margin-top:12px">
+      <button class="ctrl-btn active" id="btn-view" onclick="setMode('view')">👁 View only</button>
+      <button class="ctrl-btn" id="btn-ctrl" onclick="setMode('control')">🖱 Full control</button>
+    </div>
+
+    <!-- Video -->
     <div class="video-wrap" id="video-wrap">
-      <video id="remote-video" autoplay playsinline></video>
+      <video id="remote-video" autoplay playsinline tabindex="0"></video>
+      <div class="ctrl-cursor" id="ctrl-cursor"></div>
       <div class="video-overlay">
-        <button class="ov-btn" onclick="toggleFS()">⛶ Fullscreen</button>
+        <button class="ov-btn" id="ov-ctrl" onclick="setMode('control')" style="display:none">🖱 Control</button>
+        <button class="ov-btn" onclick="toggleFS()">⛶ Full screen</button>
         <button class="ov-btn" onclick="doDisconnect()">✖ End</button>
       </div>
     </div>
 
-    <!-- Connection how-to -->
     <div class="connect-preview show" id="how-preview">
       <div class="preview-title">When it connects, this is what happens:</div>
-      <div class="preview-step"><span>1.</span><span>The other person sees a request with your name. Nothing happens until they click <b>Share my screen</b>.</span></div>
-      <div class="preview-step"><span>2.</span><span>While connected, they see a red bar on their screen:</span></div>
-      <div class="connected-bar">
-        🖥 Your helper is connected
-        <button class="end-btn">End</button>
-      </div>
-      <div class="preview-step"><span>3.</span><span>They can press <b>End</b> or close the tab at any time — the session stops at once.</span></div>
+      <div class="preview-step"><span>1.</span><span>The other person shares their screen — you see it live here.</span></div>
+      <div class="preview-step"><span>2.</span><span>If they run the Control Agent, you get full mouse &amp; keyboard control.</span></div>
+      <div class="preview-step"><span>3.</span><span>While connected, they see a red bar — they can end any time:</span></div>
+      <div class="connected-bar">🖥 Your helper is connected <button class="end-btn">End</button></div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN PREVIEW PAGE ══ -->
+<!-- ══ SCREEN PREVIEW ══ -->
 <div class="page" id="page-preview" style="flex-direction:column">
   <div class="panel">
     <div class="panel-title">Your screen preview</div>
     <p style="color:var(--muted);font-size:13px;margin-bottom:16px">See exactly what your helper will see before sharing.</p>
     <button class="btn btn-outline" style="max-width:200px" onclick="startPreview()">▶ Start preview</button>
-    <div class="video-wrap" id="preview-wrap" style="margin-top:16px;max-width:900px">
+    <div class="video-wrap" id="preview-wrap" style="margin-top:16px">
       <video id="preview-video" autoplay muted playsinline></video>
     </div>
   </div>
 </div>
 
-<!-- ══ HISTORY PAGE ══ -->
+<!-- ══ HISTORY ══ -->
 <div class="page" id="page-history" style="flex-direction:column">
   <div class="panel">
     <div class="panel-title">Session history</div>
-    <div id="hist-list">
-      <p style="color:var(--muted);font-size:13px">No sessions yet this session. History is stored locally and cleared when you close the tab.</p>
-    </div>
+    <div id="hist-list"><p style="color:var(--muted);font-size:13px">No sessions yet.</p></div>
   </div>
 </div>
 
-<!-- ══ STAY SAFE PAGE ══ -->
+<!-- ══ STAY SAFE ══ -->
 <div class="page" id="page-safe" style="flex-direction:column">
   <div class="panel" style="max-width:700px">
     <div class="panel-title">Stay safe</div>
-
-    <div class="safe-card">
-      <h3>✅ Only share with people you trust</h3>
-      <p>When you share your screen, the other person can see everything on it — documents, passwords, personal files. Only connect with colleagues or IT support you know personally.</p>
-    </div>
-    <div class="safe-card">
-      <h3>✅ You are always in control</h3>
-      <p>This tool is <b>view-only</b> — the helper can see your screen but cannot move your mouse or press keys. Click <b>Stop sharing</b> or close the tab to end instantly.</p>
-    </div>
-    <div class="safe-card">
-      <h3>✅ Codes expire each session</h3>
-      <p>Your ID and one-time password change every time you open or refresh this page. Old codes cannot be reused.</p>
-    </div>
-    <div class="safe-card">
-      <h3>⚠ We will never ask for your password</h3>
-      <p>Chamaria Group IT staff will never ask for your Windows password, email password, or bank details via remote access.</p>
-    </div>
-    <div class="safe-card">
-      <h3>⚠ No recording without consent</h3>
-      <p>Sessions are peer-to-peer (direct device to device). No video is stored on any server. Only the two connected devices can see the stream.</p>
-    </div>
+    <div class="safe-card"><h3>✅ Only share with people you trust</h3><p>When you share your screen, the other person can see everything. Only connect with colleagues or IT support you know personally.</p></div>
+    <div class="safe-card"><h3>✅ You are always in control</h3><p>Click <b>Stop sharing</b> or close the tab at any time — the session ends instantly. The Control Agent also stops when you close its window.</p></div>
+    <div class="safe-card"><h3>✅ Codes expire each session</h3><p>Your ID and one-time password change every time you open or refresh this page. Old codes cannot be reused.</p></div>
+    <div class="safe-card"><h3>⚠ We will never ask for your Windows password</h3><p>Chamaria Group IT staff will never ask for your Windows, email, or bank password via remote access.</p></div>
+    <div class="safe-card"><h3>⚠ Peer-to-peer — nothing stored on servers</h3><p>Video and control events go directly between the two devices. Nothing is recorded or stored.</p></div>
   </div>
 </div>
 
 <footer>
   <span>© 2026 Core Tools · Chamaria Group IT</span>
   <a href="../index.html">← All tools</a>
-  <a href="#" onclick="showTab('safe');return false">Stay safe</a>
+  <a href="#" onclick="showTab('safe',event.target);return false">Stay safe</a>
   <span style="margin-left:auto;font-size:11px" id="conn-indicator">⚫ Peer network: connecting…</span>
 </footer>
 
 <script>
 // ── State ──
 let peer, myID, myOTP;
-let helperConn = null;   // data conn when being helped
-let ctrlConn   = null;   // data conn when controlling
 let localStream = null;
+let eventDC     = null;   // data channel for sending events (controller → helper)
+let agentWS     = null;   // WebSocket to local Python agent (helper side)
+let ctrlMediaCall = null;
+let controlMode = 'view';
 let sessions = [];
 
 // ── PeerJS init ──
 function initPeer() {
   const digits = String(Math.floor(100000000 + Math.random() * 900000000));
-  const id = 'ct-' + digits;
-  peer = new Peer(id);
+  peer = new Peer('ct-' + digits);
 
   peer.on('open', pid => {
-    myID = pid.replace('ct-','').replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3');
+    myID  = pid.replace('ct-','').replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3');
     myOTP = genOTP();
     document.getElementById('my-id').textContent = myID;
     document.getElementById('my-id').classList.remove('loading');
@@ -300,14 +297,15 @@ function initPeer() {
     document.getElementById('share-btn').disabled = false;
     setHelperStatus('idle', 'Ready — waiting for connection');
     document.getElementById('conn-indicator').textContent = '🟢 Peer network: connected';
+    connectAgent(); // try to connect to local agent
   });
 
   peer.on('error', e => {
-    document.getElementById('conn-indicator').textContent = '🔴 Peer network: error';
+    document.getElementById('conn-indicator').textContent = '🔴 Peer network: error — refresh and try again';
     console.error(e);
   });
 
-  // Controller calls us to receive our stream — answer with our screen
+  // Helper receives incoming media call from controller — answer with our screen
   peer.on('call', call => {
     if (!localStream) { call.close(); return; }
     call.answer(localStream);
@@ -315,22 +313,28 @@ function initPeer() {
     call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
   });
 
-  // Incoming data connection: verify OTP, then CALL the controller with our stream
+  // Helper receives data connection from controller — verify OTP then call back with stream
   peer.on('connection', conn => {
+    conn.on('open', () => {
+      eventDC = conn; // reuse for receiving control events
+    });
     conn.on('data', data => {
       if (data.type === 'auth') {
         if (data.otp === myOTP) {
           conn.send({ type: 'auth-ok' });
-          // Wait a moment then call the controller so they receive our stream
           setTimeout(() => {
             if (!localStream) { conn.send({ type: 'no-stream' }); return; }
             const call = peer.call(conn.peer, localStream);
+            ctrlMediaCall = call;
             call.on('close', () => setHelperStatus('waiting', 'Sharing — waiting for helper to connect'));
-          }, 500);
+          }, 400);
         } else {
           conn.send({ type: 'auth-fail' });
           conn.close();
         }
+      } else {
+        // Control event — relay to local agent
+        relayToAgent(data);
       }
     });
   });
@@ -338,9 +342,9 @@ function initPeer() {
 
 // ── OTP ──
 function genOTP() {
-  const chars = 'abcdefhjkmnpqrstuvwxy23456789';
+  const c = 'abcdefhjkmnpqrstuvwxy23456789';
   let s = '';
-  for (let i=0;i<8;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  for (let i=0;i<8;i++) s += c[Math.floor(Math.random()*c.length)];
   return s.slice(0,4)+'-'+s.slice(4);
 }
 function refreshOTP() {
@@ -348,17 +352,38 @@ function refreshOTP() {
   document.getElementById('my-otp').textContent = myOTP;
 }
 
+// ── Agent WebSocket (helper side) ──
+function connectAgent() {
+  try {
+    const ws = new WebSocket('ws://localhost:9001');
+    ws.onopen = () => {
+      agentWS = ws;
+      document.getElementById('agent-dot').classList.add('on');
+      document.getElementById('agent-text').textContent = 'Remote agent: connected ✓ — full control enabled';
+    };
+    ws.onclose = () => {
+      agentWS = null;
+      document.getElementById('agent-dot').classList.remove('on');
+      document.getElementById('agent-text').textContent = 'Remote agent: not running (view-only)';
+      setTimeout(connectAgent, 4000); // retry every 4s
+    };
+    ws.onerror = () => {};
+  } catch(e) {}
+}
+function relayToAgent(ev) {
+  if (agentWS && agentWS.readyState === 1) agentWS.send(JSON.stringify(ev));
+}
+
 // ── Helper: share screen ──
 async function startShare() {
   try {
-    localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    localStream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:true });
     setHelperStatus('waiting', 'Sharing — waiting for helper to connect');
     document.getElementById('share-btn').style.display = 'none';
     document.getElementById('stop-btn').style.display = '';
     localStream.getVideoTracks()[0].onended = stopShare;
   } catch(e) {
-    if (e.name !== 'NotAllowedError')
-      alert('Could not capture screen: ' + e.message);
+    if (e.name !== 'NotAllowedError') alert('Screen capture failed: ' + e.message);
   }
 }
 function stopShare() {
@@ -368,82 +393,162 @@ function stopShare() {
   setHelperStatus('idle', 'Ready — waiting for connection');
 }
 function setHelperStatus(cls, text) {
-  const el = document.getElementById('helper-status');
-  el.className = 'status ' + cls;
+  document.getElementById('helper-status').className = 'status ' + cls;
   document.getElementById('helper-status-text').textContent = text;
 }
 
 // ── Controller: connect ──
+let ctrlDC = null;
 function doConnect() {
-  const rawID  = document.getElementById('remote-id').value.replace(/\s/g,'');
-  const otp    = document.getElementById('remote-otp').value.trim();
+  const rawID = document.getElementById('remote-id').value.replace(/\s/g,'');
+  const otp   = document.getElementById('remote-otp').value.trim();
   if (rawID.length < 9) { alert('Enter the full 9-digit remote ID.'); return; }
   if (!otp) { alert('Enter the one-time password.'); return; }
-
   const peerId = 'ct-' + rawID;
   setCtrlStatus('waiting', 'Connecting…');
   document.getElementById('connect-btn').disabled = true;
 
-  // Step 1: open data channel, send OTP for auth
-  const dc = peer.connect(peerId);
-  dc.on('open', () => dc.send({ type: 'auth', otp }));
-  dc.on('data', data => {
+  // Step 1: data channel for auth + control events
+  ctrlDC = peer.connect(peerId);
+  ctrlDC.on('open', () => ctrlDC.send({ type:'auth', otp }));
+  ctrlDC.on('data', data => {
     if (data.type === 'auth-ok') {
-      setCtrlStatus('waiting', 'Authenticated — waiting for screen stream…');
+      setCtrlStatus('waiting', 'Authenticated — waiting for screen…');
     } else if (data.type === 'no-stream') {
-      alert('The other person has not clicked "Share my screen" yet. Ask them to click it first.');
-      setCtrlStatus('idle', 'Not connected');
-      document.getElementById('connect-btn').disabled = false;
+      alert('The other person hasn\'t clicked "Share my screen" yet.');
+      resetConnect();
     } else if (data.type === 'auth-fail') {
-      alert('Wrong password. Check the one-time password shown on their screen.');
-      setCtrlStatus('idle', 'Not connected');
-      document.getElementById('connect-btn').disabled = false;
+      alert('Wrong password.');
+      resetConnect();
     }
   });
-  dc.on('error', () => {
-    alert('Could not reach that ID. Make sure the other person has this page open.');
-    setCtrlStatus('idle', 'Not connected');
-    document.getElementById('connect-btn').disabled = false;
-  });
+  ctrlDC.on('error', () => { alert('Cannot reach that ID. Make sure they have this page open.'); resetConnect(); });
 
-  // Step 2: helper will call us back with their screen stream — receive it here
+  // Step 2: wait for helper to call us with their screen
   peer.on('call', call => {
-    call.answer(); // no stream from controller side — we're just receiving
+    call.answer();
     call.on('stream', stream => {
       const vid = document.getElementById('remote-video');
       vid.srcObject = stream;
       document.getElementById('video-wrap').classList.add('show');
       document.getElementById('how-preview').classList.remove('show');
+      document.getElementById('ctrl-toggle').style.display = 'flex';
+      document.getElementById('ov-ctrl').style.display = '';
       setCtrlStatus('connected', 'Connected — viewing screen');
       document.getElementById('disconnect-btn').style.display = '';
       document.getElementById('connect-btn').style.display = 'none';
-      ctrlConn = call;
+      ctrlMediaCall = call;
+      attachControlListeners();
       logSession(rawID);
     });
     call.on('close', () => cleanupCtrl());
   });
 }
+function resetConnect() {
+  setCtrlStatus('idle','Not connected');
+  document.getElementById('connect-btn').disabled = false;
+}
 function doDisconnect() {
-  if (ctrlConn) { ctrlConn.close(); ctrlConn = null; }
+  if (ctrlMediaCall) { ctrlMediaCall.close(); ctrlMediaCall = null; }
+  if (ctrlDC) { ctrlDC.close(); ctrlDC = null; }
   cleanupCtrl();
 }
 function cleanupCtrl() {
   document.getElementById('video-wrap').classList.remove('show');
   document.getElementById('how-preview').classList.add('show');
+  document.getElementById('ctrl-toggle').style.display = 'none';
+  document.getElementById('ov-ctrl').style.display = 'none';
   document.getElementById('disconnect-btn').style.display = 'none';
   document.getElementById('connect-btn').style.display = '';
   document.getElementById('connect-btn').disabled = false;
-  setCtrlStatus('idle', 'Not connected');
+  setCtrlStatus('idle','Not connected');
+  setMode('view');
 }
 function setCtrlStatus(cls, text) {
   document.getElementById('ctrl-status').className = 'status ' + cls;
   document.getElementById('ctrl-status-text').textContent = text;
 }
 
+// ── Mode toggle ──
+function setMode(m) {
+  controlMode = m;
+  document.getElementById('btn-view').classList.toggle('active', m==='view');
+  document.getElementById('btn-ctrl').classList.toggle('active', m==='control');
+  document.getElementById('video-wrap').classList.toggle('ctrl-active', m==='control');
+  const vid = document.getElementById('remote-video');
+  if (m === 'control') { vid.focus(); }
+}
+
+// ── Control event capture (controller side) ──
+function attachControlListeners() {
+  const vid  = document.getElementById('remote-video');
+  const wrap = document.getElementById('video-wrap');
+  const cur  = document.getElementById('ctrl-cursor');
+
+  function normXY(e) {
+    const r = vid.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  }
+  function send(ev) {
+    if (controlMode !== 'control' || !ctrlDC || ctrlDC.open === false) return;
+    ctrlDC.send(ev);
+  }
+
+  vid.addEventListener('mousemove', e => {
+    e.preventDefault();
+    const {x,y} = normXY(e);
+    cur.style.left = (x*100)+'%';
+    cur.style.top  = (y*100)+'%';
+    send({ type:'move', x, y });
+  });
+  vid.addEventListener('mousedown', e => {
+    e.preventDefault(); vid.focus();
+    const {x,y} = normXY(e);
+    const btn = ['left','middle','right'][e.button]||'left';
+    send({ type:'mousedown', x, y, btn });
+  });
+  vid.addEventListener('mouseup', e => {
+    e.preventDefault();
+    const {x,y} = normXY(e);
+    const btn = ['left','middle','right'][e.button]||'left';
+    send({ type:'mouseup', x, y, btn });
+  });
+  vid.addEventListener('click', e => {
+    e.preventDefault();
+    const {x,y} = normXY(e);
+    send({ type:'click', x, y, btn:'left' });
+  });
+  vid.addEventListener('dblclick', e => {
+    e.preventDefault();
+    const {x,y} = normXY(e);
+    send({ type:'dblclick', x, y });
+  });
+  vid.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const {x,y} = normXY(e);
+    send({ type:'click', x, y, btn:'right' });
+  });
+  vid.addEventListener('wheel', e => {
+    e.preventDefault();
+    const {x,y} = normXY(e);
+    send({ type:'scroll', x, y, dy: Math.round(-e.deltaY/40) });
+  }, { passive:false });
+
+  const SKIP = new Set(['F5','F11','F12','Tab']);
+  vid.addEventListener('keydown', e => {
+    if (!SKIP.has(e.key)) e.preventDefault();
+    send({ type:'keydown', key:e.key });
+  });
+  vid.addEventListener('keyup', e => {
+    if (!SKIP.has(e.key)) e.preventDefault();
+    send({ type:'keyup', key:e.key });
+  });
+}
+
 // ── Screen preview ──
 async function startPreview() {
   try {
-    const s = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const s = await navigator.mediaDevices.getDisplayMedia({ video:true });
     document.getElementById('preview-video').srcObject = s;
     document.getElementById('preview-wrap').classList.add('show');
   } catch(e) {}
@@ -456,35 +561,23 @@ function toggleFS() {
   else document.exitFullscreen();
 }
 
-// ── ID formatter — allow free typing, only strip on connect ──
-function fmtID(el) {
-  // no reformatting while typing — just let user type freely
-}
-
 // ── History ──
 function logSession(id) {
-  const now = new Date();
-  sessions.push({ id, time: now.toLocaleTimeString(), date: now.toLocaleDateString() });
-  renderHistory();
-}
-function renderHistory() {
+  sessions.push({ id, time: new Date().toLocaleString() });
   document.getElementById('hist-count').textContent = sessions.length;
-  const list = document.getElementById('hist-list');
-  if (!sessions.length) return;
-  list.innerHTML = sessions.map(s=>`
-    <div class="hist-row">
-      <span class="hist-id">${s.id.replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3')}</span>
-      <span>View-only session</span>
-      <span class="hist-time">${s.date} ${s.time}</span>
+  document.getElementById('hist-list').innerHTML = sessions.map(s=>`
+    <div style="display:flex;gap:16px;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span style="font-family:'Courier New';color:var(--accent)">${s.id.replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3')}</span>
+      <span style="color:var(--muted);margin-left:auto">${s.time}</span>
     </div>`).join('');
 }
 
 // ── Tabs ──
-function showTab(name) {
+function showTab(name, el) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
-  event.target.classList.add('active');
+  if (el && el.classList) el.classList.add('active');
 }
 
 // ── Boot ──
