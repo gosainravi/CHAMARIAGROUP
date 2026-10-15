@@ -612,8 +612,16 @@ function showTab(name, el) {
   if (el && el.classList) el.classList.add('active');
 }
 
-// ── Boot ──
-initPeer();
+// ── Boot: wake Render server first, then init peer ──
+(async () => {
+  setHelperStatus('idle', 'Connecting to server…');
+  document.getElementById('conn-indicator').textContent = '⏳ Server: waking up…';
+  try {
+    await fetch('https://chamariagroup.onrender.com/health', { mode: 'cors' });
+  } catch(e) { /* CORS might block but server is awake */ }
+  await new Promise(r => setTimeout(r, 500));
+  initPeer();
+})();
 </script>
 </body>
 </html>

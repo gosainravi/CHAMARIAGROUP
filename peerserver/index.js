@@ -1,19 +1,25 @@
 const { PeerServer } = require('peer');
 const express = require('express');
 const app = express();
-const http = require('http').createServer(app);
 
-app.get('/', (req, res) => res.send('SS-Connect Peer Server running'));
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+app.get('/', (req, res) => res.json({ status: 'ok', server: 'SS-Connect Peer Server' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', time: Date.now() }));
 
 const peerServer = PeerServer({
   port: process.env.PORT || 9000,
   path: '/peerjs',
   proxied: true,
   allow_discovery: false,
-  cleanup_out_msgs: 1000
+  cleanup_out_msgs: 1000,
+  alive_timeout: 60000,
 });
 
-peerServer.on('connection', client => console.log('Peer connected:', client.getId()));
-peerServer.on('disconnect', client => console.log('Peer disconnected:', client.getId()));
+peerServer.on('connection', c => console.log('+ peer:', c.getId()));
+peerServer.on('disconnect', c => console.log('- peer:', c.getId()));
 
 console.log(`SS-Connect Peer Server on port ${process.env.PORT || 9000}`);
