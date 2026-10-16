@@ -282,6 +282,7 @@ let agentWS     = null;   // WebSocket to local Python agent (helper side)
 let ctrlMediaCall = null;
 let controlMode = 'view';
 let sessions = [];
+let turnServers = [];
 
 // ── PeerJS init ──
 function initPeer() {
@@ -294,13 +295,8 @@ function initPeer() {
     config: {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject', credential: 'openrelayproject' }
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        ...turnServers
       ]
     },
     debug: 0
@@ -322,9 +318,11 @@ function initPeer() {
     console.error('PeerJS error:', e.type, e);
     document.getElementById('conn-indicator').textContent = '🔴 Error: ' + e.type;
     if (e.type === 'unavailable-id') {
-      // ID collision — just retry with new ID
       peer.destroy();
       setTimeout(initPeer, 1000);
+    } else if (e.type === 'peer-unavailable' && ctrlDC && String(e.message).includes(ctrlDC.peer)) {
+      alert('That ID is not online. Ask the other person to keep this page open in the foreground and read you their current ID.');
+      doDisconnect();
     }
   });
 
@@ -404,6 +402,10 @@ function relayToAgent(ev) {
 
 // ── Helper: share screen ──
 async function startShare() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    alert('This browser cannot share its screen. Mobile phones (Android/iPhone browsers) do not support screen sharing — use a Windows or Mac computer with Chrome or Edge.');
+    return;
+  }
   try {
     localStream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:true });
     setHelperStatus('waiting', 'Sharing — waiting for helper to connect');
@@ -443,7 +445,9 @@ function doConnect() {
     if (data.type === 'auth-ok') {
       setCtrlStatus('waiting', 'Authenticated — connecting video…');
       // Controller calls helper directly for video stream
-      const mediaCall = peer.call(peerId, new MediaStream());
+      const mediaCall = peer.call(peerId, new MediaStream(), {
+        constraints: { offerToReceiveVideo: true, offerToReceiveAudio: true }
+      });
       ctrlMediaCall = mediaCall;
       mediaCall.on('stream', stream => {
         const vid = document.getElementById('remote-video');
@@ -617,9 +621,10 @@ function showTab(name, el) {
   setHelperStatus('idle', 'Connecting to server…');
   document.getElementById('conn-indicator').textContent = '⏳ Server: waking up…';
   try {
-    await fetch('https://chamariagroup.onrender.com/health', { mode: 'cors' });
-  } catch(e) { /* CORS might block but server is awake */ }
-  await new Promise(r => setTimeout(r, 500));
+    const r = await fetch('https://chamariagroup.onrender.com/turn');
+    turnServers = (await r.json()).iceServers || [];
+  } catch(e) { turnServers = []; }
+  if (!turnServers.length) console.warn('No TURN relay configured — devices on different networks may fail to connect.');
   initPeer();
 })();
 </script>
