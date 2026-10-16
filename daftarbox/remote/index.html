@@ -283,6 +283,7 @@ let ctrlMediaCall = null;
 let controlMode = 'view';
 let sessions = [];
 let turnServers = [];
+let initAttempts = 0;
 
 // ── PeerJS init ──
 function initPeer() {
@@ -314,12 +315,24 @@ function initPeer() {
     connectAgent(); // try to connect to local agent
   });
 
+  const thisPeer = peer;
+  initAttempts++;
+  const watchdog = setTimeout(() => {
+    if (thisPeer.open || peer !== thisPeer) return;
+    setHelperStatus('idle', `Server slow — retrying (attempt ${initAttempts + 1})…`);
+    thisPeer.destroy();
+    initPeer();
+  }, 15000);
+  peer.on('open', () => { clearTimeout(watchdog); initAttempts = 0; });
+
   peer.on('error', e => {
     console.error('PeerJS error:', e.type, e);
     document.getElementById('conn-indicator').textContent = '🔴 Error: ' + e.type;
-    if (e.type === 'unavailable-id') {
-      peer.destroy();
-      setTimeout(initPeer, 1000);
+    if (['unavailable-id', 'network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type) && !thisPeer.open && peer === thisPeer) {
+      clearTimeout(watchdog);
+      setHelperStatus('idle', 'Cannot reach server — retrying…');
+      thisPeer.destroy();
+      setTimeout(initPeer, Math.min(2000 * initAttempts, 10000));
     } else if (e.type === 'peer-unavailable' && ctrlDC && String(e.message).includes(ctrlDC.peer)) {
       alert('That ID is not online. Ask the other person to keep this page open in the foreground and read you their current ID.');
       doDisconnect();
@@ -621,7 +634,7 @@ function showTab(name, el) {
   setHelperStatus('idle', 'Connecting to server…');
   document.getElementById('conn-indicator').textContent = '⏳ Server: waking up…';
   try {
-    const r = await fetch('https://chamariagroup.onrender.com/turn');
+    const r = await fetch('https://chamariagroup.onrender.com/turn', { signal: AbortSignal.timeout(6000) });
     turnServers = (await r.json()).iceServers || [];
   } catch(e) { turnServers = []; }
   if (!turnServers.length) console.warn('No TURN relay configured — devices on different networks may fail to connect.');
