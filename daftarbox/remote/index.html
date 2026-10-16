@@ -464,6 +464,7 @@ function doConnect() {
       ctrlMediaCall = mediaCall;
       mediaCall.on('stream', stream => {
         const vid = document.getElementById('remote-video');
+        if (vid.srcObject === stream) return; // fires once per track (video + audio)
         vid.srcObject = stream;
         document.getElementById('video-wrap').classList.add('show');
         document.getElementById('how-preview').classList.remove('show');
@@ -529,7 +530,10 @@ function setMode(m) {
 }
 
 // ── Control event capture (controller side) ──
+let controlListenersAttached = false;
 function attachControlListeners() {
+  if (controlListenersAttached) return;
+  controlListenersAttached = true;
   const vid  = document.getElementById('remote-video');
   const wrap = document.getElementById('video-wrap');
   const cur  = document.getElementById('ctrl-cursor');
@@ -562,21 +566,10 @@ function attachControlListeners() {
     const btn = ['left','middle','right'][e.button]||'left';
     send({ type:'mouseup', x, y, btn });
   });
-  vid.addEventListener('click', e => {
-    e.preventDefault();
-    const {x,y} = normXY(e);
-    send({ type:'click', x, y, btn:'left' });
-  });
-  vid.addEventListener('dblclick', e => {
-    e.preventDefault();
-    const {x,y} = normXY(e);
-    send({ type:'dblclick', x, y });
-  });
-  vid.addEventListener('contextmenu', e => {
-    e.preventDefault();
-    const {x,y} = normXY(e);
-    send({ type:'click', x, y, btn:'right' });
-  });
+  // mousedown/mouseup already produce clicks and double-clicks on the remote PC
+  vid.addEventListener('click', e => e.preventDefault());
+  vid.addEventListener('dblclick', e => e.preventDefault());
+  vid.addEventListener('contextmenu', e => e.preventDefault());
   vid.addEventListener('wheel', e => {
     e.preventDefault();
     const {x,y} = normXY(e);
