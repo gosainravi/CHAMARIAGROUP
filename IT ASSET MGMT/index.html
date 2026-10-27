@@ -331,6 +331,7 @@
   .overlay.open{display:flex;}
   .panel{width:min(520px, 100vw);height:100vh;background:var(--surface);box-shadow:-8px 0 24px rgba(0,0,0,0.15);display:flex;flex-direction:column;animation:slideIn .18s ease-out;}
   .panel.narrow{width:min(440px, 100vw);}
+  .panel.wide{width:min(760px, 100vw);}
   @keyframes slideIn{from{transform:translateX(24px);opacity:0;}to{transform:translateX(0);opacity:1;}}
   .panel-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
   .panel-head h2{margin:0;font-size:16px;}
@@ -601,6 +602,45 @@
   }
   .ex-attach-row:last-child{border-bottom:none;}
   .ex-attach-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ── Discovery review form ─────────────────────────────────────
+     The agent's reading is a starting point, not gospel, so every scanned
+     field is an input. Fields the admin has corrected are marked, so a later
+     reader can tell a human value from a machine one. */
+  .dd-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px;}
+  .dd-f label{display:block;font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;}
+  .dd-f input,.dd-f select{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;
+    background:var(--paper);color:var(--ink);font-size:13px;font-family:inherit;
+  }
+  .dd-f input:focus,.dd-f select:focus{outline:none;border-color:var(--accent);}
+  .dd-f input.mono{font-family:var(--mono);font-size:12px;}
+  .dd-span2{grid-column:1 / -1;}
+
+  /* ── Duplicate finder ───────────────────────────────────────── */
+  .dup-opt{font-size:12.5px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;}
+  .dup-group{border:1px solid var(--line);border-radius:14px;margin-bottom:16px;overflow:hidden;}
+  .dup-group-head{
+    background:var(--paper);padding:10px 14px;font-size:12.5px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .dup-key{font-family:var(--mono);font-weight:700;}
+  .dup-row{
+    display:flex;align-items:flex-start;gap:12px;padding:11px 14px;
+    border-bottom:1px solid var(--line-soft);font-size:12.5px;
+  }
+  .dup-row:last-child{border-bottom:none;}
+  .dup-row.keep{background:rgba(52,211,153,0.07);}
+  .dup-row.doomed{background:rgba(240,71,90,0.06);}
+  .dup-row-main{flex:1;min-width:0;}
+  .dup-row-sub{font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.5;}
+  .dup-tag{
+    font-size:10px;text-transform:uppercase;letter-spacing:0.06em;
+    padding:2px 7px;border-radius:999px;font-weight:700;white-space:nowrap;
+  }
+  .dup-tag.keep{background:rgba(52,211,153,0.18);color:var(--success);}
+  .dup-tag.del{background:rgba(240,71,90,0.15);color:var(--danger);}
 
   /* ── Visualisation components ──────────────────────────────────────────
      Status colours only (good / warning / critical). They are reserved, and
@@ -1145,6 +1185,7 @@
       </div>
       <div style="display:flex;gap:10px;">
         <button class="btn btn-danger" id="assetBulkDeleteBtn" style="display:none;">🗑 Delete Selected (<span id="assetBulkCount">0</span>)</button>
+        <button class="btn" id="assetDupBtn">⧉ Find Duplicates</button>
         <button class="btn" id="assetImportBtn">⬆ Import Data</button>
         <button class="btn" id="assetExportBtn">Export CSV</button>
         <button class="btn btn-primary" id="assetAddBtn">+ Add Asset</button>
@@ -1275,13 +1316,14 @@
         <h3 style="margin:0;">🔍 Asset Discovery — From Agent Scans</h3>
       </div>
       <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="discoveryBulkMoveBtn" style="display:none;">→ Move to Assets (<span id="discoveryBulkMoveCount">0</span>)</button>
         <button class="btn btn-danger" id="discoveryBulkDeleteBtn" style="display:none;">🗑 Delete Selected (<span id="discoveryBulkCount">0</span>)</button>
         <button class="btn" id="discoveryExportBtn">⬇ Export Excel</button>
         <button class="btn" id="discoveryRefreshBtn">↻ Refresh</button>
       </div>
     </div>
     <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:16px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#1e40af;">
-      💡 <strong>How it works:</strong> Install the <strong>Chamaria IT Agent</strong> on any PC → it auto-collects system info → appears here as "Pending" → review and click <strong>"Add to Assets"</strong> to push to main database.
+      💡 <strong>How it works:</strong> Install the <strong>Chamaria IT Agent</strong> on any PC → it auto-collects system info → it appears here as “Pending”. Open a row to correct anything the agent got wrong and attach the invoice, then tick the rows you are happy with and click <strong>Move to Assets</strong>. Moved rows leave this page and live in <strong>Assets</strong> from then on.
     </div>
     <div id="discoveryStatsRow" class="card-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;"></div>
     <div class="table-wrap"><div class="table-card"><div class="scroll-x">
@@ -1452,12 +1494,67 @@
         <button class="panel-close" id="discoveryDetailClose">✕</button>
       </div>
       <div class="panel-body" style="overflow-y:auto;flex:1;" id="ddBody"></div>
-      <div class="panel-foot" style="flex-shrink:0;">
+      <div class="panel-foot" style="flex-shrink:0;flex-wrap:wrap;">
         <button class="btn btn-danger" id="ddDeleteBtn">🗑 Delete</button>
         <button class="btn btn-danger" id="ddDismissBtn">Dismiss</button>
         <div style="flex:1;"></div>
         <button class="btn" id="ddCloseBtn">Close</button>
-        <button class="btn btn-primary" id="ddAddToAssetsBtn">✅ Add to Assets →</button>
+        <button class="btn" id="ddSaveBtn">Save</button>
+        <button class="btn btn-primary" id="ddMoveBtn">→ Move to Assets</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Move discovered assets → Assets -->
+  <div class="overlay" id="discMoveOverlay">
+    <div class="panel">
+      <div class="panel-head" style="flex-shrink:0;">
+        <div><h2>Move to Assets</h2><p id="dmMeta" style="font-size:11px;font-family:var(--mono);color:var(--ink-soft);margin-top:2px;"></p></div>
+        <button class="panel-close" id="dmClose">✕</button>
+      </div>
+      <div class="panel-body" style="overflow-y:auto;flex:1;">
+        <div id="dmDupWarn" style="display:none;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:14px;line-height:1.5;"></div>
+        <div class="field">
+          <label>Company <span class="req">*</span></label>
+          <select id="dmCompany"><option value="">Select company…</option></select>
+        </div>
+        <div class="field">
+          <label>Location</label>
+          <input id="dmLocation" placeholder="e.g. Head Office — 2nd floor">
+        </div>
+        <p style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin:4px 0 14px;">
+          Applied to every row below that does not already have its own company or location set from its detail panel.
+        </p>
+        <div class="section-label">Moving</div>
+        <div id="dmList" style="margin-top:8px;"></div>
+        <div id="dmMsg" style="font-size:12px;color:var(--ink-soft);margin-top:12px;min-height:16px;"></div>
+      </div>
+      <div class="panel-foot" style="flex-shrink:0;">
+        <div style="flex:1;"></div>
+        <button class="btn" id="dmCancel">Cancel</button>
+        <button class="btn btn-primary" id="dmConfirm">Move</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duplicate assets finder -->
+  <div class="overlay" id="dupOverlay">
+    <div class="panel wide">
+      <div class="panel-head" style="flex-shrink:0;">
+        <div><h2>Duplicate assets</h2><p id="dupMeta" style="font-size:11px;font-family:var(--mono);color:var(--ink-soft);margin-top:2px;"></p></div>
+        <button class="panel-close" id="dupClose">✕</button>
+      </div>
+      <div style="flex-shrink:0;padding:0 24px 14px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);">
+        <span style="font-size:12px;color:var(--ink-soft);">Treat as the same asset when they share</span>
+        <label class="dup-opt"><input type="checkbox" id="dupBySerial" checked> serial number</label>
+        <label class="dup-opt"><input type="checkbox" id="dupByComputer" checked> computer name</label>
+        <label class="dup-opt"><input type="checkbox" id="dupByModelUser"> model + assigned user</label>
+      </div>
+      <div class="panel-body" style="overflow-y:auto;flex:1;" id="dupBody"></div>
+      <div class="panel-foot" style="flex-shrink:0;">
+        <button class="btn btn-danger" id="dupDeleteBtn" disabled>🗑 Delete ticked (<span id="dupDelCount">0</span>)</button>
+        <div style="flex:1;"></div>
+        <button class="btn" id="dupCloseBtn">Close</button>
       </div>
     </div>
   </div>
@@ -3910,30 +4007,51 @@ async function loadDiscovery(){
   }catch(e){ console.warn('Asset Discovery table not available — run SQL migration', e); discoveryItems = []; renderDiscovery(); }
 }
 
+/* Rows that have been moved into Assets are no longer discovery work, so the
+   page stops listing them. Nothing is deleted - the scan, its software list
+   and the link to the asset it became all stay in asset_discovery. */
+function discoveryOpen(){ return discoveryItems.filter(d => d.status !== 'moved'); }
+
+function discStatusChip(status){
+  const map = {
+    pending:   ['#fef3c7', '#92400e', 'pending'],
+    moved:     ['#d1fae5', '#065f46', 'moved'],
+    dismissed: ['#f3f4f6', '#6b7280', 'dismissed']
+  };
+  const m = map[status] || map.pending;
+  return '<span class="tkt-badge" style="background:' + m[0] + ';color:' + m[1] + ';">' + m[2] + '</span>';
+}
+
 function renderDiscovery(){
-  const pending  = discoveryItems.filter(d => d.status === 'pending');
-  const approved = discoveryItems.filter(d => d.status === 'approved');
-  const dismissed= discoveryItems.filter(d => d.status === 'dismissed');
+  const open      = discoveryOpen();
+  const pending   = open.filter(d => d.status === 'pending');
+  const dismissed = open.filter(d => d.status === 'dismissed');
+  const moved     = discoveryItems.filter(d => d.status === 'moved');
 
   const sr = $('discoveryStatsRow');
   if(sr) sr.innerHTML =
-    '<div class="stat-card" style="border-color:#f59e0b;"><div class="sc-num" style="color:#92400e;">' + pending.length + '</div><div class="sc-label">Pending Review</div></div>' +
-    '<div class="stat-card" style="border-color:#10b981;"><div class="sc-num" style="color:#065f46;">' + approved.length + '</div><div class="sc-label">Added to Assets</div></div>' +
+    '<div class="stat-card" style="border-color:#f59e0b;"><div class="sc-num" style="color:#92400e;">' + pending.length + '</div><div class="sc-label">Waiting for review</div></div>' +
+    '<div class="stat-card" style="border-color:#10b981;"><div class="sc-num" style="color:#065f46;">' + moved.length + '</div><div class="sc-label">Moved into Assets</div></div>' +
     '<div class="stat-card"><div class="sc-num" style="color:#6b7280;">' + dismissed.length + '</div><div class="sc-label">Dismissed</div></div>';
 
   const body = $('discoveryTableBody');
-  if(!discoveryItems.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="12"><span class="empty-icon">▤</span>No scans yet — install the Chamaria IT Agent on any PC to get started.</td></tr>';
+  if(!open.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="12"><span class="empty-icon">▤</span>' +
+      (moved.length
+        ? 'Nothing left to review — all ' + moved.length + ' scanned system' + (moved.length>1?'s have':' has') + ' been moved into Assets.'
+        : 'No scans yet — install the Chamaria IT Agent on any PC to get started.') +
+      '</td></tr>';
+    updateDiscoverySelectAllState();
     updateDiscoveryBulkUI();
     return;
   }
-  body.innerHTML = discoveryItems.map(d => {
-    const statusBg = d.status==='pending' ? '#fef3c7' : d.status==='approved' ? '#d1fae5' : '#f3f4f6';
-    const statusColor = d.status==='pending' ? '#92400e' : d.status==='approved' ? '#065f46' : '#6b7280';
+  body.innerHTML = open.map(d => {
     const dt = d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    const files = (d.attachments || []).length;
     return '<tr style="cursor:pointer;" data-discid="' + d.id + '">' +
       '<td><input type="checkbox" class="row-select" data-discselect="' + d.id + '" ' + (selectedDiscoveryIds.has(d.id)?'checked':'') + '></td>' +
-      '<td><strong>' + escapeHtml(d.computer_name||'—') + '</strong></td>' +
+      '<td><strong>' + escapeHtml(d.computer_name||'—') + '</strong>' +
+        (files ? '<br><span style="font-size:10px;color:var(--ink-soft);">📎 ' + files + ' file' + (files>1?'s':'') + '</span>' : '') + '</td>' +
       '<td>' + escapeHtml(d.username||'—') + '</td>' +
       '<td><span style="font-size:12px;">' + escapeHtml(d.model||'—') + '</span><br><span class="mono" style="font-size:10px;color:var(--ink-soft);">' + escapeHtml(d.serial_number||'—') + '</span></td>' +
       '<td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(d.processor||'') + '">' + escapeHtml((d.processor||'—').replace(/\(R\)|\(TM\)/g,'').trim()) + '</td>' +
@@ -3942,17 +4060,17 @@ function renderDiscovery(){
       '<td class="mono" style="font-size:11px;">' + escapeHtml(d.ip_address||'—') + '</td>' +
       '<td style="font-size:11px;">' + escapeHtml((d.os_name||'—').replace('Microsoft ','')) + '</td>' +
       '<td class="mono" style="font-size:11px;">' + dt + '</td>' +
-      '<td><span class="tkt-badge" style="background:' + statusBg + ';color:' + statusColor + ';">' + (d.status||'pending') + '</span></td>' +
+      '<td>' + discStatusChip(d.status) + '</td>' +
       '<td><div class="row-actions">' +
-        '<button class="btn btn-sm" data-discview="' + d.id + '">View</button>' +
-        (d.status==='pending' ? '<button class="btn btn-sm btn-primary" data-discapprove="' + d.id + '" style="font-size:11px;">+ Add</button>' : '') +
-        '<button class="btn btn-sm btn-danger" data-discdelete="' + d.id + '" title="Delete this entry">🗑</button>' +
+        '<button class="btn btn-sm" data-discview="' + d.id + '">Review</button>' +
+        (d.status==='pending' ? '<button class="btn btn-sm btn-primary" data-discmove="' + d.id + '" style="font-size:11px;">→ Move</button>' : '') +
+        '<button class="btn btn-sm btn-danger" data-discdelete="' + d.id + '" title="Delete this scan">🗑</button>' +
       '</div></td>' +
     '</tr>';
   }).join('');
 
   body.querySelectorAll('[data-discview]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); openDiscoveryDetail(discoveryItems.find(d=>d.id===b.dataset.discview)); }));
-  body.querySelectorAll('[data-discapprove]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); openDiscoveryDetail(discoveryItems.find(d=>d.id===b.dataset.discapprove)); }));
+  body.querySelectorAll('[data-discmove]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); openMoveDialog([b.dataset.discmove]); }));
   body.querySelectorAll('[data-discdelete]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); deleteDiscovery(b.dataset.discdelete); }));
   body.querySelectorAll('[data-discid]').forEach(tr => tr.addEventListener('click', (e) => { if(e.target.closest('input')) return; const d=discoveryItems.find(x=>x.id===tr.dataset.discid); if(d) openDiscoveryDetail(d); }));
   body.querySelectorAll('[data-discselect]').forEach(cb=>{
@@ -3971,18 +4089,25 @@ function renderDiscovery(){
 function updateDiscoverySelectAllState(){
   const selAll = $('discoverySelectAll');
   if(!selAll) return;
-  if(!discoveryItems.length){ selAll.checked = false; selAll.indeterminate = false; return; }
-  const selectedCount = discoveryItems.filter(d => selectedDiscoveryIds.has(d.id)).length;
-  selAll.checked = selectedCount === discoveryItems.length;
-  selAll.indeterminate = selectedCount > 0 && selectedCount < discoveryItems.length;
+  const open = discoveryOpen();
+  if(!open.length){ selAll.checked = false; selAll.indeterminate = false; return; }
+  const selectedCount = open.filter(d => selectedDiscoveryIds.has(d.id)).length;
+  selAll.checked = selectedCount === open.length;
+  selAll.indeterminate = selectedCount > 0 && selectedCount < open.length;
 }
 
 function updateDiscoveryBulkUI(){
-  const btn = $('discoveryBulkDeleteBtn');
-  if(!btn) return;
+  const del = $('discoveryBulkDeleteBtn');
+  const mv  = $('discoveryBulkMoveBtn');
+  if(!del || !mv) return;
   const n = selectedDiscoveryIds.size;
-  btn.style.display = n > 0 ? '' : 'none';
+  // Only rows still awaiting review can be moved; a dismissed one has to be
+  // reopened first, so the button must not promise more than it will do.
+  const movable = discoveryOpen().filter(d => selectedDiscoveryIds.has(d.id) && d.status === 'pending').length;
+  del.style.display = n > 0 ? '' : 'none';
   $('discoveryBulkCount').textContent = n;
+  mv.style.display = movable > 0 ? '' : 'none';
+  $('discoveryBulkMoveCount').textContent = movable;
 }
 
 function exportDiscoveryExcel(){
@@ -4012,6 +4137,15 @@ function exportDiscoveryExcel(){
     'MAC Address': d.mac_address || '',
     'Gateway': d.gateway || '',
     'BIOS Version': d.bios_version || '',
+    'Company': companyNameById(d.company_id) || '',
+    'Category': d.category || '',
+    'Location': d.location || '',
+    'Purchase Date': d.purchase_date || '',
+    'Purchase Amount': d.purchase_amount == null ? '' : d.purchase_amount,
+    'Vendor': d.vendor || '',
+    'Invoice Number': d.invoice_number || '',
+    'Warranty Expires': d.warranty_end || '',
+    'Files Attached': (d.attachments || []).length,
     'Installed Software Count': (d.installed_software || []).length,
     'Scan Time': d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleString('en-IN') : '',
     'Status': d.status || 'pending'
@@ -4038,62 +4172,245 @@ async function deleteSelectedDiscovery(){
   }catch(e){ showToast('Could not delete — ' + (e.message||'error'), true); }
 }
 
+/* ========== Reviewing a scan ==========================================
+   The agent reads a machine, it does not understand it: a serial can be
+   "To Be Filled By O.E.M.", a model can be a bare board code, and nothing
+   on the PC knows which company bought it or what the invoice said. So
+   every scanned field is editable here, and the commercial details an
+   asset needs are entered alongside before the row is moved across. */
+const DISC_EDIT = {
+  'Where it belongs': [
+    ['company_id',      'Company',          'company'],
+    ['category',        'Category',         'category'],
+    ['location',        'Location',         'text', true]
+  ],
+  'Hardware': [
+    ['computer_name',   'Computer Name',    'text'],
+    ['username',        'Logged-in User',   'text'],
+    ['manufacturer',    'Manufacturer',     'text'],
+    ['model',           'Model',            'text'],
+    ['serial_number',   'Serial Number',    'mono'],
+    ['system_type',     'System Type',      'text'],
+    ['processor',       'Processor',        'text', true],
+    ['processor_cores', 'Cores',            'text'],
+    ['processor_speed', 'Speed (GHz)',      'text'],
+    ['ram_gb',          'RAM',              'text'],
+    ['storage',         'Storage',          'text'],
+    ['free_space',      'Free Space',       'text'],
+    ['graphics',        'Graphics',         'text'],
+    ['battery',         'Battery',          'text'],
+    ['monitor',         'Monitor',          'text', true]
+  ],
+  'OS & Network': [
+    ['os_name',         'Operating System', 'text'],
+    ['os_arch',         'Architecture',     'text'],
+    ['os_version',      'OS Version',       'mono'],
+    ['os_build',        'Build',            'mono'],
+    ['ip_address',      'IP Address',       'mono'],
+    ['mac_address',     'MAC Address',      'mono'],
+    ['gateway',         'Gateway',          'mono'],
+    ['bios_version',    'BIOS Version',     'mono']
+  ],
+  'Purchase & warranty': [
+    ['purchase_date',   'Purchase Date',    'date'],
+    ['purchase_amount', 'Purchase Amount',  'number'],
+    ['vendor',          'Vendor',           'text'],
+    ['invoice_number',  'Invoice Number',   'text'],
+    ['warranty_end',    'Warranty Expires', 'date']
+  ]
+};
+
+// Categories come from the asset form's own list so the two can never drift.
+function discCategoryOptions(selected){
+  const sel = $('af_category');
+  const vals = sel ? Array.from(sel.options).map(o => o.value).filter(v => v && v !== '__other__') : [];
+  if(selected && vals.indexOf(selected) === -1) vals.unshift(selected);
+  return '<option value="">Not set</option>' +
+    vals.map(v => '<option value="' + escapeHtml(v) + '"' + (v === selected ? ' selected' : '') + '>' + escapeHtml(v) + '</option>').join('');
+}
+
+function ddFieldHtml(d, key, label, kind, span){
+  const raw = d[key];
+  const v = (raw === null || raw === undefined) ? '' : String(raw);
+  const id = 'dd_' + key;
+  let el;
+  if(kind === 'company'){
+    el = '<select id="' + id + '"><option value="">Not set</option>' +
+      companies.map(c => '<option value="' + c.id + '"' + (c.id === v ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>').join('') +
+      '</select>';
+  } else if(kind === 'category'){
+    el = '<select id="' + id + '">' + discCategoryOptions(v) + '</select>';
+  } else {
+    const type = kind === 'date' ? 'date' : kind === 'number' ? 'number' : 'text';
+    el = '<input id="' + id + '" type="' + type + '"' + (kind === 'number' ? ' step="0.01"' : '') +
+         (kind === 'mono' ? ' class="mono"' : '') + ' value="' + escapeHtml(v) + '">';
+  }
+  return '<div class="dd-f' + (span ? ' dd-span2' : '') + '"><label>' + label + '</label>' + el + '</div>';
+}
+
+function ddMetaLine(d){
+  return (d.manufacturer||'') + ' ' + (d.model||'') +
+    ' · Scanned ' + (d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleString('en-IN') : '—') +
+    (d.reviewed_at ? ' · Reviewed by hand ' + new Date(d.reviewed_at).toLocaleString('en-IN') : '');
+}
+
 function openDiscoveryDetail(d){
   if(!d) return;
   discoveryCurrentId = d.id;
   $('ddTitle').textContent = d.computer_name || 'System';
-  $('ddMeta').textContent = (d.manufacturer||'') + ' ' + (d.model||'') + ' · Scanned: ' + (d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleString('en-IN') : '—');
+  $('ddMeta').textContent = ddMetaLine(d);
 
   const software = d.installed_software || [];
+  const moved = d.status === 'moved';
 
-  $('ddBody').innerHTML =
-    // Status
-    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">' +
-      '<span class="tkt-badge tkt-status-' + (d.status==='pending'?'progress':d.status==='approved'?'resolved':'closed') + '">' + (d.status||'pending') + '</span>' +
-      (d.status==='pending' ? '<span style="font-size:12px;color:var(--ink-soft);">Review details below and click "Add to Assets" to push to main database.</span>' : '') +
+  let html = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">' +
+    discStatusChip(d.status) +
+    '<span style="font-size:12px;color:var(--ink-soft);">' +
+      (moved
+        ? 'Already in Assets — edit it there, not here.'
+        : 'Correct anything the agent got wrong, attach the invoice, then Move to Assets.') +
+    '</span></div>';
+
+  Object.keys(DISC_EDIT).forEach(section => {
+    html += '<div class="section-label">' + section + '</div><div class="dd-grid">' +
+      DISC_EDIT[section].map(f => ddFieldHtml(d, f[0], f[1], f[2], f[3])).join('') +
+      '</div>';
+  });
+
+  html += '<div class="section-label">Invoices &amp; documents</div>' +
+    '<div id="ddFiles" style="margin:10px 0 8px;"></div>' +
+    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
+      '<input type="file" id="ddFileInput" multiple style="display:none;">' +
+      '<button class="btn btn-sm" id="ddAttachBtn">📎 Attach files</button>' +
+      '<span id="ddUploadMsg" style="font-size:12px;color:var(--ink-soft);"></span>' +
     '</div>' +
+    '<p style="font-size:11.5px;color:var(--ink-soft);margin:10px 0 18px;line-height:1.6;">' +
+      'These travel with the system when it is moved — the first becomes the asset’s invoice, the rest stay attached to it.' +
+    '</p>';
 
-    // Hardware grid
-    '<div class="section-label">Hardware Details</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 18px;font-size:13px;">' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Computer Name</div><strong>' + escapeHtml(d.computer_name||'—') + '</strong></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Logged In User</div><strong>' + escapeHtml(d.username||'—') + '</strong></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Manufacturer</div>' + escapeHtml(d.manufacturer||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Model</div>' + escapeHtml(d.model||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Serial Number</div><span style="font-family:var(--mono);font-size:12px;">' + escapeHtml(d.serial_number||'—') + '</span></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">System Type</div>' + escapeHtml(d.system_type||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Processor</div>' + escapeHtml(d.processor||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Cores / Speed</div>' + escapeHtml((d.processor_cores||'—') + ' cores @ ' + (d.processor_speed||'—') + ' GHz') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">RAM</div><strong>' + escapeHtml(d.ram_gb||'—') + '</strong></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Storage</div>' + escapeHtml(d.storage||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Free Space</div>' + escapeHtml(d.free_space||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Graphics</div>' + escapeHtml(d.graphics||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Battery</div>' + escapeHtml(d.battery||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Monitor</div>' + escapeHtml(d.monitor||'—') + '</div>' +
-    '</div>' +
+  html += '<div class="section-label">Installed Software (' + software.length + ')</div>' +
+    (software.length > 0
+      ? '<div class="table-card" style="margin-top:8px;max-height:200px;overflow-y:auto;"><table><thead><tr><th>Software</th><th>Version</th><th>Publisher</th></tr></thead><tbody>' +
+        software.map(s => '<tr><td style="font-size:12px;">' + escapeHtml(s.name||'') + '</td><td class="mono" style="font-size:11px;">' + escapeHtml(s.version||'—') + '</td><td style="font-size:11px;color:var(--ink-soft);">' + escapeHtml(s.publisher||'—') + '</td></tr>').join('') +
+        '</tbody></table></div>'
+      : '<div style="color:var(--ink-soft);font-size:13px;padding:8px;">No software data collected</div>');
 
-    // OS & Network
-    '<div class="section-label">OS & Network</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 18px;font-size:13px;">' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Operating System</div>' + escapeHtml(d.os_name||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Architecture</div>' + escapeHtml(d.os_arch||'—') + '</div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">OS Version</div><span style="font-family:var(--mono);font-size:11px;">' + escapeHtml(d.os_version||'—') + '</span></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Build</div><span style="font-family:var(--mono);">' + escapeHtml(d.os_build||'—') + '</span></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">IP Address</div><span style="font-family:var(--mono);">' + escapeHtml(d.ip_address||'—') + '</span></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">MAC Address</div><span style="font-family:var(--mono);font-size:11px;">' + escapeHtml(d.mac_address||'—') + '</span></div>' +
-      '<div><div style="font-size:11px;color:var(--ink-soft);">Gateway</div><span style="font-family:var(--mono);">' + escapeHtml(d.gateway||'—') + '</span></div>' +
-    '</div>' +
+  $('ddBody').innerHTML = html;
 
-    // Installed Software
-    '<div class="section-label">Installed Software (' + software.length + ')</div>' +
-    (software.length > 0 ?
-      '<div class="table-card" style="margin-top:8px;max-height:200px;overflow-y:auto;"><table><thead><tr><th>Software</th><th>Version</th><th>Publisher</th></tr></thead><tbody>' +
-      software.map(s => '<tr><td style="font-size:12px;">' + escapeHtml(s.name||'') + '</td><td class="mono" style="font-size:11px;">' + escapeHtml(s.version||'—') + '</td><td style="font-size:11px;color:var(--ink-soft);">' + escapeHtml(s.publisher||'—') + '</td></tr>').join('') +
-      '</tbody></table></div>'
-    : '<div style="color:var(--ink-soft);font-size:13px;padding:8px;">No software data collected</div>');
+  // A moved row is a record of what happened, not a form.
+  if(moved) $('ddBody').querySelectorAll('input,select').forEach(el => el.disabled = true);
+  $('ddMoveBtn').style.display    = (d.status === 'pending') ? '' : 'none';
+  $('ddSaveBtn').style.display    = moved ? 'none' : '';
+  $('ddDismissBtn').style.display = (d.status === 'pending') ? '' : 'none';
+
+  ddRenderFiles();
+  const fi = $('ddFileInput');
+  if(moved){
+    $('ddAttachBtn').disabled = true;
+  } else if(fi){
+    $('ddAttachBtn').addEventListener('click', () => fi.click());
+    fi.addEventListener('change', e => { ddUploadFiles(e.target.files); e.target.value = ''; });
+  }
 
   $('discoveryDetailOverlay').classList.add('open');
 }
+
+function ddRenderFiles(){
+  const d = discoveryItems.find(x => x.id === discoveryCurrentId);
+  const box = $('ddFiles');
+  if(!box) return;
+  const files = (d && d.attachments) || [];
+  const locked = d && d.status === 'moved';
+  box.innerHTML = files.length
+    ? files.map((f, i) =>
+        '<div class="ex-attach-row">' +
+          '<span class="ex-attach-name">📎 ' + escapeHtml(f.name || 'file') + '</span>' +
+          '<span style="display:flex;gap:8px;">' +
+            '<button class="btn btn-sm" data-ddl="' + i + '">Open</button>' +
+            (locked ? '' : '<button class="btn btn-sm btn-danger" data-drm="' + i + '">Remove</button>') +
+          '</span>' +
+        '</div>').join('')
+    : '<div style="font-size:12px;color:var(--ink-soft);padding:6px 0;">Nothing attached yet.</div>';
+
+  box.querySelectorAll('[data-ddl]').forEach(b =>
+    b.addEventListener('click', () => {
+      const f = files[+b.dataset.ddl];
+      if(f) downloadFile('invoices', f.storagePath, discoveryCurrentId, f.name);
+    }));
+  box.querySelectorAll('[data-drm]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const i = +b.dataset.drm;
+      const next = files.slice(0, i).concat(files.slice(i + 1));
+      try{ await ddPatch({ attachments: next }); }catch(e){ return; }
+      showToast('File removed');
+      ddRenderFiles();
+      renderDiscovery();
+    }));
+}
+
+// Writes only the columns named, so saving one thing cannot blank another.
+async function ddPatch(patch){
+  const d = discoveryItems.find(x => x.id === discoveryCurrentId);
+  if(!d) return null;
+  if(supa){
+    const { error } = await supa.from('asset_discovery').update(patch).eq('id', d.id);
+    if(error){ showToast('Could not save: ' + error.message, true); throw error; }
+  }
+  Object.assign(d, patch);
+  return d;
+}
+
+async function ddUploadFiles(fileList){
+  const d = discoveryItems.find(x => x.id === discoveryCurrentId);
+  if(!d || !fileList || !fileList.length) return;
+  const msg = $('ddUploadMsg');
+  const existing = d.attachments || [];
+  const added = [];
+  for(let i = 0; i < fileList.length; i++){
+    const f = fileList[i];
+    msg.textContent = 'Uploading ' + (i + 1) + ' of ' + fileList.length + ': ' + f.name;
+    try{
+      const up = await uploadFile('invoices', 'discovery/' + d.id, f);
+      added.push({ name: f.name, storagePath: up.storagePath, uploadedAt: new Date().toISOString() });
+    }catch(err){
+      msg.textContent = 'Failed on ' + f.name + ': ' + (err.message || err);
+      return;
+    }
+  }
+  try{ await ddPatch({ attachments: existing.concat(added) }); }
+  catch(e){ return; }
+  msg.textContent = added.length + ' file' + (added.length>1?'s':'') + ' attached.';
+  ddRenderFiles();
+  renderDiscovery();
+}
+
+// Reads every field back off the form. Blanks become null rather than '' so a
+// cleared date or company does not fail the column's type.
+function ddCollectEdits(){
+  const patch = {};
+  Object.keys(DISC_EDIT).forEach(section => DISC_EDIT[section].forEach(f => {
+    const el = $('dd_' + f[0]);
+    if(!el) return;
+    const v = String(el.value || '').trim();
+    if(f[2] === 'number') patch[f[0]] = v === '' ? null : Number(v);
+    else patch[f[0]] = v === '' ? null : v;
+  }));
+  return patch;
+}
+
+async function ddSaveEdits(quiet){
+  const d = discoveryItems.find(x => x.id === discoveryCurrentId);
+  if(!d || d.status === 'moved') return d;
+  const patch = ddCollectEdits();
+  patch.reviewed_at = new Date().toISOString();
+  try{ await ddPatch(patch); }catch(e){ return null; }
+  renderDiscovery();
+  if(!quiet) showToast('Changes saved');
+  $('ddTitle').textContent = d.computer_name || 'System';
+  $('ddMeta').textContent = ddMetaLine(d);
+  return d;
+}
+
 function closeDiscoveryDetail(){ $('discoveryDetailOverlay').classList.remove('open'); discoveryCurrentId = null; }
 
 function splitStorageByType(storageStr){
@@ -4105,25 +4422,101 @@ function splitStorageByType(storageStr){
   return { hdd: hdd.concat(other).join(' | '), ssd: ssd.join(' | ') };
 }
 
-async function addDiscoveryToAssets(){
-  const d = discoveryItems.find(x=>x.id===discoveryCurrentId);
-  if(!d) return;
+function guessCategory(d){
+  const model = (d.model||'').toLowerCase();
+  const battery = (d.battery||'').toLowerCase();
+  if(battery && !battery.includes('no battery')) return 'Laptop';
+  if(model.includes('laptop') || model.includes('book') || model.includes('notebook')) return 'Laptop';
+  if(model.includes('desktop') || model.includes('tower') || model.includes('optiplex') || model.includes('prodesk')) return 'Desktop';
+  if(model.includes('server') || model.includes('proliant')) return 'Servers';
+  return 'Desktop';
+}
 
-  const storageSplit = splitStorageByType(d.storage);
+/* ========== Moving a reviewed scan into Assets ========================= */
+let dmIds = [];
 
-  // Pre-fill asset data from discovery — every field the agent collected
-  const assetData = {
-    companyId: '',  // IT admin will select
-    category: guessCategory(d),
+// The agent rescans the same machines, so a PC can appear here again long
+// after it was moved. Without this check a second move would quietly add a
+// second copy of a machine the company only owns once.
+function assetMatchingScan(d){
+  const serial = (d.serial_number||'').trim().toLowerCase();
+  const cname  = (d.computer_name||'').trim().toLowerCase();
+  if(!serial && !cname) return null;
+  return assets.find(a =>
+    (serial && (a.serialNo||'').trim().toLowerCase() === serial) ||
+    (cname  && (a.computerName||'').trim().toLowerCase() === cname)
+  ) || null;
+}
+
+function openMoveDialog(ids){
+  const rows = ids.map(id => discoveryItems.find(x => x.id === id))
+                  .filter(d => d && d.status === 'pending');
+  if(!rows.length){ showToast('Nothing to move — pick rows that are still pending', true); return; }
+  dmIds = rows.map(d => d.id);
+
+  $('dmCompany').innerHTML = '<option value="">Select company…</option>' +
+    companies.map(c => '<option value="' + c.id + '">' + escapeHtml(c.name) + '</option>').join('');
+  // If every row already names the same company, there is nothing to ask.
+  const set = new Set(rows.map(d => d.company_id || ''));
+  $('dmCompany').value = (set.size === 1 && rows[0].company_id) ? rows[0].company_id : '';
+  $('dmLocation').value = '';
+
+  $('dmMeta').textContent = rows.length + ' system' + (rows.length>1?'s':'');
+  $('dmConfirm').textContent = 'Move ' + rows.length + ' to Assets';
+  $('dmConfirm').disabled = false;
+  $('dmMsg').textContent = '';
+
+  const clashes = rows.map(d => ({ d: d, hit: assetMatchingScan(d) })).filter(x => x.hit);
+  const warn = $('dmDupWarn');
+  if(clashes.length){
+    warn.style.display = '';
+    warn.innerHTML = '<strong>Already in Assets</strong><br>' +
+      clashes.map(x => escapeHtml(x.d.computer_name || x.d.serial_number || 'this system') +
+        ' matches <strong>' + escapeHtml(x.hit.assetCode || '') + '</strong>' +
+        (x.hit.model ? ' (' + escapeHtml(x.hit.model) + ')' : '')).join('<br>') +
+      '<br><br>Moving ' + (clashes.length > 1 ? 'these' : 'this') + ' anyway creates a second copy. ' +
+      'Cancel and untick ' + (clashes.length > 1 ? 'them' : 'it') + ' if that is not what you want.';
+  } else {
+    warn.style.display = 'none';
+    warn.innerHTML = '';
+  }
+
+  $('dmList').innerHTML = rows.map(d => {
+    const hit = assetMatchingScan(d);
+    const files = (d.attachments || []).length;
+    return '<div class="dup-row">' +
+      '<div class="dup-row-main">' +
+        '<strong>' + escapeHtml(d.computer_name || '—') + '</strong>' +
+        (hit ? ' <span class="dup-tag del">duplicate</span>' : '') +
+        '<div class="dup-row-sub">' +
+          escapeHtml([d.manufacturer, d.model].filter(Boolean).join(' ') || 'unknown model') +
+          ' · ' + escapeHtml(d.serial_number || 'no serial') +
+          ' · ' + escapeHtml(d.company_id ? (companyNameById(d.company_id) || 'company set') : 'company from above') +
+          (files ? ' · ' + files + ' file' + (files>1?'s':'') : '') +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+
+  $('discMoveOverlay').classList.add('open');
+}
+function closeMoveDialog(){ $('discMoveOverlay').classList.remove('open'); dmIds = []; }
+
+// Builds the asset from the row as it stands now - the corrected values, not
+// the agent's original reading.
+function assetFromScan(d, fallbackCompany, fallbackLocation){
+  const st = splitStorageByType(d.storage);
+  return {
+    companyId: d.company_id || fallbackCompany,
+    category: d.category || guessCategory(d),
+    location: d.location || fallbackLocation || '',
     brand: d.manufacturer || '',
     model: d.model || '',
     serialNo: d.serial_number || '',
     assignedUserName: d.username || '',
     processor: d.processor || '',
     ram: d.ram_gb || '',
-    hdd: storageSplit.hdd || '',
-    ssd: storageSplit.ssd || '',
-    location: '',
+    hdd: st.hdd || '',
+    ssd: st.ssd || '',
     assetHealth: 'Good',
     systemType: d.system_type || '',
     serviceTag: d.serial_number || '',
@@ -4140,51 +4533,91 @@ async function addDiscoveryToAssets(){
     osBuild: d.os_build || '',
     ipAddress: d.ip_address || '',
     macAddress: d.mac_address || '',
-    remarks: 'Added via IT Agent scan on ' + (d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleDateString('en-IN') : '') +
+    purchaseDate: d.purchase_date || '',
+    purchaseAmount: d.purchase_amount == null ? '' : d.purchase_amount,
+    vendor: d.vendor || '',
+    invoiceNumber: d.invoice_number || '',
+    warrantyEnd: d.warranty_end || '',
+    installedSoftware: d.installed_software || [],
+    discoveredFromId: d.id,
+    remarks: 'Moved from an IT Agent scan taken ' +
+             (d.scan_timestamp ? new Date(d.scan_timestamp).toLocaleDateString('en-IN') : '—') +
              '\nBIOS: ' + (d.bios_version||'—') + ' | Free space: ' + (d.free_space||'—') + ' | Gateway: ' + (d.gateway||'—')
   };
-
-  // Mark discovery as approved
-  try{
-    if(supa){ await supa.from('asset_discovery').update({status:'approved'}).eq('id', d.id); }
-    discoveryItems = discoveryItems.map(x => x.id===d.id ? {...x, status:'approved'} : x);
-  }catch(e){ console.warn(e); }
-
-  closeDiscoveryDetail();
-  renderDiscovery();
-
-  // Open asset add panel with pre-filled data
-  openAssetPanel(null);
-  // Carry the full software list + link back to the source scan through to save,
-  // even though there's no dedicated form field for either
-  window._assetExtraFields = { installedSoftware: d.installed_software || [], discoveredFromId: d.id };
-  // Pre-fill fields
-  setTimeout(() => {
-    Object.keys(assetData).forEach(f=>{
-      if(f==='companyId' || f==='category') return;
-      const el = $('af_'+f);
-      if(el && assetData[f]) el.value = assetData[f];
-    });
-    setCategoryFieldValue(assetData.category);
-    if(assetData.systemType || assetData.processor || assetData.hdd || assetData.ssd){
-      $('af_specsBody').style.display = ''; $('af_specsArrow').textContent = '▴';
-    }
-    if(assetData.computerName || assetData.osName || assetData.ipAddress){
-      $('af_scanBody').style.display = ''; $('af_scanArrow').textContent = '▴';
-    }
-    switchTab('assets');
-    showToast('Asset pre-filled from scan — select Company and save');
-  }, 100);
 }
 
-function guessCategory(d){
-  const model = (d.model||'').toLowerCase();
-  const battery = (d.battery||'').toLowerCase();
-  if(battery && !battery.includes('no battery')) return 'Laptop';
-  if(model.includes('laptop') || model.includes('book') || model.includes('notebook')) return 'Laptop';
-  if(model.includes('desktop') || model.includes('tower') || model.includes('optiplex') || model.includes('prodesk')) return 'Desktop';
-  if(model.includes('server') || model.includes('proliant')) return 'Servers';
-  return 'Desktop';
+async function confirmMove(){
+  const fallbackCompany  = $('dmCompany').value;
+  const fallbackLocation = $('dmLocation').value.trim();
+  const rows = dmIds.map(id => discoveryItems.find(x => x.id === id)).filter(Boolean);
+  if(!rows.length){ closeMoveDialog(); return; }
+
+  const missing = rows.filter(d => !(d.company_id || fallbackCompany));
+  if(missing.length){
+    $('dmMsg').textContent = 'Pick a company first — ' + missing.length +
+      (missing.length > 1 ? ' of these do not name one on their own.' : ' of these does not name one of its own.');
+    $('dmCompany').focus();
+    return;
+  }
+
+  const btn = $('dmConfirm');
+  btn.disabled = true;
+  const msg = $('dmMsg');
+  let done = 0; const failed = [];
+
+  for(const d of rows){
+    msg.textContent = 'Moving ' + (done + failed.length + 1) + ' of ' + rows.length + ': ' + (d.computer_name || '');
+    try{
+      const asset = await assetsTable.insert(assetFromScan(d, fallbackCompany, fallbackLocation));
+      const files = d.attachments || [];
+      if(files.length){
+        // The files are already in the invoices bucket, so the asset just
+        // points at the same objects - nothing is copied or re-uploaded.
+        if(supa){
+          const { error } = await supa.from('assets').update({
+            attachments: files,
+            has_invoice: true,
+            invoice_file_name: files[0].name,
+            invoice_storage_path: files[0].storagePath
+          }).eq('id', asset.id);
+          if(error) throw error;
+        } else {
+          await assetsTable.update(asset.id, Object.assign({}, asset, {
+            attachments: files, hasInvoice: true,
+            invoiceFileName: files[0].name, invoiceStoragePath: files[0].storagePath
+          }));
+        }
+      }
+      const moved = { status: 'moved', moved_at: new Date().toISOString(), moved_asset_id: asset.id };
+      if(supa){
+        const { error } = await supa.from('asset_discovery').update(moved).eq('id', d.id);
+        if(error) throw error;
+      }
+      Object.assign(d, moved);
+      selectedDiscoveryIds.delete(d.id);
+      done++;
+    }catch(e){
+      console.error(e);
+      failed.push((d.computer_name || d.id) + ' — ' + (e.message || 'error'));
+    }
+  }
+
+  assets = await assetsTable.list();
+  decorateAssets();
+  renderAssets();
+  renderDashboard();
+  renderDiscovery();
+  if(discoveryCurrentId && rows.some(d => d.id === discoveryCurrentId)) closeDiscoveryDetail();
+
+  btn.disabled = false;
+  if(failed.length){
+    msg.innerHTML = done + ' moved. <strong>' + failed.length + ' could not be moved:</strong><br>' +
+      failed.map(escapeHtml).join('<br>');
+    showToast(failed.length + ' could not be moved', true);
+  } else {
+    closeMoveDialog();
+    showToast(done + ' system' + (done>1?'s':'') + ' moved into Assets');
+  }
 }
 
 async function dismissDiscovery(id){
@@ -4203,6 +4636,7 @@ async function deleteDiscovery(id){
   try{
     if(supa){ const { error } = await supa.from('asset_discovery').delete().eq('id', id); if(error) throw error; }
     discoveryItems = discoveryItems.filter(d => d.id !== id);
+    selectedDiscoveryIds.delete(id);
     if(discoveryCurrentId === id) closeDiscoveryDetail();
     renderDiscovery();
     showToast('Discovery entry deleted');
@@ -4215,18 +4649,252 @@ $('discoveryExportBtn').addEventListener('click', exportDiscoveryExcel);
 $('discoverySelectAll').addEventListener('click', e => e.stopPropagation());
 $('discoverySelectAll').addEventListener('change', ()=>{
   const checked = $('discoverySelectAll').checked;
-  discoveryItems.forEach(d => { if(checked) selectedDiscoveryIds.add(d.id); else selectedDiscoveryIds.delete(d.id); });
+  discoveryOpen().forEach(d => { if(checked) selectedDiscoveryIds.add(d.id); else selectedDiscoveryIds.delete(d.id); });
   renderDiscovery();
 });
 $('discoveryBulkDeleteBtn').addEventListener('click', deleteSelectedDiscovery);
+$('discoveryBulkMoveBtn').addEventListener('click', () => openMoveDialog(Array.from(selectedDiscoveryIds)));
 $('discoveryDetailClose').addEventListener('click', closeDiscoveryDetail);
 $('ddCloseBtn').addEventListener('click', closeDiscoveryDetail);
 $('discoveryDetailOverlay').addEventListener('click', e => { if(e.target.id==='discoveryDetailOverlay') closeDiscoveryDetail(); });
-$('ddAddToAssetsBtn').addEventListener('click', addDiscoveryToAssets);
+$('ddSaveBtn').addEventListener('click', () => ddSaveEdits(false));
+// Save first, then move, so the move carries whatever is on screen rather than
+// whatever was last written to the database.
+$('ddMoveBtn').addEventListener('click', async () => {
+  const id = discoveryCurrentId;
+  const saved = await ddSaveEdits(true);
+  if(saved) openMoveDialog([id]);
+});
 $('ddDismissBtn').addEventListener('click', () => { if(discoveryCurrentId) dismissDiscovery(discoveryCurrentId); });
 $('ddDeleteBtn').addEventListener('click', () => { if(discoveryCurrentId) deleteDiscovery(discoveryCurrentId); });
+$('dmClose').addEventListener('click', closeMoveDialog);
+$('dmCancel').addEventListener('click', closeMoveDialog);
+$('dmConfirm').addEventListener('click', confirmMove);
+$('discMoveOverlay').addEventListener('click', e => { if(e.target.id==='discMoveOverlay') closeMoveDialog(); });
 
 /* ================= END ASSET DISCOVERY ================= */
+
+/* ================= DUPLICATE ASSETS =================
+   Scans, imports and hand entry all add rows, so the same machine can end up
+   in the list more than once. This finds those groups, proposes which copy to
+   keep, and deletes only what is ticked. */
+let dupGroups = [];
+let dupMarked = new Set();
+
+function dupNorm(v){ return (v === null || v === undefined) ? '' : String(v).trim().toLowerCase(); }
+
+// Which copy is worth keeping: the one carrying the most information. An
+// invoice or an attached document counts for more than a plain text field,
+// because that is the part nobody can retype from memory.
+function dupScore(a){
+  const keys = ['companyId','category','brand','model','serialNo','assignedUserName','employeeId',
+                'location','department','purchaseDate','purchaseAmount','vendor','invoiceNumber',
+                'warrantyStart','warrantyEnd','poNumber','processor','ram','hdd','ssd','storage',
+                'computerName','osName','ipAddress','macAddress','remarks'];
+  let n = 0;
+  keys.forEach(k => { const v = a[k]; if(v !== '' && v !== null && v !== undefined && v !== 0) n++; });
+  if(a.hasInvoice) n += 4;
+  n += Math.min((a.attachments || []).length, 3) * 2;
+  if((a.installedSoftware || []).length) n += 1;
+  return n;
+}
+
+function dupRules(){
+  const r = [];
+  if($('dupBySerial').checked)
+    r.push({ label: 'serial number', key: a => dupNorm(a.serialNo),
+             show: a => a.serialNo });
+  if($('dupByComputer').checked)
+    r.push({ label: 'computer name', key: a => dupNorm(a.computerName),
+             show: a => a.computerName });
+  if($('dupByModelUser').checked)
+    r.push({ label: 'model + assigned user',
+             key:  a => { const m = dupNorm(a.model), u = dupNorm(a.assignedUserName);
+                          return (m && u) ? m + ' / ' + u : ''; },
+             show: a => a.model + ' / ' + a.assignedUserName });
+  return r;
+}
+
+// One machine can match on serial AND on computer name, and a third copy can
+// join the set through only one of them. Treating each rule as its own group
+// would list the same asset twice and overstate how many copies exist, so all
+// the matches are merged into one group per machine.
+function findDuplicateGroups(){
+  const rules = dupRules();
+  if(!rules.length) return [];
+
+  const parent = new Map();
+  assets.forEach(a => parent.set(a.id, a.id));
+  const find = x => { while(parent.get(x) !== x){ parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  const union = (a, b) => { a = find(a); b = find(b); if(a !== b) parent.set(a, b); };
+
+  const why = new Map();   // asset id -> why it was pulled in
+  rules.forEach(rule => {
+    const by = new Map();
+    assets.forEach(a => {
+      const k = rule.key(a);
+      if(!k) return;
+      if(!by.has(k)) by.set(k, []);
+      by.get(k).push(a);
+    });
+    by.forEach((list, k) => {
+      if(list.length < 2) return;
+      list.forEach(a => {
+        union(a.id, list[0].id);
+        if(!why.has(a.id)) why.set(a.id, new Set());
+        why.get(a.id).add(rule.label + ' “' + rule.show(list[0]) + '”');
+      });
+    });
+  });
+
+  const comp = new Map();
+  assets.forEach(a => {
+    if(!why.has(a.id)) return;
+    const root = find(a.id);
+    if(!comp.has(root)) comp.set(root, []);
+    comp.get(root).push(a);
+  });
+
+  const groups = [];
+  comp.forEach(list => {
+    if(list.length < 2) return;
+    const reasons = new Set();
+    list.forEach(a => (why.get(a.id) || new Set()).forEach(r => reasons.add(r)));
+    groups.push({
+      reasons: Array.from(reasons),
+      items: list.slice().sort((x, y) => dupScore(y) - dupScore(x))
+    });
+  });
+  return groups.sort((a, b) => b.items.length - a.items.length);
+}
+function openDuplicates(){
+  dupGroups = findDuplicateGroups();
+  // Default: keep the fullest copy in each group, tick the rest. Nothing is
+  // deleted until the button is pressed, so a wrong guess costs a click.
+  dupMarked = new Set();
+  dupGroups.forEach(g => g.items.slice(1).forEach(a => dupMarked.add(a.id)));
+  renderDuplicates();
+  $('dupOverlay').classList.add('open');
+}
+function closeDuplicates(){ $('dupOverlay').classList.remove('open'); }
+
+function renderDuplicates(){
+  const body = $('dupBody');
+  const extra = dupGroups.reduce((t, g) => t + g.items.length - 1, 0);
+
+  $('dupMeta').textContent = dupGroups.length
+    ? dupGroups.length + ' group' + (dupGroups.length>1?'s':'') + ' · ' + extra + ' extra cop' + (extra>1?'ies':'y') + ' across ' + assets.length + ' assets'
+    : assets.length + ' assets checked';
+
+  if(!dupGroups.length){
+    body.innerHTML = '<div style="text-align:center;padding:50px 20px;color:var(--ink-soft);">' +
+      '<div style="font-size:34px;margin-bottom:10px;">✓</div>' +
+      '<div style="font-size:14px;">No duplicates by the rules ticked above.</div>' +
+      '<div style="font-size:12px;margin-top:8px;">Try matching on model + assigned user to catch copies that were typed in without a serial.</div>' +
+      '</div>';
+    $('dupDeleteBtn').disabled = true;
+    $('dupDelCount').textContent = '0';
+    return;
+  }
+
+  body.innerHTML = dupGroups.map((g, gi) => {
+    const rows = g.items.map((a, ai) => {
+      const marked = dupMarked.has(a.id);
+      const who = a.assignedUserName || a.assignedDisplayName || '';
+      return '<div class="dup-row ' + (marked ? 'doomed' : 'keep') + '">' +
+        '<input type="checkbox" data-dupid="' + a.id + '" ' + (marked ? 'checked' : '') + ' style="margin-top:2px;">' +
+        '<div class="dup-row-main">' +
+          '<strong class="mono">' + escapeHtml(a.assetCode || '—') + '</strong> ' +
+          escapeHtml(a.model || a.category || 'unnamed') + ' ' +
+          '<span class="dup-tag ' + (marked ? 'del' : 'keep') + '">' + (marked ? 'delete' : 'keep') + '</span>' +
+          (ai === 0 && !marked ? ' <span style="font-size:10.5px;color:var(--ink-soft);">fullest record</span>' : '') +
+          '<div class="dup-row-sub">' +
+            escapeHtml(companyNameById(a.companyId) || 'no company') +
+            ' · ' + escapeHtml(who || 'unassigned') +
+            ' · ' + escapeHtml(a.serialNo || 'no serial') +
+            (a.computerName ? ' · ' + escapeHtml(a.computerName) : '') +
+            (a.hasInvoice ? ' · 📎 invoice' : '') +
+            ((a.attachments || []).length ? ' · ' + a.attachments.length + ' file(s)' : '') +
+            ' · ' + dupScore(a) + ' fields filled' +
+          '</div>' +
+        '</div></div>';
+    }).join('');
+
+    return '<div class="dup-group">' +
+      '<div class="dup-group-head">' +
+        '<span>Same <span class="dup-key">' + g.reasons.map(escapeHtml).join('</span>, same <span class="dup-key">') + '</span></span>' +
+        '<span style="color:var(--ink-soft);white-space:nowrap;">' + g.items.length + ' copies</span>' +
+      '</div>' + rows + '</div>';
+  }).join('');
+
+  body.querySelectorAll('[data-dupid]').forEach(cb =>
+    cb.addEventListener('change', () => {
+      if(cb.checked) dupMarked.add(cb.dataset.dupid);
+      else dupMarked.delete(cb.dataset.dupid);
+      renderDuplicates();
+    }));
+
+  updateDupCount();
+}
+
+function updateDupCount(){
+  const n = dupMarked.size;
+  $('dupDelCount').textContent = n;
+  $('dupDeleteBtn').disabled = n === 0;
+}
+
+// A group with everything ticked would delete the asset entirely rather than
+// de-duplicate it, which is almost never what someone means by "remove the
+// duplicate". Name the group and stop rather than guessing.
+function dupWipedGroups(){
+  return dupGroups.filter(g => g.items.every(a => dupMarked.has(a.id)));
+}
+
+async function deleteMarkedDuplicates(){
+  const wiped = dupWipedGroups();
+  if(wiped.length){
+    showToast('Every copy is ticked in the group matching ' + wiped[0].reasons[0] + ' — untick the one to keep', true);
+    return;
+  }
+  const ids = Array.from(dupMarked);
+  if(!ids.length) return;
+  const toDelete = assets.filter(a => ids.includes(a.id));
+  const ok = await passwordConfirmDelete(
+    'Permanently delete ' + ids.length + ' duplicate asset' + (ids.length>1?'s':'') +
+    ', keeping one copy of each? This cannot be undone.');
+  if(!ok) return;
+
+  let failed = 0;
+  for(const a of toDelete){
+    try{
+      await assetsTable.remove(a.id);
+      if(a.hasInvoice) await deleteFile('invoices', a.invoiceStoragePath, a.id);
+      selectedAssetIds.delete(a.id);
+    }catch(e){ console.error(e); failed++; }
+  }
+
+  assets = await assetsTable.list();
+  decorateAssets();
+  renderAssets();
+  renderDashboard();
+  dupMarked.clear();
+  dupGroups = findDuplicateGroups();
+  dupGroups.forEach(g => g.items.slice(1).forEach(a => dupMarked.add(a.id)));
+  renderDuplicates();
+
+  if(failed) showToast(failed + ' could not be deleted', true);
+  else showToast((ids.length - failed) + ' duplicate' + (ids.length>1?'s':'') + ' deleted');
+}
+
+$('assetDupBtn').addEventListener('click', openDuplicates);
+$('dupClose').addEventListener('click', closeDuplicates);
+$('dupCloseBtn').addEventListener('click', closeDuplicates);
+$('dupOverlay').addEventListener('click', e => { if(e.target.id==='dupOverlay') closeDuplicates(); });
+$('dupDeleteBtn').addEventListener('click', deleteMarkedDuplicates);
+['dupBySerial','dupByComputer','dupByModelUser'].forEach(id =>
+  $(id).addEventListener('change', openDuplicates));
+
+/* ================= END DUPLICATE ASSETS ================= */
 
 /* ================= NETWORK DEVICES ================= */
 let networkDevices = [];
