@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
@@ -12,8 +12,8 @@
     <Description>Screen sharing and remote control with on-screen permission (Allow / Deny).</Description>
     <Company>Chamaria Group</Company>
     <Copyright>© 2026 Chamaria Group</Copyright>
-    <Version>1.0.1</Version>
-    <FileVersion>1.0.1.0</FileVersion>
+    <Version>1.0.2</Version>
+    <FileVersion>1.0.2.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
   <ItemGroup>
