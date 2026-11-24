@@ -1,5 +1,5 @@
 using System.IO;
-using SSConnect.App;
+using SSConnect.Core;
 using Xunit;
 
 public class SettingsTests

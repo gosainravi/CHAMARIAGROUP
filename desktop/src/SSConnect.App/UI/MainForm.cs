@@ -6,7 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
-using SSConnect.App.Controller;
+using SSConnect.App.Win32;
+using SSConnect.Core.Session;
 using SSConnect.Core.Net;
 using SSConnect.Core.Security;
 
@@ -188,7 +189,7 @@ namespace SSConnect.App.UI
             if (isViewer)
             {
                 ResetConnectButton();
-                viewer = new ViewerSide(link);
+                viewer = new ViewerSide(link, new BitmapCanvas());
                 viewerForm = new ViewerForm(viewer, peer, limit, () => Send(new { type = "end" }));
                 viewerForm.Show();
             }
@@ -196,7 +197,8 @@ namespace SSConnect.App.UI
             {
                 status.Text = "In session with " + FormatId(peer);
                 bar = new ControlBar(peer, limit, () => shared?.RevokeControl(), () => Send(new { type = "end" }));
-                shared = new SharedSide(link, AskUser, granted => UI(() => bar?.SetControlled(granted)));
+                shared = new SharedSide(link, AskUser, granted => UI(() => bar?.SetControlled(granted)),
+                    e => InputInjector.Apply(e, ScreenCapture.PrimarySize()), c => ScreenCapture.CaptureFrame(c), new GdiCodec());
                 bar.Show();
                 shared.Start();
             }

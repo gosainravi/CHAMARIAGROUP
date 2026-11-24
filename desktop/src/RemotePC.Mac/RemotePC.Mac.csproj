@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>REMOTE-PC</AssemblyName>
+    <RootNamespace>RemotePC.Mac</RootNamespace>
+    <RuntimeIdentifiers>osx-arm64;osx-x64</RuntimeIdentifiers>
+    <Product>Remote PC</Product>
+    <Company>Chamaria Group</Company>
+    <Copyright>© 2026 Chamaria Group</Copyright>
+    <Version>1.2.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.1.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.1.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SSConnect.Core\SSConnect.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\SSConnect.App\Assets\remote-pc-logo.png" LogicalName="RemotePC.Logo.png" />
+  </ItemGroup>
+</Project>

@@ -21,6 +21,8 @@ namespace SSConnect.App.Win32
 
         public static Size PrimarySize() => new Size(GetSystemMetrics(0), GetSystemMetrics(1));
 
+        public static SSConnect.Core.Platform.Frame CaptureFrame(bool drawCursor) => GdiFrames.FromBitmap(CapturePrimary(drawCursor));
+
         public static Bitmap CapturePrimary(bool drawCursor = true)
         {
             var s = PrimarySize();

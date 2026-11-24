@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Threading.Tasks;
-using SSConnect.App.Controller;
+using SSConnect.Core.Platform;
+using SSConnect.Core.Session;
 using SSConnect.Core.Input;
 using Xunit;
 
@@ -22,8 +22,8 @@ public class SessionSideTests
         bool allow = false;
         int asked = 0;
         var shared = new SharedSide(sl, () => { asked++; return Task.FromResult(allow); }, _ => { },
-            e => { lock (injected) injected.Add(e); }, _ => new Bitmap(128, 128));
-        var viewer = new ViewerSide(vl);
+            e => { lock (injected) injected.Add(e); }, _ => new Frame(128, 128), new FakeCodec());
+        var viewer = new ViewerSide(vl, new FakeCanvas());
         var notices = new List<string>();
         viewer.Notice += n => { lock (notices) notices.Add(n); };
         shared.Start();
@@ -65,8 +65,8 @@ public class SessionSideTests
         var (vl, sl) = LinkPair.Connect();
         var injected = new List<InputEvent>();
         var shared = new SharedSide(sl, () => Task.FromResult(true), _ => { },
-            e => { lock (injected) injected.Add(e); }, _ => new Bitmap(64, 64));
-        var viewer = new ViewerSide(vl);
+            e => { lock (injected) injected.Add(e); }, _ => new Frame(64, 64), new FakeCodec());
+        var viewer = new ViewerSide(vl, new FakeCanvas());
         shared.Start();
         viewer.AskControl();
         await Until(() => viewer.HasControl);
@@ -85,8 +85,8 @@ public class SessionSideTests
         var (vl, sl) = LinkPair.Connect();
         var answer = new TaskCompletionSource<bool>();
         int controlChanges = 0;
-        var shared = new SharedSide(sl, () => answer.Task, _ => controlChanges++, _ => { }, _ => new Bitmap(64, 64));
-        var viewer = new ViewerSide(vl);
+        var shared = new SharedSide(sl, () => answer.Task, _ => controlChanges++, _ => { }, _ => new Frame(64, 64), new FakeCodec());
+        var viewer = new ViewerSide(vl, new FakeCanvas());
         shared.Start();
         viewer.AskControl();
         await Task.Delay(500);
@@ -104,8 +104,8 @@ public class SessionSideTests
         var (vl, sl) = LinkPair.Connect();
         var withCursor = new List<bool>();
         var shared = new SharedSide(sl, () => Task.FromResult(true), _ => { }, _ => { },
-            cursor => { lock (withCursor) withCursor.Add(cursor); return new Bitmap(64, 64); });
-        var viewer = new ViewerSide(vl);
+            cursor => { lock (withCursor) withCursor.Add(cursor); return new Frame(64, 64); }, new FakeCodec());
+        var viewer = new ViewerSide(vl, new FakeCanvas());
         shared.Start();
         await Until(() => { lock (withCursor) return withCursor.Count > 0; });
         lock (withCursor) Assert.True(withCursor[0]);
@@ -121,14 +121,28 @@ public class SessionSideTests
     public async Task ViewerReceivesFrame()
     {
         var (vl, sl) = LinkPair.Connect();
-        var shared = new SharedSide(sl, () => Task.FromResult(false), _ => { }, _ => { }, _ => new Bitmap(128, 128));
-        var viewer = new ViewerSide(vl);
+        var shared = new SharedSide(sl, () => Task.FromResult(false), _ => { }, _ => { }, _ => new Frame(128, 128), new FakeCodec());
+        var viewer = new ViewerSide(vl, new FakeCanvas());
         var got = new TaskCompletionSource<bool>();
         viewer.FrameChanged += () => got.TrySetResult(true);
         shared.Start();
         await Task.WhenAny(got.Task, Task.Delay(10000));
         Assert.True(got.Task.IsCompleted, "no frame received");
-        Assert.Equal(128, viewer.Frame.Width);
+        Assert.Equal(128, viewer.Canvas.Width);
         shared.Dispose(); viewer.Dispose(); vl.Dispose(); sl.Dispose();
     }
+}
+
+public class FakeCodec : IImageCodec
+{
+    public byte[] EncodeJpeg(Frame frame, System.Drawing.Rectangle region, int quality) => new byte[] { 0xFF, 0xD8, 1, 2 };
+}
+
+public class FakeCanvas : ITileCanvas
+{
+    public int Width { get; private set; }
+    public int Height { get; private set; }
+    public int Tiles;
+    public void Resize(int width, int height) { Width = width; Height = height; }
+    public void DrawJpeg(byte[] jpeg, int x, int y, int width, int height) => System.Threading.Interlocked.Increment(ref Tiles);
 }

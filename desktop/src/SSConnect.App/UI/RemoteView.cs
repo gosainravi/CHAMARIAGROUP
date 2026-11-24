@@ -1,7 +1,8 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using SSConnect.App.Controller;
+using SSConnect.App.Win32;
+using SSConnect.Core.Session;
 using SSConnect.Core.Input;
 
 namespace SSConnect.App.UI
@@ -11,6 +12,7 @@ namespace SSConnect.App.UI
     {
         const int WM_KEYDOWN = 0x100, WM_KEYUP = 0x101, WM_SYSKEYDOWN = 0x104, WM_SYSKEYUP = 0x105;
         readonly ViewerSide viewer;
+        BitmapCanvas Canvas => (BitmapCanvas)viewer.Canvas;
         readonly InputGate held = new InputGate(); // tracks keys/buttons pressed here so focus loss can release them on B
 
         public RemoteView(ViewerSide viewer)
@@ -45,22 +47,22 @@ namespace SSConnect.App.UI
 
         Rectangle PictureRect()
         {
-            lock (viewer.FrameLock)
-                return viewer.Frame == null ? Rectangle.Empty : CoordMap.Letterbox(viewer.Frame.Size, ClientSize);
+            lock (Canvas.Lock)
+                return Canvas.Bitmap == null ? Rectangle.Empty : CoordMap.Letterbox(Canvas.Bitmap.Size, ClientSize);
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.Clear(Color.Black);
-            lock (viewer.FrameLock)
+            lock (Canvas.Lock)
             {
-                if (viewer.Frame == null)
+                if (Canvas.Bitmap == null)
                 {
                     TextRenderer.DrawText(e.Graphics, "Waiting for partner's screen…", Font, ClientRectangle, Color.Gray);
                     return;
                 }
                 e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
-                e.Graphics.DrawImage(viewer.Frame, CoordMap.Letterbox(viewer.Frame.Size, ClientSize));
+                e.Graphics.DrawImage(Canvas.Bitmap, CoordMap.Letterbox(Canvas.Bitmap.Size, ClientSize));
             }
         }
 

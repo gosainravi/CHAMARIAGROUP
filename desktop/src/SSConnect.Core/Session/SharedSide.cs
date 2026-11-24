@@ -4,13 +4,13 @@ using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using SSConnect.App.Win32;
 using SSConnect.Core.Input;
 using SSConnect.Core.Net;
 using SSConnect.Core.Protocol;
+using SSConnect.Core.Platform;
 using SSConnect.Core.Screen;
 
-namespace SSConnect.App.Controller
+namespace SSConnect.Core.Session
 {
     public class SharedSide : IDisposable
     {
@@ -20,7 +20,8 @@ namespace SSConnect.App.Controller
         readonly Func<Task<bool>> askUser;
         readonly Action<bool> onControlChanged;
         readonly Action<InputEvent> inject;
-        readonly Func<bool, Bitmap> capture; // argument: draw the cursor into the picture
+        readonly Func<bool, Frame> capture; // argument: draw the cursor into the picture
+        readonly IImageCodec codec;
         readonly InputGate gate = new InputGate();
         readonly TileDiffer differ = new TileDiffer(64);
         readonly CancellationTokenSource cts = new CancellationTokenSource();
@@ -30,13 +31,14 @@ namespace SSConnect.App.Controller
         int asking;
 
         public SharedSide(ISessionLink link, Func<Task<bool>> askUser, Action<bool> onControlChanged,
-            Action<InputEvent> inject = null, Func<bool, Bitmap> capture = null)
+            Action<InputEvent> inject, Func<bool, Frame> capture, IImageCodec codec)
         {
             this.link = link;
             this.askUser = askUser;
             this.onControlChanged = onControlChanged;
-            this.capture = capture ?? (withCursor => ScreenCapture.CapturePrimary(withCursor));
-            this.inject = inject ?? (e => InputInjector.Apply(e, ScreenCapture.PrimarySize()));
+            this.capture = capture;
+            this.inject = inject;
+            this.codec = codec;
             link.ControlMessage += OnControl;
         }
 
@@ -62,7 +64,7 @@ namespace SSConnect.App.Controller
                         if (rects.Count > 0)
                         {
                             int q = quality;
-                            var tiles = rects.Select(r => new Tile { X = r.X, Y = r.Y, W = r.Width, H = r.Height, Jpeg = JpegCodec.Encode(frame, r, q) }).ToList();
+                            var tiles = rects.Select(r => new Tile { X = r.X, Y = r.Y, W = r.Width, H = r.Height, Jpeg = codec.EncodeJpeg(frame, r, q) }).ToList();
                             messages = TilePacket.Encode(frame.Width, frame.Height, tiles);
                         }
                     }
