@@ -1,0 +1,2 @@
+ffmpeg.wasm worker files (@ffmpeg/ffmpeg 0.12.10, dist/esm), MIT License, Copyright (c) 2019 Jerome Wu.
+https://github.com/ffmpegwasm/ffmpeg.wasm - served same-origin because browsers require module workers to be.
