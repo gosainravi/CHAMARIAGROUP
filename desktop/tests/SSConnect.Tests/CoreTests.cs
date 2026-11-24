@@ -35,6 +35,15 @@ public class CoordMapTests
     }
 
     [Fact]
+    public void LetterboxKeepsAspectAndCenters()
+    {
+        var r = CoordMap.Letterbox(new System.Drawing.Size(1920, 1080), new System.Drawing.Size(1000, 1000));
+        Assert.Equal(new System.Drawing.Rectangle(0, 218, 1000, 563), r);
+        var tall = CoordMap.Letterbox(new System.Drawing.Size(1000, 1000), new System.Drawing.Size(1600, 800));
+        Assert.Equal(new System.Drawing.Rectangle(400, 0, 800, 800), tall);
+    }
+
+    [Fact]
     public void ClampsOutside()
     {
         var p = CoordMap.ToPixels(1.4f, -0.2f, 1920, 1080);
