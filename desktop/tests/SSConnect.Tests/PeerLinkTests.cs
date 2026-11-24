@@ -39,8 +39,8 @@ public class PeerLinkTests
         await Task.WhenAny(Task.WhenAll(gotControl.Task, gotScreen.Task), Task.Delay(10000));
         Assert.True(gotControl.Task.IsCompleted, "control message not received");
         Assert.True(gotScreen.Task.IsCompleted, "screen message not received");
-        Assert.Equal("{\"type\":\"ask-control\"}", gotControl.Task.Result);
-        Assert.Equal(50000, gotScreen.Task.Result);
+        Assert.Equal("{\"type\":\"ask-control\"}", await gotControl.Task);
+        Assert.Equal(50000, await gotScreen.Task);
         viewer.Dispose();
         shared.Dispose();
     }
