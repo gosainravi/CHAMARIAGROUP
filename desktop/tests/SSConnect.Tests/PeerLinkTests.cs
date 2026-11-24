@@ -25,6 +25,24 @@ public static class LinkPair
 public class PeerLinkTests
 {
     [Fact]
+    public async Task ControlSentBeforeChannelOpensIsDelivered()
+    {
+        PeerLink viewer = null, shared = null;
+        var ice = new RTCIceServer[0];
+        viewer = new PeerLink(true, ice, d => shared.HandleSignalAsync(d));
+        shared = new PeerLink(false, ice, d => viewer.HandleSignalAsync(d));
+        var got = new TaskCompletionSource<string>();
+        shared.ControlMessage += s => got.TrySetResult(s);
+        await shared.StartAsync();
+        await viewer.StartAsync();
+        viewer.SendControl("{\"type\":\"keyframe-request\"}");
+        await Task.WhenAny(got.Task, Task.Delay(15000));
+        Assert.True(got.Task.IsCompleted, "early control message was dropped");
+        viewer.Dispose();
+        shared.Dispose();
+    }
+
+    [Fact]
     public async Task ViewerAndSharedExchangeOnBothChannels()
     {
         var (viewer, shared) = await LinkPair.Connect();

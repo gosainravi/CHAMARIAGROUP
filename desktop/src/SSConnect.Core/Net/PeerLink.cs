@@ -16,6 +16,7 @@ namespace SSConnect.Core.Net
         readonly List<RTCIceCandidateInit> early = new List<RTCIceCandidateInit>();
         readonly object sync = new object();
         readonly List<JObject> outgoing = new List<JObject>();
+        readonly List<string> pendingControl = new List<string>();
         RTCDataChannel screen, control;
         bool remoteSet, localSent;
 
@@ -52,6 +53,8 @@ namespace SSConnect.Core.Net
             {
                 control = ch;
                 ch.onmessage += (c, proto, data) => ControlMessage?.Invoke(Encoding.UTF8.GetString(data));
+                ch.onopen += FlushControl;
+                if (ch.readyState == RTCDataChannelState.open) FlushControl();
             }
         }
 
@@ -105,10 +108,22 @@ namespace SSConnect.Core.Net
             if (ch != null && ch.readyState == RTCDataChannelState.open) ch.send(msg);
         }
 
+        // Control messages are queued until the channel opens; screen tiles are not (keyframes recover them).
         public void SendControl(string json)
         {
-            var ch = control;
-            if (ch != null && ch.readyState == RTCDataChannelState.open) ch.send(json);
+            lock (sync)
+            {
+                var ch = control;
+                if (ch == null || ch.readyState != RTCDataChannelState.open) { pendingControl.Add(json); return; }
+            }
+            control.send(json);
+        }
+
+        void FlushControl()
+        {
+            List<string> queued;
+            lock (sync) { queued = pendingControl.ToList(); pendingControl.Clear(); }
+            foreach (var m in queued) control.send(m);
         }
 
         public void Dispose()
