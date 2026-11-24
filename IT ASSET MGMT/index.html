@@ -37,6 +37,107 @@
     --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --sans:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   }
+
+  /* ================= THEMES =========================================
+     Every colour the chrome uses is a token, so a theme is nothing but a
+     block of overrides. Glass only works when there is something behind it
+     to blur, so each theme also supplies the three aurora colours painted
+     inside the app card - that is what the frosted surfaces are blurring.
+
+     Data surfaces (table rows, stat cards, form fields) stay opaque on
+     purpose. Frosted text is softer text, and these are the parts people
+     read numbers off. */
+  :root{
+    --ink-dim:#C7C8D4;
+    --ink-faint:#7A7C8A;
+    --hover:rgba(255,255,255,0.06);
+    --on-accent:#FFFFFF;
+    --aurora-a:#4C7FFF;
+    --aurora-b:#8B5CF6;
+    --aurora-c:#FF6FA8;
+    --aurora-opacity:0.30;
+    --glass-bg:rgba(255,255,255,0.045);
+    --glass-panel:rgba(23,23,29,0.92);
+    --glass-menu:rgba(23,23,29,0.985);
+    --glass-head:rgba(32,32,39,0.80);
+    --glass-border:rgba(255,255,255,0.10);
+    --glass-blur:18px;
+    --scrim:rgba(10,12,20,0.55);
+    --promo-bg:rgba(255,255,255,0.06);
+    --promo-ink:var(--ink);
+    --promo-sub:var(--ink-soft);
+    --promo-btn:var(--accent);
+    --promo-btn-ink:#FFFFFF;
+  }
+
+  [data-theme="graphite"]{
+    --surface:#15161A; --paper:#1E2026;
+    --ink:#EDEEF2; --ink-soft:#9A9CA6; --ink-dim:#C6C8D0; --ink-faint:#787A85;
+    --accent:#5B8DEF; --accent-2:#8FA3BF; --accent-dark:#4474D4; --accent-soft:#1A2130;
+    --aurora-a:#5B8DEF; --aurora-b:#8FA3BF; --aurora-c:#64748B; --aurora-opacity:0.22;
+    --glass-panel:rgba(21,22,26,0.92);
+    --glass-menu:rgba(21,22,26,0.985);
+    --glass-head:rgba(30,32,38,0.80);
+    --canvas:radial-gradient(circle at 12% 8%,#DFE3EC 0%,transparent 55%),radial-gradient(circle at 90% 15%,#E6EAF2 0%,transparent 50%),linear-gradient(135deg,#EDEFF4 0%,#E7EAF1 50%,#F2F3F6 100%);
+    --data:#5B8DEF;
+  }
+
+  [data-theme="ocean"]{
+    --surface:#0D1A21; --paper:#13242E;
+    --ink:#EAF6FA; --ink-soft:#8FA9B5; --ink-dim:#BDD4DD; --ink-faint:#6E8794;
+    --accent:#2DD4BF; --accent-2:#38BDF8; --accent-dark:#14A99A; --accent-soft:#0C2B2E;
+    --aurora-a:#2DD4BF; --aurora-b:#38BDF8; --aurora-c:#0EA5E9; --aurora-opacity:0.30;
+    --glass-panel:rgba(13,26,33,0.92);
+    --glass-menu:rgba(13,26,33,0.985);
+    --glass-head:rgba(19,36,46,0.80);
+    --canvas:radial-gradient(circle at 12% 8%,#D6F3F2 0%,transparent 55%),radial-gradient(circle at 90% 15%,#DCEEFB 0%,transparent 50%),linear-gradient(135deg,#E4F4F5 0%,#E2EEF8 50%,#EAF6FA 100%);
+    --data:#2DD4BF;
+  }
+
+  [data-theme="violet"]{
+    --surface:#16121F; --paper:#1F1930;
+    --ink:#F3EFFA; --ink-soft:#A79FBD; --ink-dim:#CFC7E0; --ink-faint:#837A9A;
+    --accent:#A78BFA; --accent-2:#F472B6; --accent-dark:#8B5CF6; --accent-soft:#241B3A;
+    --aurora-a:#A78BFA; --aurora-b:#F472B6; --aurora-c:#6366F1; --aurora-opacity:0.32;
+    --glass-panel:rgba(22,18,31,0.92);
+    --glass-menu:rgba(22,18,31,0.985);
+    --glass-head:rgba(31,25,48,0.80);
+    --canvas:radial-gradient(circle at 12% 8%,#EDE4FF 0%,transparent 55%),radial-gradient(circle at 90% 15%,#FBE4F2 0%,transparent 50%),linear-gradient(135deg,#F0E9FD 0%,#F5EAFA 50%,#FCECF5 100%);
+    --data:#A78BFA;
+  }
+
+  [data-theme="forest"]{
+    --surface:#0F1A14; --paper:#16251C;
+    --ink:#ECF6EF; --ink-soft:#93A99B; --ink-dim:#C3D6C9; --ink-faint:#72887A;
+    --accent:#34D399; --accent-2:#A3E635; --accent-dark:#1FA87A; --accent-soft:#0E2A20;
+    --aurora-a:#34D399; --aurora-b:#A3E635; --aurora-c:#10B981; --aurora-opacity:0.26;
+    --glass-panel:rgba(15,26,20,0.92);
+    --glass-menu:rgba(15,26,20,0.985);
+    --glass-head:rgba(22,37,28,0.80);
+    --canvas:radial-gradient(circle at 12% 8%,#DCF3E6 0%,transparent 55%),radial-gradient(circle at 90% 15%,#EAF6D9 0%,transparent 50%),linear-gradient(135deg,#E6F5EB 0%,#EDF6E2 50%,#F1F8EC 100%);
+    --data:#34D399;
+  }
+
+  /* The one light theme. Text, borders and the "on accent" colour all flip,
+     so white-on-accent badges keep working while body text goes dark. */
+  [data-theme="frost"]{
+    --surface:#F5F6FB; --paper:#FFFFFF;
+    --ink:#14151D; --ink-soft:#5B5D70; --ink-dim:#2C2E3B; --ink-faint:#8A8C9C;
+    --line:rgba(16,18,30,0.11); --line-soft:rgba(16,18,30,0.07);
+    --hover:rgba(16,18,30,0.045);
+    --accent:#3B6FF5; --accent-2:#8B5CF6; --accent-dark:#2B55CC; --accent-soft:#E6EDFF;
+    --aurora-a:#8FB0FF; --aurora-b:#C4B0FF; --aurora-c:#FFB3D1; --aurora-opacity:0.40;
+    --glass-bg:rgba(255,255,255,0.52);
+    --glass-panel:rgba(252,252,255,0.94);
+    --glass-menu:rgba(252,252,255,0.985);
+    --glass-head:rgba(255,255,255,0.82);
+    --glass-border:rgba(16,18,30,0.09);
+    --scrim:rgba(40,44,60,0.30);
+    --promo-bg:rgba(16,18,30,0.05);
+    --canvas:radial-gradient(circle at 12% 8%,#E9E4FF 0%,transparent 55%),radial-gradient(circle at 90% 15%,#E3EBFF 0%,transparent 50%),linear-gradient(135deg,#EFEBFC 0%,#EAF0FE 45%,#FCEBF4 100%);
+    --data:#3B6FF5;
+  }
+
   *{box-sizing:border-box;}
   body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--sans);}
   ::selection{background:var(--accent-soft);}
@@ -51,8 +152,8 @@
 
   /* ---------- Sidebar ---------- */
   .sidebar{
-    width:250px;flex-shrink:0;background:transparent;color:#fff;display:flex;flex-direction:column;
-    border-right:3px solid var(--accent);transition:width .18s ease;position:sticky;top:0;align-self:flex-start;height:100vh;max-height:100%;overflow:hidden;
+    width:250px;flex-shrink:0;background:transparent;color:var(--ink);display:flex;flex-direction:column;
+    transition:width .18s ease;position:sticky;top:26px;align-self:flex-start;height:calc(100vh - 52px);overflow:hidden;
   }
   .sidebar.collapsed{width:70px;}
   .sidebar-top{display:flex;align-items:center;gap:10px;padding:18px 16px;border-bottom:1px solid #26272A;}
@@ -78,38 +179,38 @@
 
   .sidebar-nav{flex:1;overflow-y:auto;padding:14px 12px;}
   .sidebar-section-label{
-    font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#7A7C7F;
+    font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--ink-faint);
     padding:14px 10px 6px;white-space:nowrap;overflow:hidden;
   }
   .sidebar-section-label:first-child{padding-top:2px;}
   .tab-btn, .svc-nav-btn{
     display:flex;align-items:center;gap:10px;width:100%;background:transparent;border:none;
-    color:#C7C8C9;padding:9px 10px;font-size:13.5px;font-weight:600;border-radius:12px;font-family:var(--sans);
+    color:var(--ink-dim);padding:9px 10px;font-size:13.5px;font-weight:600;border-radius:12px;font-family:var(--sans);
     margin-bottom:2px;white-space:nowrap;overflow:hidden;text-align:left;
   }
   .nav-ic{flex-shrink:0;width:18px;text-align:center;font-size:14px;opacity:0.85;}
   .nav-txt{overflow:hidden;text-overflow:ellipsis;}
   .sidebar.collapsed .nav-txt, .sidebar.collapsed .sidebar-brand-text, .sidebar.collapsed .sidebar-section-label{display:none;}
   .sidebar.collapsed .sidebar-summary-card{display:none;}
-  .tab-btn:hover, .svc-nav-btn:hover{background:#232426;color:#fff;}
-  .tab-btn.active, .svc-nav-btn.active{background:var(--accent);color:#fff;}
+  .tab-btn:hover, .svc-nav-btn:hover{background:var(--hover);color:var(--ink);}
+  .tab-btn.active, .svc-nav-btn.active{background:var(--accent);color:var(--on-accent);}
 
-  .sidebar-footer{padding:14px 16px 18px;border-top:1px solid #26272A;}
-  .sidebar-promo{background:#F7F1EF;color:#1A1213;border-radius:16px;padding:14px;margin-bottom:12px;position:relative;box-shadow:0 12px 28px -10px rgba(0,0,0,0.5);}
-  .sidebar-promo-close{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#8A7A76;font-size:11px;cursor:pointer;padding:2px;}
-  .sidebar-promo-close:hover{color:#1A1213;}
+  .sidebar-footer{padding:14px 16px 18px;border-top:1px solid var(--line);}
+  .sidebar-promo{background:var(--promo-bg);color:var(--promo-ink);border:1px solid var(--glass-border);border-radius:16px;padding:14px;margin-bottom:12px;position:relative;}
+  .sidebar-promo-close{position:absolute;top:10px;right:10px;background:transparent;border:none;color:var(--ink-faint);font-size:11px;cursor:pointer;padding:2px;}
+  .sidebar-promo-close:hover{color:var(--ink);}
   .sidebar-promo-badge{display:inline-block;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;padding:3px 10px;border-radius:999px;margin-bottom:8px;}
   .sidebar-promo-title{font-size:14px;font-weight:800;}
-  .sidebar-promo-sub{font-size:11px;color:#6B5C58;margin-top:4px;line-height:1.5;}
-  .sidebar-promo-btn{margin-top:10px;width:100%;background:#1A1213;border:none;color:#fff;padding:9px;border-radius:999px;font-size:11.5px;font-weight:700;cursor:pointer;}
-  .sidebar-promo-btn:hover{background:#000;}
+  .sidebar-promo-sub{font-size:11px;color:var(--promo-sub);margin-top:4px;line-height:1.5;}
+  .sidebar-promo-btn{margin-top:10px;width:100%;background:var(--promo-btn);border:none;color:var(--promo-btn-ink);padding:9px;border-radius:999px;font-size:11.5px;font-weight:700;cursor:pointer;}
+  .sidebar-promo-btn:hover{background:var(--accent-dark);}
   .sidebar.collapsed .sidebar-promo{display:none;}
   .sidebar-summary-card{
     background:rgba(76,127,255,0.12);border:1px solid rgba(76,127,255,0.35);border-radius:16px;
     padding:12px 14px;margin-bottom:12px;
   }
-  .ssc-value{font-family:var(--mono);font-size:19px;font-weight:700;color:#fff;}
-  .ssc-label{font-size:10.5px;color:#A9ABAD;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;}
+  .ssc-value{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--ink);}
+  .ssc-label{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;}
 
   /* ---------- Main area / header ---------- */
   .main-area{flex:1;min-width:0;display:flex;flex-direction:column;}
@@ -267,7 +368,7 @@
   .scroll-x{overflow-x:auto;}
   table{border-collapse:collapse;width:100%;}
   thead th{
-    position:sticky;top:0;background:var(--paper);color:#E4E4E3;
+    position:sticky;top:0;background:var(--paper);color:var(--ink-dim);
     font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;
     text-align:left;padding:10px 12px;white-space:nowrap;font-weight:500;border-bottom:1px solid var(--ink);
   }
@@ -293,8 +394,8 @@
   .row-click{cursor:pointer;}
   .row-actions{display:flex;gap:4px;}
   .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
-  .equip-cell .m1{font-weight:600;}
-  .equip-cell .m2{color:var(--ink-soft);font-size:11.5px;}
+  .equip-cell .m1{font-weight:600;display:block;}
+  .equip-cell .m2{color:var(--ink-soft);font-size:11.5px;display:block;margin-top:2px;}
   .invoice-cell{text-align:center;}
   .invoice-icon-btn{
     display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
@@ -830,6 +931,98 @@
     .grid2{grid-template-columns:1fr;}
     .form-grid{grid-template-columns:1fr;}
   }
+
+  /* ================= GLASS & MOTION =================
+     These override component rules defined earlier in this sheet, so
+     they have to come last. Specificity is equal, so document order is
+     what decides it - moving this block up silently disables the glass. */
+  /* ---------- Glass ----------
+     backdrop-filter is the whole effect, so where it is unsupported the
+     surface falls back to an opaque one rather than a transparent sheet
+     with text behind it. */
+  .app-card{position:relative;}
+  .aurora{
+    position:absolute;inset:0;pointer-events:none;z-index:0;opacity:var(--aurora-opacity);
+    background:
+      radial-gradient(42% 46% at 14% 12%, var(--aurora-a) 0%, transparent 70%),
+      radial-gradient(38% 44% at 86% 8%,  var(--aurora-b) 0%, transparent 70%),
+      radial-gradient(46% 42% at 70% 94%, var(--aurora-c) 0%, transparent 72%);
+  }
+  .app-shell{position:relative;z-index:1;}
+
+  @supports (backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px)){
+    .sidebar{background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.25);backdrop-filter:blur(var(--glass-blur)) saturate(1.25);}
+    .topheader{background:var(--glass-bg);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.25);backdrop-filter:blur(var(--glass-blur)) saturate(1.25);}
+    .panel{background:var(--glass-panel);-webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);}
+    .overlay{-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+    thead th{background:var(--glass-head);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);}
+  }
+  @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))){
+    .sidebar, .topheader{background:var(--surface);}
+    .panel{background:var(--surface);}
+  }
+  .overlay{background:var(--scrim);}
+  .sidebar{border-right:1px solid var(--glass-border);}
+  .topheader{border-bottom:1px solid var(--glass-border);}
+
+  /* ---------- Theme picker ---------- */
+  .theme-btn{
+    position:relative;background:var(--paper);border:1px solid var(--line);
+    width:38px;height:38px;border-radius:16px;font-size:15px;flex-shrink:0;
+    color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:border-color .14s ease, transform .14s ease;
+  }
+  .theme-btn:hover{border-color:var(--accent);transform:translateY(-1px);}
+  .theme-menu{
+    position:absolute;right:0;top:46px;z-index:70;width:232px;padding:8px;
+    background:var(--glass-menu);border:1px solid var(--glass-border);
+    border-radius:18px;box-shadow:0 26px 60px -20px rgba(0,0,0,0.75);
+    display:none;
+  }
+  @supports (backdrop-filter: blur(2px)){
+    .theme-menu{-webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);}
+  }
+  .theme-menu.open{display:block;animation:fadeUp .16s ease-out;}
+  .theme-menu-label{
+    font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;
+    color:var(--ink-faint);padding:6px 10px 8px;
+  }
+  .theme-opt{
+    display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:12px;
+    background:transparent;border:1px solid transparent;color:var(--ink-dim);
+    font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;text-align:left;
+    transition:background .12s ease, color .12s ease;
+  }
+  .theme-opt:hover{background:var(--hover);color:var(--ink);}
+  .theme-opt.active{border-color:var(--accent);color:var(--ink);background:var(--hover);}
+  .theme-swatch{
+    width:22px;height:22px;border-radius:7px;flex-shrink:0;
+    border:1px solid var(--glass-border);
+  }
+  .theme-opt .tick{margin-left:auto;color:var(--accent);font-size:12px;opacity:0;}
+  .theme-opt.active .tick{opacity:1;}
+
+  /* ---------- Motion ----------
+     Short and flat on purpose: this is a tool people use all day, so the
+     animations confirm an action and get out of the way. */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  @keyframes popIn{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:none;}}
+  .tab-panel.is-entering{animation:fadeUp .22s ease-out;}
+  .btn{transition:background .12s, border-color .12s, color .12s, transform .12s;}
+  .btn:active{transform:translateY(1px) scale(.99);}
+  .tab-btn, .svc-nav-btn{transition:background .14s ease, color .14s ease;}
+  tbody tr{transition:background .14s ease;}
+  .stat-card{transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;}
+  .stat-card:hover{transform:translateY(-2px);box-shadow:0 14px 30px -16px rgba(0,0,0,0.55);}
+  .toast{animation:popIn .18s ease-out;}
+
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;scroll-behavior:auto !important;
+    }
+    .stat-card:hover{transform:none;}
+  }
 </style>
 </head>
 <body>
@@ -882,6 +1075,7 @@
 </div>
 
 <div class="canvas-wrap"><div class="app-card">
+<div class="aurora" aria-hidden="true"></div>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
@@ -943,6 +1137,12 @@
       <div class="search-wrap header-search">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
         <input id="globalSearch" type="text" placeholder="Search assets, companies, employees…">
+      </div>
+      <div style="position:relative;" id="themeWrap">
+        <button class="theme-btn" id="themeBtn" title="Appearance" aria-haspopup="true" aria-expanded="false">◐</button>
+        <div class="theme-menu" id="themeMenu" role="menu">
+          <div class="theme-menu-label">Appearance</div>
+        </div>
       </div>
       <button class="notif-bell" id="notifBell" title="Warranty alerts">🔔<span class="notif-badge" id="notifBadge" style="display:none;">0</span></button>
       <button class="btn btn-sm" id="expiryQuickBtn" title="Expiry Alerts - subscriptions and equipment" style="display:flex;align-items:center;gap:6px;font-weight:600;">
@@ -1313,7 +1513,11 @@
   <section id="tab-discovery" class="tab-panel section">
     <div class="toolbar">
       <div class="toolbar-left">
-        <h3 style="margin:0;">🔍 Asset Discovery — From Agent Scans</h3>
+        <h3 style="margin:0;">🔍 Asset Discovery</h3>
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="discoverySearch" type="text" placeholder="Search scans...">
+        </div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" id="discoveryBulkMoveBtn" style="display:none;">→ Move to Assets (<span id="discoveryBulkMoveCount">0</span>)</button>
@@ -4010,7 +4214,11 @@ async function loadDiscovery(){
 /* Rows that have been moved into Assets are no longer discovery work, so the
    page stops listing them. Nothing is deleted - the scan, its software list
    and the link to the asset it became all stay in asset_discovery. */
-function discoveryOpen(){ return discoveryItems.filter(d => d.status !== 'moved'); }
+function discoveryOpen(){
+  const box = $('discoverySearch');
+  const q = box ? box.value.trim() : '';
+  return discoveryItems.filter(d => d.status !== 'moved' && discoveryMatches(d, q));
+}
 
 function discStatusChip(status){
   const map = {
@@ -4037,9 +4245,11 @@ function renderDiscovery(){
   const body = $('discoveryTableBody');
   if(!open.length){
     body.innerHTML = '<tr class="empty-row"><td colspan="12"><span class="empty-icon">▤</span>' +
-      (moved.length
-        ? 'Nothing left to review — all ' + moved.length + ' scanned system' + (moved.length>1?'s have':' has') + ' been moved into Assets.'
-        : 'No scans yet — install the Chamaria IT Agent on any PC to get started.') +
+      (($('discoverySearch') && $('discoverySearch').value.trim())
+        ? 'No scan matches that search.'
+        : moved.length
+          ? 'Nothing left to review — all ' + moved.length + ' scanned system' + (moved.length>1?'s have':' has') + ' been moved into Assets.'
+          : 'No scans yet — install the Chamaria IT Agent on any PC to get started.') +
       '</td></tr>';
     updateDiscoverySelectAllState();
     updateDiscoveryBulkUI();
@@ -9501,8 +9711,13 @@ function exportHealthCSV(){
 function switchTab(tabName){
   document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab === tabName));
   if(tabName !== 'services') document.querySelectorAll('.svc-nav-btn').forEach(b=> b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p=> p.classList.remove('active'));
-  $('tab-' + tabName).classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p=> { p.classList.remove('active'); p.classList.remove('is-entering'); });
+  const shown = $('tab-' + tabName);
+  shown.classList.add('active');
+  // restart the animation even when the same panel is re-shown
+  void shown.offsetWidth;
+  shown.classList.add('is-entering');
+  shown.addEventListener('animationend', () => shown.classList.remove('is-entering'), { once:true });
   if(tabName === 'dashboard') renderDashboard();
   if(tabName === 'health') renderHealth();
   if(tabName === 'expiry') renderExpiry();
@@ -9724,13 +9939,103 @@ $('sidebarCollapseBtn').addEventListener('click', ()=>{
 });
 
 // Global header search — jumps to Assets and applies the search filter there
-$('globalSearch').addEventListener('input', (e)=>{
-  const q = e.target.value;
-  switchTab('assets');
-  $('assetSearch').value = q;
-  assetCurrentPage = 1;
-  renderAssets();
-});
+
+/* ================= APPEARANCE =================
+   A theme is only a block of CSS variable overrides, so switching one is a
+   single attribute on <html>. The choice is per browser, not per account -
+   it changes nothing anyone else sees. */
+const THEMES = [
+  { id:'midnight', name:'Midnight',  swatch:'linear-gradient(135deg,#4C7FFF,#8B5CF6)' },
+  { id:'graphite', name:'Graphite',  swatch:'linear-gradient(135deg,#5B8DEF,#8FA3BF)' },
+  { id:'ocean',    name:'Ocean',     swatch:'linear-gradient(135deg,#2DD4BF,#38BDF8)' },
+  { id:'violet',   name:'Violet',    swatch:'linear-gradient(135deg,#A78BFA,#F472B6)' },
+  { id:'forest',   name:'Forest',    swatch:'linear-gradient(135deg,#34D399,#A3E635)' },
+  { id:'frost',    name:'Frost',     swatch:'linear-gradient(135deg,#E9E4FF,#FCEBF4)' }
+];
+const THEME_KEY = 'portal-theme';
+
+function applyTheme(id, save){
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  // Midnight is what :root already says, so it carries no attribute.
+  if(t.id === 'midnight') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t.id);
+  if(save !== false){ try{ localStorage.setItem(THEME_KEY, t.id); }catch(e){} }
+  renderThemeMenu();
+}
+function currentTheme(){
+  return document.documentElement.getAttribute('data-theme') || 'midnight';
+}
+function renderThemeMenu(){
+  const menu = $('themeMenu');
+  if(!menu) return;
+  const cur = currentTheme();
+  menu.innerHTML = '<div class="theme-menu-label">Appearance</div>' +
+    THEMES.map(t =>
+      '<button class="theme-opt' + (t.id===cur?' active':'') + '" data-theme-id="' + t.id + '" role="menuitem">' +
+        '<span class="theme-swatch" style="background:' + t.swatch + ';"></span>' +
+        '<span>' + t.name + '</span><span class="tick">✓</span>' +
+      '</button>').join('');
+  menu.querySelectorAll('[data-theme-id]').forEach(b =>
+    b.addEventListener('click', () => {
+      applyTheme(b.dataset.themeId, true);
+      closeThemeMenu();
+      showToast(THEMES.find(x=>x.id===b.dataset.themeId).name + ' theme applied');
+    }));
+}
+function openThemeMenu(){ $('themeMenu').classList.add('open'); $('themeBtn').setAttribute('aria-expanded','true'); }
+function closeThemeMenu(){ $('themeMenu').classList.remove('open'); $('themeBtn').setAttribute('aria-expanded','false'); }
+
+(function initTheme(){
+  let saved = null;
+  try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+  applyTheme(saved || 'midnight', false);
+  $('themeBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('themeMenu').classList.contains('open') ? closeThemeMenu() : openThemeMenu();
+  });
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('#themeWrap')) closeThemeMenu();
+  });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeThemeMenu(); });
+})();
+
+/* ================= SEARCH =================
+   Each page owns its own box. The header box used to call switchTab('assets')
+   on every keystroke, so typing anywhere dragged you onto Assets; now it types
+   into whichever page you are already on, and only falls back to Assets from
+   pages that have no search of their own. */
+const TAB_SEARCH = {
+  assets:    { input:'assetSearch',    apply(){ assetCurrentPage = 1; renderAssets(); } },
+  discovery: { input:'discoverySearch',apply(){ renderDiscovery(); } },
+  companies: { input:'companySearch',  apply(){ renderCompanies(); } },
+  employees: { input:'employeeSearch', apply(){ renderEmployees(); } },
+  vendors:   { input:'vendorSearch',   apply(){ renderVendors(); } }
+};
+
+function visibleTab(){
+  const p = document.querySelector('.tab-panel.active');
+  return p ? p.id.replace('tab-', '') : 'assets';
+}
+function routeGlobalSearch(q){
+  const here = visibleTab();
+  const target = TAB_SEARCH[here] ? here : 'assets';
+  if(target !== here) switchTab(target);
+  const box = $(TAB_SEARCH[target].input);
+  if(box) box.value = q;
+  try{ TAB_SEARCH[target].apply(); }catch(e){ console.warn(e); }
+}
+
+function discoveryMatches(d, q){
+  if(!q) return true;
+  const hay = [d.computer_name, d.username, d.manufacturer, d.model, d.serial_number,
+               d.ip_address, d.os_name, d.category, d.location, d.vendor,
+               companyNameById(d.company_id)]
+              .filter(Boolean).join(' ').toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(term => hay.includes(term));
+}
+
+$('globalSearch').addEventListener('input', (e)=> routeGlobalSearch(e.target.value));
+$('discoverySearch').addEventListener('input', ()=> renderDiscovery());
 
 // Notification bell — real warranty expiring/expired count, jumps to Dashboard
 $('notifBell').addEventListener('click', ()=>{ switchTab('dashboard'); });
