@@ -23,7 +23,8 @@ namespace SSConnect.App.UI
             this.viewer = viewer;
             this.endSession = endSession;
             timer = new SessionTimer(limit);
-            Text = "SS-Connect — " + MainForm.FormatId(peerId);
+            Text = "Remote PC — " + MainForm.FormatId(peerId);
+            Icon = Branding.Icon;
             Size = new Size(1100, 700);
             StartPosition = FormStartPosition.CenterScreen;
 

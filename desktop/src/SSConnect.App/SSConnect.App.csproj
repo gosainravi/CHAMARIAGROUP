@@ -4,18 +4,23 @@
     <TargetFramework>net48</TargetFramework>
     <LangVersion>7.3</LangVersion>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>SS-Connect</AssemblyName>
+    <AssemblyName>REMOTE-PC</AssemblyName>
     <RootNamespace>SSConnect.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Product>SS-Connect</Product>
-    <AssemblyTitle>SS-Connect Remote Support</AssemblyTitle>
+    <ApplicationIcon>Assets\remote-pc.ico</ApplicationIcon>
+    <Product>Remote PC</Product>
+    <AssemblyTitle>Remote PC</AssemblyTitle>
     <Description>Screen sharing and remote control with on-screen permission (Allow / Deny).</Description>
     <Company>Chamaria Group</Company>
     <Copyright>© 2026 Chamaria Group</Copyright>
-    <Version>1.0.2</Version>
-    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\remote-pc-logo.png" LogicalName="SSConnect.Logo.png" />
+    <EmbeddedResource Include="Assets\remote-pc.ico" LogicalName="SSConnect.Icon.ico" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SSConnect.Core\SSConnect.Core.csproj" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />

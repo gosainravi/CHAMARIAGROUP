@@ -1,4 +1,4 @@
-name: Build SS-Connect Desktop (Windows)
+name: Build Remote PC (Windows)
 
 on:
   workflow_dispatch:
@@ -23,11 +23,11 @@ jobs:
         run: dotnet build desktop/src/SSConnect.App -c Release
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ss-connect-desktop-latest
-          name: SS-Connect Desktop (Windows)
+          tag_name: remote-pc-latest
+          name: Remote PC (Windows)
           make_latest: false
           body: |
-            SS-Connect for Windows — screen sharing with mouse and keyboard control (only after the other person clicks Allow).
+            Remote PC for Windows — screen sharing with mouse and keyboard control (only after the other person clicks Allow).
             Free sessions are limited to 40 minutes.
             Windows may show "Unknown publisher": click More info → Run anyway. On first run, allow it through Windows Firewall.
-          files: desktop/src/SSConnect.App/bin/Release/net48/SS-Connect.exe
+          files: desktop/src/SSConnect.App/bin/Release/net48/REMOTE-PC.exe
