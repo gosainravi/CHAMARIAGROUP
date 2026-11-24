@@ -31,7 +31,15 @@ static class CG
     [DllImport(CoreGraphics)] public static extern void CGEventPost(uint tap, IntPtr ev);
     [DllImport(CoreGraphics)] [return: MarshalAs(UnmanagedType.I1)] public static extern bool CGPreflightScreenCaptureAccess();
     [DllImport(CoreGraphics)] [return: MarshalAs(UnmanagedType.I1)] public static extern bool CGRequestScreenCaptureAccess();
+    [DllImport(CoreGraphics)] public static extern IntPtr CGEventCreate(IntPtr source);
+    [DllImport(CoreGraphics)] public static extern CGPoint CGEventGetLocation(IntPtr ev);
     [DllImport(CoreFoundation)] public static extern void CFRelease(IntPtr obj);
+
+    public static CGPoint CursorPosition()
+    {
+        IntPtr ev = CGEventCreate(IntPtr.Zero);
+        try { return CGEventGetLocation(ev); } finally { CFRelease(ev); }
+    }
     [DllImport(AppServices)] [return: MarshalAs(UnmanagedType.I1)] public static extern bool AXIsProcessTrusted();
 }
 
