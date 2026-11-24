@@ -424,6 +424,7 @@ function renderHome() {
       <span class="eyebrow">${I.lock}Private · runs in your browser</span>
       <h1 tabindex="-1">Simple video tools that just work</h1>
       <p>Trim, compress, resize for Reels and more. Free, no sign-up, and your video never leaves your device.</p>
+      <p style="margin-top:16px"><a class="btn" href="editor.html">Open the Studio editor</a> <span class="muted" style="font-size:.9rem;margin-left:8px">Multi-track timeline, frame-by-frame cutting, layers, music and text</span></p>
     </section>
     <div class="chips" role="group" aria-label="Show tools by type">${CATS.map(([id, l]) => `<button type="button" data-cat="${id}" aria-pressed="${id === cur}">${l}</button>`).join("")}</div>
     <ul class="tgrid">${TOOLS.map(t => `<li class="tcard" data-cats="${t.cats.join(" ")}"><div class="ti">${I[t.icon]}</div>
