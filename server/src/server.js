@@ -1,0 +1,95 @@
+const WebSocket = require('ws');
+const crypto = require('crypto');
+const { issueId } = require('./ids');
+
+const LOCK_MS = 5 * 60 * 1000;
+const MAX_FAILS = 5;
+
+function createServer({ port = 8080, limitMs = 40 * 60 * 1000 } = {}) {
+  const wss = new WebSocket.Server({ port });
+  const clients = new Map();
+  const pending = new Map();
+  const fails = new Map();
+  const send = (ws, o) => ws && ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(o));
+
+  function clearTimers(s) { clearTimeout(s.warnTimer); clearTimeout(s.endTimer); }
+
+  function endSession(ws, reason) {
+    const peer = ws.peer && clients.get(ws.peer);
+    for (const s of [ws, peer]) {
+      if (!s || !s.peer) continue;
+      clearTimers(s);
+      s.peer = null;
+      send(s, { type: 'session-end', reason });
+    }
+  }
+
+  function startSession(a, b) {
+    a.peer = b.id; b.peer = a.id;
+    send(a, { type: 'session-start', peerId: b.id, role: 'viewer', limitMs });
+    send(b, { type: 'session-start', peerId: a.id, role: 'shared', limitMs });
+    const warnAt = limitMs >= 10 * 60 * 1000 ? limitMs - 5 * 60 * 1000 : limitMs - limitMs / 8;
+    a.warnTimer = setTimeout(() => {
+      for (const s of [a, b]) send(s, { type: 'session-warning', remainingMs: limitMs - warnAt });
+    }, warnAt);
+    a.endTimer = setTimeout(() => endSession(a, 'timeout'), limitMs);
+  }
+
+  function onConnect(ws, m) {
+    const targetId = String(m.targetId || '');
+    const target = clients.get(targetId);
+    const f = fails.get(targetId);
+    if (!target || target === ws) return send(ws, { type: 'connect-result', ok: false, reason: 'offline' });
+    if (f && f.until > Date.now()) return send(ws, { type: 'connect-result', ok: false, reason: 'locked' });
+    if (target.peer || ws.peer) return send(ws, { type: 'connect-result', ok: false, reason: 'busy' });
+    const reqId = crypto.randomUUID();
+    pending.set(reqId, { from: ws.id, to: target.id });
+    send(target, { type: 'auth-request', fromId: ws.id, password: String(m.password || ''), reqId });
+  }
+
+  function onAuthResponse(ws, m) {
+    const p = pending.get(m.reqId);
+    if (!p || p.to !== ws.id) return;
+    pending.delete(m.reqId);
+    const a = clients.get(p.from);
+    if (!a) return;
+    if (!m.ok) {
+      const f = fails.get(ws.id) || { count: 0, until: 0 };
+      f.count++;
+      if (f.count >= MAX_FAILS) { f.until = Date.now() + LOCK_MS; f.count = 0; }
+      fails.set(ws.id, f);
+      return send(a, { type: 'connect-result', ok: false, reason: 'wrong-password' });
+    }
+    fails.delete(ws.id);
+    if (a.peer || ws.peer) return send(a, { type: 'connect-result', ok: false, reason: 'busy' });
+    send(a, { type: 'connect-result', ok: true });
+    startSession(a, ws);
+  }
+
+  wss.on('connection', ws => {
+    ws.id = issueId(clients);
+    clients.set(ws.id, ws);
+    send(ws, { type: 'welcome', id: ws.id });
+
+    ws.on('message', raw => {
+      let m;
+      try { m = JSON.parse(raw); } catch { return; }
+      if (m.type === 'connect') onConnect(ws, m);
+      else if (m.type === 'auth-response') onAuthResponse(ws, m);
+      else if (m.type === 'signal') send(ws.peer && clients.get(ws.peer), { type: 'signal', data: m.data });
+      else if (m.type === 'end') endSession(ws, 'ended');
+    });
+
+    ws.on('close', () => {
+      clients.delete(ws.id);
+      if (!ws.peer) return;
+      const peer = clients.get(ws.peer);
+      clearTimers(ws);
+      if (peer) { clearTimers(peer); peer.peer = null; send(peer, { type: 'session-end', reason: 'peer-left' }); }
+    });
+  });
+
+  return { close: () => wss.close(), get port() { return wss.address().port; } };
+}
+
+module.exports = { createServer };
