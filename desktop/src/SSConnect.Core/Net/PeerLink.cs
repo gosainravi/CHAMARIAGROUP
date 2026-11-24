@@ -15,8 +15,9 @@ namespace SSConnect.Core.Net
         readonly RTCPeerConnection pc;
         readonly List<RTCIceCandidateInit> early = new List<RTCIceCandidateInit>();
         readonly object sync = new object();
+        readonly List<JObject> outgoing = new List<JObject>();
         RTCDataChannel screen, control;
-        bool remoteSet;
+        bool remoteSet, localSent;
 
         public event Action<byte[]> ScreenMessage;
         public event Action<string> ControlMessage;
@@ -27,9 +28,14 @@ namespace SSConnect.Core.Net
             viewer = isViewer;
             this.sendSignal = sendSignal;
             pc = new RTCPeerConnection(new RTCConfiguration { iceServers = ice.ToList() });
+            // SIPSorcery gathers candidates from the constructor on; hold them until our SDP is out.
             pc.onicecandidate += c =>
             {
-                if (c != null) sendSignal(new JObject { ["candidate"] = JObject.Parse(c.toJSON()) });
+                if (c == null) return;
+                var msg = new JObject { ["candidate"] = JObject.Parse(c.toJSON()) };
+                bool now;
+                lock (sync) { now = localSent; if (!now) outgoing.Add(msg); }
+                if (now) sendSignal(msg);
             };
             pc.onconnectionstatechange += s => StateChanged?.Invoke(s.ToString());
             pc.ondatachannel += Wire;
@@ -57,6 +63,14 @@ namespace SSConnect.Core.Net
             var offer = pc.createOffer();
             await pc.setLocalDescription(offer);
             await sendSignal(new JObject { ["sdp"] = offer.sdp, ["sdpType"] = "offer" });
+            await FlushCandidates();
+        }
+
+        async Task FlushCandidates()
+        {
+            List<JObject> queued;
+            lock (sync) { localSent = true; queued = outgoing.ToList(); outgoing.Clear(); }
+            foreach (var m in queued) await sendSignal(m);
         }
 
         public async Task HandleSignalAsync(JObject d)
@@ -73,6 +87,7 @@ namespace SSConnect.Core.Net
                     var answer = pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     await sendSignal(new JObject { ["sdp"] = answer.sdp, ["sdpType"] = "answer" });
+                    await FlushCandidates();
                 }
             }
             else if (d["candidate"] != null)
