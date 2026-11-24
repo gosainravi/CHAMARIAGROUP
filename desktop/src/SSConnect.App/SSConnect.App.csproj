@@ -7,6 +7,14 @@
     <AssemblyName>SS-Connect</AssemblyName>
     <RootNamespace>SSConnect.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>SS-Connect</Product>
+    <AssemblyTitle>SS-Connect Remote Support</AssemblyTitle>
+    <Description>Screen sharing and remote control with on-screen permission (Allow / Deny).</Description>
+    <Company>Chamaria Group</Company>
+    <Copyright>© 2026 Chamaria Group</Copyright>
+    <Version>1.0.1</Version>
+    <FileVersion>1.0.1.0</FileVersion>
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\SSConnect.Core\SSConnect.Core.csproj" />
