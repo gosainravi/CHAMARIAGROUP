@@ -22,7 +22,7 @@ public class SessionSideTests
         bool allow = false;
         int asked = 0;
         var shared = new SharedSide(sl, () => { asked++; return Task.FromResult(allow); }, _ => { },
-            e => { lock (injected) injected.Add(e); }, () => new Bitmap(128, 128));
+            e => { lock (injected) injected.Add(e); }, _ => new Bitmap(128, 128));
         var viewer = new ViewerSide(vl);
         var notices = new List<string>();
         viewer.Notice += n => { lock (notices) notices.Add(n); };
@@ -65,7 +65,7 @@ public class SessionSideTests
         var (vl, sl) = LinkPair.Connect();
         var injected = new List<InputEvent>();
         var shared = new SharedSide(sl, () => Task.FromResult(true), _ => { },
-            e => { lock (injected) injected.Add(e); }, () => new Bitmap(64, 64));
+            e => { lock (injected) injected.Add(e); }, _ => new Bitmap(64, 64));
         var viewer = new ViewerSide(vl);
         shared.Start();
         viewer.AskControl();
@@ -85,7 +85,7 @@ public class SessionSideTests
         var (vl, sl) = LinkPair.Connect();
         var answer = new TaskCompletionSource<bool>();
         int controlChanges = 0;
-        var shared = new SharedSide(sl, () => answer.Task, _ => controlChanges++, _ => { }, () => new Bitmap(64, 64));
+        var shared = new SharedSide(sl, () => answer.Task, _ => controlChanges++, _ => { }, _ => new Bitmap(64, 64));
         var viewer = new ViewerSide(vl);
         shared.Start();
         viewer.AskControl();
@@ -99,10 +99,29 @@ public class SessionSideTests
     }
 
     [Fact]
+    public async Task CursorLeftOutOfPictureWhileControlled()
+    {
+        var (vl, sl) = LinkPair.Connect();
+        var withCursor = new List<bool>();
+        var shared = new SharedSide(sl, () => Task.FromResult(true), _ => { }, _ => { },
+            cursor => { lock (withCursor) withCursor.Add(cursor); return new Bitmap(64, 64); });
+        var viewer = new ViewerSide(vl);
+        shared.Start();
+        await Until(() => { lock (withCursor) return withCursor.Count > 0; });
+        lock (withCursor) Assert.True(withCursor[0]);
+        viewer.AskControl();
+        await Until(() => viewer.HasControl);
+        lock (withCursor) withCursor.Clear();
+        await Until(() => { lock (withCursor) return withCursor.Count > 2; });
+        lock (withCursor) Assert.All(withCursor, c => Assert.False(c));
+        shared.Dispose(); viewer.Dispose(); vl.Dispose(); sl.Dispose();
+    }
+
+    [Fact]
     public async Task ViewerReceivesFrame()
     {
         var (vl, sl) = LinkPair.Connect();
-        var shared = new SharedSide(sl, () => Task.FromResult(false), _ => { }, _ => { }, () => new Bitmap(128, 128));
+        var shared = new SharedSide(sl, () => Task.FromResult(false), _ => { }, _ => { }, _ => new Bitmap(128, 128));
         var viewer = new ViewerSide(vl);
         var got = new TaskCompletionSource<bool>();
         viewer.FrameChanged += () => got.TrySetResult(true);
