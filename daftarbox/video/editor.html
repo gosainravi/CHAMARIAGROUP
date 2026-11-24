@@ -45,6 +45,16 @@ select.sel{padding:6px 8px;border:1px solid var(--line);border-radius:7px;backgr
 .bin .m .add{position:absolute;left:4px;top:4px;width:22px;height:22px;border-radius:5px;border:0;background:var(--accent);color:#fff;font-weight:800;cursor:pointer;line-height:1}
 .drop{display:block;border:2px dashed var(--line);border-radius:9px;padding:14px;text-align:center;color:var(--muted);font-size:.84rem;cursor:pointer}
 .drop:hover,.drop.over{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.qt{display:grid;gap:6px}
+.qt button{display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:9px 11px;cursor:pointer;font:inherit}
+.qt button:hover{border-color:var(--accent);background:var(--accent-soft)}
+.qt b{font-size:.86rem}.qt span{font-size:.76rem;color:var(--muted)}
+.sec.flash{animation:flash 1.2s ease-out}
+@keyframes flash{from{background:var(--accent-soft)}}
+.conv{margin-top:10px;padding:10px;border-radius:8px;background:var(--accent-soft);font-size:.8rem;display:grid;gap:6px}
+.conv[hidden]{display:none}
+.conv progress{width:100%}
+.drop small{display:block;margin-top:6px;font-size:.72rem;line-height:1.4}
 .tpl{display:grid;gap:8px}
 .tpl button{border:1px solid var(--line);background:var(--sunk);color:#fff;border-radius:8px;padding:12px;cursor:pointer;text-align:center;font-family:Archivo,sans-serif}
 .tpl button:hover{border-color:var(--accent)}
@@ -111,6 +121,15 @@ kbd{font:inherit;font-size:.72rem;border:1px solid var(--line);border-bottom-wid
 .clip .h{position:absolute;top:0;bottom:0;width:8px;background:#fff;opacity:0;cursor:ew-resize;z-index:2}
 .clip .h.l{left:0}.clip .h.r{right:0}
 .clip:hover .h{opacity:.35}.clip.sel .h{opacity:.75}
+.clip .fade{position:absolute;top:0;bottom:0;pointer-events:none}
+.clip .fade.in{left:0;background:linear-gradient(to bottom right,#000a 50%,transparent 50%)}
+.clip .fade.out{right:0;background:linear-gradient(to bottom left,#000a 50%,transparent 50%)}
+.clip .trn{position:absolute;left:0;top:0;bottom:0;background:repeating-linear-gradient(135deg,#fff3 0 4px,#fff1 4px 8px);border-right:2px solid #fff8;pointer-events:none}
+.clip .kfd{position:absolute;bottom:3px;width:8px;height:8px;margin-left:-4px;background:#ffd54a;transform:rotate(45deg);pointer-events:none;z-index:1}
+.kfbtn{display:inline-flex;gap:2px;align-items:center}
+.kfbtn button{width:20px;height:20px;border:0;background:none;color:var(--muted);cursor:pointer;padding:0;font-size:.8rem;line-height:1}
+.kfbtn button:hover{color:var(--ink)}
+.kfbtn button.on{color:#ffd54a}
 .clip.txt{background:#5b3a8c}
 .clip.txt .lab{background:none;top:50%;transform:translateY(-50%);font-weight:650}
 .clip.dragging{opacity:.8;z-index:5;cursor:grabbing}
@@ -132,7 +151,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 @media (max-width:1000px){
   body.studio{height:auto;overflow:auto}
   .st-main{grid-template-columns:1fr;grid-template-rows:auto}
-  .center{order:1;min-height:340px}.tlwrap{order:2;height:340px}.panel.left{order:3}.panel.right{order:4;border-left:0}
+  .center{order:1;min-height:0}.viewer canvas{max-height:52vh;width:auto}.tlwrap{order:2;height:340px}.panel.left{order:3}.panel.right{order:4;border-left:0}
   .st-bar input.pname{width:120px}
 }
 </style>
@@ -159,9 +178,26 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </header>
 <div class="st-main">
   <aside class="panel left">
-    <div class="ptabs" role="tablist"><button role="tab" data-tab="media" aria-selected="true">Media</button><button role="tab" data-tab="text" aria-selected="false">Text</button><button role="tab" data-tab="keys" aria-selected="false">Shortcuts</button></div>
+    <div class="ptabs" role="tablist"><button role="tab" data-tab="media" aria-selected="true">Media</button><button role="tab" data-tab="tools" aria-selected="false">Tools</button><button role="tab" data-tab="text" aria-selected="false">Text</button><button role="tab" data-tab="keys" aria-selected="false">Keys</button></div>
+    <div class="pbody" data-pane="tools" hidden>
+      <div class="qt">
+        <button data-qt="trim"><b>Trim video</b><span>Cut the start, end or a middle part</span></button>
+        <button data-qt="compress"><b>Compress video</b><span>Make the file smaller to send</span></button>
+        <button data-qt="resize"><b>Crop &amp; resize</b><span>Reels, Shorts, square, widescreen</span></button>
+        <button data-qt="rotate"><b>Rotate &amp; flip</b><span>Turn it the right way up, or mirror</span></button>
+        <button data-qt="speed"><b>Change speed</b><span>Slow motion or fast forward</span></button>
+        <button data-qt="audio"><b>Mute or replace audio</b><span>Remove sound or add music</span></button>
+        <button data-qt="merge"><b>Merge videos</b><span>Join clips in the order you like</span></button>
+        <button data-qt="text"><b>Add text</b><span>Title, caption or lower third</span></button>
+        <button data-qt="logo"><b>Add logo or photo</b><span>Watermark or picture overlay</span></button>
+        <button data-qt="gif"><b>Video to GIF</b><span>A looping GIF of any range</span></button>
+        <button data-qt="extract"><b>Extract audio</b><span>Save the sound as MP3 or WAV</span></button>
+        <button data-qt="frame"><b>Save a frame</b><span>The frame under the playhead as PNG</span></button>
+      </div>
+    </div>
     <div class="pbody" data-pane="media">
-      <label class="drop" tabindex="0">Drop videos, music or voiceover here, or <b>click to import</b><input type="file" accept="video/*,audio/*,.mkv,.mov,.m4v,.mp3,.m4a,.wav,.ogg,.aac,.flac" multiple hidden></label>
+      <label class="drop" tabindex="0">Drop any video, audio or photo here, or <b>click to import</b><br><small>MP4, MOV, MKV, WebM, AVI, WMV, FLV, MPEG, MTS, 3GP · MP3, WAV, M4A, WMA, FLAC, AMR, AIFF · JPG, PNG, WebP, GIF, BMP, TIFF and more</small><input type="file" multiple hidden></label>
+      <div class="conv" hidden><span></span><progress max="1"></progress></div>
       <div class="bin"></div>
     </div>
     <div class="pbody" data-pane="text" hidden>
@@ -193,7 +229,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
     </div>
   </aside>
   <section class="center">
-    <div class="mon-h"><b>Monitor</b><span class="sp"></span><span class="fsize"></span></div>
+    <div class="mon-h"><b>Monitor</b><span class="sp"></span><span class="fsize"></span><button class="btn ghost small" data-act="snapshot" title="Save the frame under the playhead as a PNG">Save frame</button></div>
     <div class="viewer"><canvas class="view" width="1280" height="720"></canvas><div class="hint">Import a video or audio file to start editing</div></div>
     <div class="transport">
       <span class="tc cur">00:00:00:00</span><span class="sp"></span>
@@ -238,6 +274,6 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </div>
 <dialog class="exp"></dialog>
 <div class="toast" role="status" aria-live="polite"></div>
-<script src="editor.js?v=20261124b"></script>
+<script src="editor.js?v=20261124f"></script>
 </body>
 </html>
