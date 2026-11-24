@@ -77,7 +77,7 @@ test('signal forwarded, warning then timeout ends session', async () => {
   const s = createServer({ port: 0, limitMs: 400 });
   const { a, b } = await pair(s);
   a.sendJson({ type: 'signal', data: { sdp: 'x' } });
-  assert.deepStrictEqual(await b.next(), { type: 'signal', data: { sdp: 'x' } });
+  assert.deepStrictEqual((await b.next()).data, { sdp: 'x' });
   assert.strictEqual((await a.next()).type, 'session-warning');
   assert.strictEqual((await b.next()).type, 'session-warning');
   assert.deepStrictEqual(await a.next(), { type: 'session-end', reason: 'timeout' });
@@ -91,6 +91,51 @@ test('end by shared side ends for both', async () => {
   b.sendJson({ type: 'end' });
   assert.deepStrictEqual(await a.next(), { type: 'session-end', reason: 'ended' });
   assert.deepStrictEqual(await b.next(), { type: 'session-end', reason: 'ended' });
+  a.close(); b.close(); s.close();
+});
+
+test('malformed messages do not crash the server', async () => {
+  const s = createServer({ port: 0 });
+  const a = await client(s.port);
+  for (const raw of ['null', '42', '"x"', '[]', '{"type":null}', '{"type":"connect"}']) a.send(raw);
+  await new Promise(r => setTimeout(r, 100));
+  const b = await client(s.port);
+  assert.match(b.id, /^\d{9}$/);
+  a.close(); b.close(); s.close();
+});
+
+test('only one pending password check per target (no flooding past lockout)', async () => {
+  const s = createServer({ port: 0 });
+  const a = await client(s.port), b = await client(s.port);
+  for (let i = 0; i < 10; i++) a.sendJson({ type: 'connect', targetId: b.id, password: 'guess' + i });
+  const first = await b.next();
+  assert.strictEqual(first.type, 'auth-request');
+  for (let i = 0; i < 9; i++) assert.strictEqual((await a.next()).reason, 'busy');
+  b.sendJson({ type: 'auth-response', reqId: first.reqId, ok: false });
+  assert.strictEqual((await a.next()).reason, 'wrong-password');
+  a.close(); b.close(); s.close();
+});
+
+test('unanswered password check expires', async () => {
+  const s = createServer({ port: 0, authTimeoutMs: 150 });
+  const a = await client(s.port), b = await client(s.port);
+  a.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  await b.next();
+  assert.deepStrictEqual(await a.next(), { type: 'connect-result', ok: false, reason: 'no-answer' });
+  a.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  assert.strictEqual((await b.next()).type, 'auth-request');
+  a.close(); b.close(); s.close();
+});
+
+test('session id ties signals to their session', async () => {
+  const s = createServer({ port: 0 });
+  const a = await client(s.port), b = await client(s.port);
+  a.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  const req = await b.next(); b.sendJson({ type: 'auth-response', reqId: req.reqId, ok: true });
+  await a.next(); const sa = await a.next(); const sb = await b.next();
+  assert.ok(sa.sessionId); assert.strictEqual(sa.sessionId, sb.sessionId);
+  a.sendJson({ type: 'signal', data: { sdp: 'x' } });
+  assert.deepStrictEqual(await b.next(), { type: 'signal', sessionId: sa.sessionId, data: { sdp: 'x' } });
   a.close(); b.close(); s.close();
 });
 
