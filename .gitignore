@@ -14,3 +14,9 @@ desktop.ini
 __pycache__/
 *.py[cod]
 .claude/
+.superpowers/
+bin/
+obj/
+node_modules/
+*.user
+.vs/
