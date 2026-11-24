@@ -6,7 +6,7 @@ const LOCK_MS = 5 * 60 * 1000;
 const MAX_FAILS = 5;
 
 function createServer({ port = 8080, limitMs = 40 * 60 * 1000, authTimeoutMs = 35 * 1000 } = {}) {
-  const wss = new WebSocket.Server({ port, maxPayload: 64 * 1024 });
+  const wss = new WebSocket.Server({ port, maxPayload: 256 * 1024, perMessageDeflate: false });
   const clients = new Map();
   const pending = new Map();          // reqId -> { from, to, timer }
   const pendingByTarget = new Map();  // targetId -> reqId (one password check at a time per target)
@@ -96,7 +96,13 @@ function createServer({ port = 8080, limitMs = 40 * 60 * 1000, authTimeoutMs = 3
     clients.set(ws.id, ws);
     send(ws, { type: 'welcome', id: ws.id });
 
-    ws.on('message', raw => {
+    ws.on('message', (raw, isBinary) => {
+      if (isBinary) {
+        // Screen and control traffic: forwarded untouched, only to the paired peer.
+        const peer = ws.peer && clients.get(ws.peer);
+        if (peer && peer.readyState === WebSocket.OPEN) peer.send(raw, { binary: true });
+        return;
+      }
       let m;
       try { m = JSON.parse(raw); } catch { return; }
       if (!m || typeof m !== 'object' || Array.isArray(m)) return;

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using SSConnect.Core.Protocol;
@@ -34,6 +35,27 @@ public class TileTests
         var d = new TileDiffer(64);
         d.Changed(Solid(200, 130, Color.White), false);
         Assert.Equal(12, d.Changed(Solid(200, 130, Color.White), true).Count);
+    }
+
+    [Fact]
+    public void MergesHorizontalRunsOfChangedTiles()
+    {
+        var rects = new List<Rectangle> {
+            new Rectangle(0, 0, 64, 64), new Rectangle(64, 0, 64, 64), new Rectangle(128, 0, 64, 64),
+            new Rectangle(256, 0, 64, 64),
+            new Rectangle(0, 64, 64, 64), new Rectangle(64, 64, 8, 64) };
+        var merged = TileDiffer.MergeRows(rects);
+        Assert.Equal(new[] {
+            new Rectangle(0, 0, 192, 64), new Rectangle(256, 0, 64, 64), new Rectangle(0, 64, 72, 64) }, merged);
+    }
+
+    [Fact]
+    public void FullFrameMergesToOneRectPerRow()
+    {
+        var d = new TileDiffer(64);
+        var merged = TileDiffer.MergeRows(d.Changed(Solid(200, 130, Color.White), false));
+        Assert.Equal(3, merged.Count);
+        Assert.All(merged, r => Assert.Equal(200, r.Width));
     }
 
     [Fact]

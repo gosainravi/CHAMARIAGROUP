@@ -13,9 +13,9 @@ namespace SSConnect.App.Controller
 {
     public class SharedSide : IDisposable
     {
-        const int FrameMs = 83, KeyframeSeconds = 5;
+        const int FrameMs = 66, KeyframeSeconds = 30;
 
-        readonly PeerLink link;
+        readonly ISessionLink link;
         readonly Func<Task<bool>> askUser;
         readonly Action<bool> onControlChanged;
         readonly Action<InputEvent> inject;
@@ -28,7 +28,7 @@ namespace SSConnect.App.Controller
         volatile bool disposed;
         int asking;
 
-        public SharedSide(PeerLink link, Func<Task<bool>> askUser, Action<bool> onControlChanged,
+        public SharedSide(ISessionLink link, Func<Task<bool>> askUser, Action<bool> onControlChanged,
             Action<InputEvent> inject = null, Func<Bitmap> capture = null)
         {
             this.link = link;
@@ -53,12 +53,13 @@ namespace SSConnect.App.Controller
                     {
                         bool key = forceKey || (DateTime.UtcNow - lastKey).TotalSeconds >= KeyframeSeconds;
                         if (key) { forceKey = false; lastKey = DateTime.UtcNow; }
-                        var rects = differ.Changed(frame, key);
+                        var rects = TileDiffer.MergeRows(differ.Changed(frame, key));
                         if (rects.Count > 0)
                         {
                             int q = quality;
                             var tiles = rects.Select(r => new Tile { X = r.X, Y = r.Y, W = r.Width, H = r.Height, Jpeg = JpegCodec.Encode(frame, r, q) }).ToList();
-                            foreach (var m in TilePacket.Encode(frame.Width, frame.Height, tiles)) link.SendScreen(m);
+                            // Awaiting each send paces capture to the network: no backlog, latest screen wins.
+                            foreach (var m in TilePacket.Encode(frame.Width, frame.Height, tiles)) await link.SendScreenAsync(m);
                         }
                     }
                 }

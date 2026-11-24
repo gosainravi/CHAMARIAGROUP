@@ -59,7 +59,7 @@ namespace SSConnect.App.UI
                     TextRenderer.DrawText(e.Graphics, "Waiting for partner's screen…", Font, ClientRectangle, Color.Gray);
                     return;
                 }
-                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
                 e.Graphics.DrawImage(viewer.Frame, CoordMap.Letterbox(viewer.Frame.Size, ClientSize));
             }
         }

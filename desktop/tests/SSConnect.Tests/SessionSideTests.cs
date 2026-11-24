@@ -17,7 +17,7 @@ public class SessionSideTests
     [Fact]
     public async Task InputIgnoredUntilAllowedThenInjectedOnce()
     {
-        var (vl, sl) = await LinkPair.Connect();
+        var (vl, sl) = LinkPair.Connect();
         var injected = new List<InputEvent>();
         bool allow = false;
         int asked = 0;
@@ -62,7 +62,7 @@ public class SessionSideTests
     [Fact]
     public async Task RevokeWhileKeyHeldReleasesIt()
     {
-        var (vl, sl) = await LinkPair.Connect();
+        var (vl, sl) = LinkPair.Connect();
         var injected = new List<InputEvent>();
         var shared = new SharedSide(sl, () => Task.FromResult(true), _ => { },
             e => { lock (injected) injected.Add(e); }, () => new Bitmap(64, 64));
@@ -82,7 +82,7 @@ public class SessionSideTests
     [Fact]
     public async Task AllowAfterSessionEndedIsIgnored()
     {
-        var (vl, sl) = await LinkPair.Connect();
+        var (vl, sl) = LinkPair.Connect();
         var answer = new TaskCompletionSource<bool>();
         int controlChanges = 0;
         var shared = new SharedSide(sl, () => answer.Task, _ => controlChanges++, _ => { }, () => new Bitmap(64, 64));
@@ -101,7 +101,7 @@ public class SessionSideTests
     [Fact]
     public async Task ViewerReceivesFrame()
     {
-        var (vl, sl) = await LinkPair.Connect();
+        var (vl, sl) = LinkPair.Connect();
         var shared = new SharedSide(sl, () => Task.FromResult(false), _ => { }, _ => { }, () => new Bitmap(128, 128));
         var viewer = new ViewerSide(vl);
         var got = new TaskCompletionSource<bool>();

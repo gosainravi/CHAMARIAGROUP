@@ -7,7 +7,7 @@ function client(port) {
   return new Promise(res => {
     const ws = new WebSocket(`ws://localhost:${port}`);
     const queue = []; const waiters = [];
-    ws.on('message', m => { const msg = JSON.parse(m); const w = waiters.shift(); w ? w(msg) : queue.push(msg); });
+    ws.on('message', (m, isBinary) => { if (isBinary) return; const msg = JSON.parse(m); const w = waiters.shift(); w ? w(msg) : queue.push(msg); });
     ws.next = () => new Promise(r => queue.length ? r(queue.shift()) : waiters.push(r));
     ws.sendJson = o => ws.send(JSON.stringify(o));
     ws.on('open', async () => { ws.id = (await ws.next()).id; res(ws); });
@@ -137,6 +137,23 @@ test('session id ties signals to their session', async () => {
   a.sendJson({ type: 'signal', data: { sdp: 'x' } });
   assert.deepStrictEqual(await b.next(), { type: 'signal', sessionId: sa.sessionId, data: { sdp: 'x' } });
   a.close(); b.close(); s.close();
+});
+
+test('binary frames are relayed only between paired peers', async () => {
+  const s = createServer({ port: 0 });
+  const { a, b } = await pair(s);
+  const c = await client(s.port);
+  const got = new Promise(r => b.once('message', (m, isBinary) => r({ m, isBinary })));
+  a.send(Buffer.from([1, 2, 3, 4]));
+  const { m, isBinary } = await got;
+  assert.strictEqual(isBinary, true);
+  assert.deepStrictEqual([...m], [1, 2, 3, 4]);
+  let leaked = false;
+  a.on('message', () => { leaked = true; });
+  c.send(Buffer.from([9, 9]));
+  await new Promise(r => setTimeout(r, 100));
+  assert.strictEqual(leaked, false);
+  a.close(); b.close(); c.close(); s.close();
 });
 
 test('close drops pairs: peer gets peer-left', async () => {

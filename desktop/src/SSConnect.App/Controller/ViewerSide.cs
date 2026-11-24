@@ -8,7 +8,7 @@ namespace SSConnect.App.Controller
 {
     public class ViewerSide : IDisposable
     {
-        readonly PeerLink link;
+        readonly ISessionLink link;
 
         public object FrameLock { get; } = new object();
         public Bitmap Frame { get; private set; }
@@ -18,7 +18,7 @@ namespace SSConnect.App.Controller
         public event Action<bool> ControlChanged;
         public event Action<string> Notice;
 
-        public ViewerSide(PeerLink link)
+        public ViewerSide(ISessionLink link)
         {
             this.link = link;
             link.ScreenMessage += OnScreen;
