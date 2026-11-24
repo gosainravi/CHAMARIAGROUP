@@ -1,0 +1,29 @@
+name: Defender scan SS-Connect
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to scan
+        default: ss-connect-desktop-latest
+
+jobs:
+  scan:
+    runs-on: windows-latest
+    steps:
+      - name: Download exe
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "https://github.com/${{ github.repository }}/releases/download/${{ inputs.tag }}/SS-Connect.exe" -OutFile SS-Connect.exe
+          Get-FileHash SS-Connect.exe -Algorithm SHA256
+      - name: Scan with Microsoft Defender
+        shell: pwsh
+        run: |
+          Update-MpSignature -ErrorAction SilentlyContinue
+          Get-MpComputerStatus | Select-Object AMRunningMode, AntivirusSignatureVersion
+          & "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File "$PWD\SS-Connect.exe" -DisableRemediation
+          $code = $LASTEXITCODE
+          Get-MpThreatDetection | Select-Object ThreatID, Resources | Format-List
+          Get-MpThreat | Select-Object ThreatName, SeverityID | Format-List
+          if ($code -ne 0) { Write-Error "Defender flagged the file (exit $code)"; exit 1 }
+          "Clean"
