@@ -62,7 +62,8 @@ function createServer({ port = 8080, limitMs = 40 * 60 * 1000, authTimeoutMs = 3
     }, authTimeoutMs);
     pending.set(reqId, { from: ws.id, to: target.id, timer });
     pendingByTarget.set(target.id, reqId);
-    send(target, { type: 'auth-request', fromId: ws.id, password: String(m.password || ''), reqId });
+    // Only a proof of the password is relayed; the password itself never reaches the server.
+    send(target, { type: 'auth-request', fromId: ws.id, proof: String(m.proof || '').slice(0, 256), reqId });
   }
 
   function onAuthResponse(ws, m) {

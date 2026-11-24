@@ -21,14 +21,14 @@ namespace SSConnect.App.Win32
 
         public static Size PrimarySize() => new Size(GetSystemMetrics(0), GetSystemMetrics(1));
 
-        public static Bitmap CapturePrimary()
+        public static Bitmap CapturePrimary(bool drawCursor = true)
         {
             var s = PrimarySize();
             var bmp = new Bitmap(s.Width, s.Height, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(bmp))
             {
                 g.CopyFromScreen(0, 0, 0, 0, s, CopyPixelOperation.SourceCopy);
-                DrawCursor(g);
+                if (drawCursor) DrawCursor(g);
             }
             return bmp;
         }

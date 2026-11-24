@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
@@ -13,13 +14,13 @@ namespace SSConnect.App.Controller
 {
     public class SharedSide : IDisposable
     {
-        const int FrameMs = 66, KeyframeSeconds = 30;
+        const int FrameMs = 33, KeyframeSeconds = 30;
 
         readonly ISessionLink link;
         readonly Func<Task<bool>> askUser;
         readonly Action<bool> onControlChanged;
         readonly Action<InputEvent> inject;
-        readonly Func<Bitmap> capture;
+        readonly Func<bool, Bitmap> capture; // argument: draw the cursor into the picture
         readonly InputGate gate = new InputGate();
         readonly TileDiffer differ = new TileDiffer(64);
         readonly CancellationTokenSource cts = new CancellationTokenSource();
@@ -29,12 +30,12 @@ namespace SSConnect.App.Controller
         int asking;
 
         public SharedSide(ISessionLink link, Func<Task<bool>> askUser, Action<bool> onControlChanged,
-            Action<InputEvent> inject = null, Func<Bitmap> capture = null)
+            Action<InputEvent> inject = null, Func<bool, Bitmap> capture = null)
         {
             this.link = link;
             this.askUser = askUser;
             this.onControlChanged = onControlChanged;
-            this.capture = capture ?? ScreenCapture.CapturePrimary;
+            this.capture = capture ?? (withCursor => ScreenCapture.CapturePrimary(withCursor));
             this.inject = inject ?? (e => InputInjector.Apply(e, ScreenCapture.PrimarySize()));
             link.ControlMessage += OnControl;
         }
@@ -44,12 +45,16 @@ namespace SSConnect.App.Controller
         async Task CaptureLoop()
         {
             var lastKey = DateTime.UtcNow;
+            Task sending = Task.CompletedTask;
             while (!cts.IsCancellationRequested)
             {
                 var started = DateTime.UtcNow;
                 try
                 {
-                    using (var frame = capture())
+                    // While the controller drives the mouse they see their own pointer instantly,
+                    // so the remote cursor is left out instead of arriving a round trip late.
+                    List<byte[]> messages = null;
+                    using (var frame = capture(!gate.Granted))
                     {
                         bool key = forceKey || (DateTime.UtcNow - lastKey).TotalSeconds >= KeyframeSeconds;
                         if (key) { forceKey = false; lastKey = DateTime.UtcNow; }
@@ -58,15 +63,22 @@ namespace SSConnect.App.Controller
                         {
                             int q = quality;
                             var tiles = rects.Select(r => new Tile { X = r.X, Y = r.Y, W = r.Width, H = r.Height, Jpeg = JpegCodec.Encode(frame, r, q) }).ToList();
-                            // Awaiting each send paces capture to the network: no backlog, latest screen wins.
-                            foreach (var m in TilePacket.Encode(frame.Width, frame.Height, tiles)) await link.SendScreenAsync(m);
+                            messages = TilePacket.Encode(frame.Width, frame.Height, tiles);
                         }
                     }
+                    // Capture/encode of this frame overlapped the previous send; at most one frame in flight.
+                    await sending;
+                    if (messages != null) sending = SendAll(messages);
                 }
                 catch (Exception) { forceKey = true; } // e.g. secure desktop / lock screen: retry next frame
                 var wait = FrameMs - (int)(DateTime.UtcNow - started).TotalMilliseconds;
-                try { await Task.Delay(Math.Max(5, wait), cts.Token); } catch (OperationCanceledException) { break; }
+                try { await Task.Delay(Math.Max(1, wait), cts.Token); } catch (OperationCanceledException) { break; }
             }
+        }
+
+        async Task SendAll(List<byte[]> messages)
+        {
+            foreach (var m in messages) await link.SendScreenAsync(m);
         }
 
         async void OnControl(string json)

@@ -16,7 +16,7 @@ function client(port) {
 
 async function pair(s) {
   const a = await client(s.port), b = await client(s.port);
-  a.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  a.sendJson({ type: 'connect', targetId: b.id, proof: 'p' });
   const req = await b.next(); b.sendJson({ type: 'auth-response', reqId: req.reqId, ok: true });
   await a.next(); await a.next(); await b.next();
   return { a, b };
@@ -29,12 +29,22 @@ test('issues unique 9-digit ids', async () => {
   a.close(); b.close(); s.close();
 });
 
+test('auth-request carries only the proof, never a password field', async () => {
+  const s = createServer({ port: 0 });
+  const a = await client(s.port), b = await client(s.port);
+  a.sendJson({ type: 'connect', targetId: b.id, proof: 'P', password: 'leak' });
+  const req = await b.next();
+  assert.strictEqual(req.proof, 'P');
+  assert.strictEqual(req.password, undefined);
+  a.close(); b.close(); s.close();
+});
+
 test('connect: B approves → session-start to both', async () => {
   const s = createServer({ port: 0 });
   const a = await client(s.port), b = await client(s.port);
-  a.sendJson({ type: 'connect', targetId: b.id, password: 'abc123' });
+  a.sendJson({ type: 'connect', targetId: b.id, proof: 'abc123' });
   const req = await b.next();
-  assert.strictEqual(req.type, 'auth-request'); assert.strictEqual(req.password, 'abc123'); assert.strictEqual(req.fromId, a.id);
+  assert.strictEqual(req.type, 'auth-request'); assert.strictEqual(req.proof, 'abc123'); assert.strictEqual(req.fromId, a.id);
   b.sendJson({ type: 'auth-response', reqId: req.reqId, ok: true });
   assert.deepStrictEqual(await a.next(), { type: 'connect-result', ok: true });
   const sa = await a.next(); const sb = await b.next();
@@ -45,7 +55,7 @@ test('connect: B approves → session-start to both', async () => {
 test('offline target', async () => {
   const s = createServer({ port: 0 });
   const a = await client(s.port);
-  a.sendJson({ type: 'connect', targetId: '123456789', password: 'x' });
+  a.sendJson({ type: 'connect', targetId: '123456789', proof: 'x' });
   assert.deepStrictEqual(await a.next(), { type: 'connect-result', ok: false, reason: 'offline' });
   a.close(); s.close();
 });
@@ -54,12 +64,12 @@ test('5 wrong passwords locks target', async () => {
   const s = createServer({ port: 0 });
   const a = await client(s.port), b = await client(s.port);
   for (let i = 0; i < 5; i++) {
-    a.sendJson({ type: 'connect', targetId: b.id, password: 'bad' });
+    a.sendJson({ type: 'connect', targetId: b.id, proof: 'bad' });
     const req = await b.next();
     b.sendJson({ type: 'auth-response', reqId: req.reqId, ok: false });
     assert.strictEqual((await a.next()).reason, 'wrong-password');
   }
-  a.sendJson({ type: 'connect', targetId: b.id, password: 'good' });
+  a.sendJson({ type: 'connect', targetId: b.id, proof: 'good' });
   assert.strictEqual((await a.next()).reason, 'locked');
   a.close(); b.close(); s.close();
 });
@@ -68,7 +78,7 @@ test('busy target', async () => {
   const s = createServer({ port: 0 });
   const { a, b } = await pair(s);
   const c = await client(s.port);
-  c.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  c.sendJson({ type: 'connect', targetId: b.id, proof: 'p' });
   assert.deepStrictEqual(await c.next(), { type: 'connect-result', ok: false, reason: 'busy' });
   a.close(); b.close(); c.close(); s.close();
 });
@@ -107,7 +117,7 @@ test('malformed messages do not crash the server', async () => {
 test('only one pending password check per target (no flooding past lockout)', async () => {
   const s = createServer({ port: 0 });
   const a = await client(s.port), b = await client(s.port);
-  for (let i = 0; i < 10; i++) a.sendJson({ type: 'connect', targetId: b.id, password: 'guess' + i });
+  for (let i = 0; i < 10; i++) a.sendJson({ type: 'connect', targetId: b.id, proof: 'guess' + i });
   const first = await b.next();
   assert.strictEqual(first.type, 'auth-request');
   for (let i = 0; i < 9; i++) assert.strictEqual((await a.next()).reason, 'busy');
@@ -119,10 +129,10 @@ test('only one pending password check per target (no flooding past lockout)', as
 test('unanswered password check expires', async () => {
   const s = createServer({ port: 0, authTimeoutMs: 150 });
   const a = await client(s.port), b = await client(s.port);
-  a.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  a.sendJson({ type: 'connect', targetId: b.id, proof: 'p' });
   await b.next();
   assert.deepStrictEqual(await a.next(), { type: 'connect-result', ok: false, reason: 'no-answer' });
-  a.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  a.sendJson({ type: 'connect', targetId: b.id, proof: 'p' });
   assert.strictEqual((await b.next()).type, 'auth-request');
   a.close(); b.close(); s.close();
 });
@@ -130,7 +140,7 @@ test('unanswered password check expires', async () => {
 test('session id ties signals to their session', async () => {
   const s = createServer({ port: 0 });
   const a = await client(s.port), b = await client(s.port);
-  a.sendJson({ type: 'connect', targetId: b.id, password: 'p' });
+  a.sendJson({ type: 'connect', targetId: b.id, proof: 'p' });
   const req = await b.next(); b.sendJson({ type: 'auth-response', reqId: req.reqId, ok: true });
   await a.next(); const sa = await a.next(); const sb = await b.next();
   assert.ok(sa.sessionId); assert.strictEqual(sa.sessionId, sb.sessionId);
