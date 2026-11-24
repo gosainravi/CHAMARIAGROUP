@@ -40,6 +40,26 @@ namespace SSConnect.Core.Screen
             return result;
         }
 
+        // Joins touching tiles in the same row: fewer, larger JPEGs compress far better than many small ones.
+        public static List<Rectangle> MergeRows(IList<Rectangle> rects)
+        {
+            var merged = new List<Rectangle>();
+            foreach (var r in rects)
+            {
+                if (merged.Count > 0)
+                {
+                    var last = merged[merged.Count - 1];
+                    if (last.Y == r.Y && last.Height == r.Height && last.Right == r.X)
+                    {
+                        merged[merged.Count - 1] = new Rectangle(last.X, last.Y, last.Width + r.Width, last.Height);
+                        continue;
+                    }
+                }
+                merged.Add(r);
+            }
+            return merged;
+        }
+
         bool Differs(byte[] cur, Rectangle r, int stride)
         {
             int rowBytes = r.Width * 4;

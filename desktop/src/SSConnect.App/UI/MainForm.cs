@@ -6,17 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
-using SIPSorcery.Net;
 using SSConnect.App.Controller;
 using SSConnect.Core.Net;
 using SSConnect.Core.Security;
-using SSConnect.Core.Session;
 
 namespace SSConnect.App.UI
 {
     public class MainForm : Form
     {
-        const int ReconnectGraceSeconds = 30;
 
         readonly Uri server;
         readonly SignalingClient sig = new SignalingClient();
@@ -27,18 +24,15 @@ namespace SSConnect.App.UI
         readonly TextBox partnerId = new TextBox { Location = new Point(16, 64), Width = 220, Font = new Font("Segoe UI", 12) };
         readonly TextBox partnerPw = new TextBox { Location = new Point(16, 124), Width = 220, Font = new Font("Segoe UI", 12) };
         readonly Button connect = new Button { Text = "Connect", Location = new Point(16, 164), Size = new Size(220, 34) };
-        readonly System.Windows.Forms.Timer watchdog = new System.Windows.Forms.Timer { Interval = 1000 };
-        readonly SessionGuard guard = new SessionGuard();
         AllowDialog allowDialog;
 
         string password = Password.Generate();
         string peerId;
-        PeerLink link;
+        RelayLink link;
         SharedSide shared;
         ViewerSide viewer;
         ViewerForm viewerForm;
         ControlBar bar;
-        DateTime? linkDownSince;
 
         public static string FormatId(string id) =>
             id != null && id.Length == 9 ? id.Substring(0, 3) + " " + id.Substring(3, 3) + " " + id.Substring(6) : id;
@@ -75,8 +69,6 @@ namespace SSConnect.App.UI
             connect.Click += (s, e) => Connect();
             sig.Status += st => UI(() => OnStatus(st));
             sig.Message += m => UI(() => OnMessage(m));
-            watchdog.Tick += (s, e) => CheckLink();
-            watchdog.Start();
             Load += (s, e) => Task.Run(() => sig.RunAsync(server, cts.Token));
         }
 
@@ -122,13 +114,7 @@ namespace SSConnect.App.UI
                     MessageBox.Show(this, Reason((string)m["reason"]), "SS-Connect");
                     break;
                 case "session-start":
-                    guard.Start((string)m["sessionId"]);
                     StartSession((string)m["role"], (string)m["peerId"], TimeSpan.FromMilliseconds((double)m["limitMs"]));
-                    break;
-                case "signal":
-                    // The server always sends session-start before any signal, and the link is created synchronously there.
-                    if (link != null && guard.Accepts((string)m["sessionId"]) && m["data"] is JObject data)
-                        _ = link.HandleSignalAsync(data);
                     break;
                 case "session-warning":
                     var left = TimeSpan.FromMilliseconds((double)m["remainingMs"]);
@@ -154,14 +140,12 @@ namespace SSConnect.App.UI
             }
         }
 
-        async void StartSession(string role, string peer, TimeSpan limit)
+        void StartSession(string role, string peer, TimeSpan limit)
         {
             peerId = peer;
-            linkDownSince = null;
             bool isViewer = role == "viewer";
-            var ice = new[] { new RTCIceServer { urls = "stun:stun.l.google.com:19302" } };
-            link = new PeerLink(isViewer, ice, d => Send(new { type = "signal", data = d }));
-            link.StateChanged += s => UI(() => OnLinkState(s));
+            // Session traffic rides the server connection; if either side drops, the server ends the session.
+            link = new RelayLink(sig);
 
             if (isViewer)
             {
@@ -178,8 +162,6 @@ namespace SSConnect.App.UI
                 bar.Show();
                 shared.Start();
             }
-            try { await link.StartAsync(); }
-            catch (Exception ex) { MessageBox.Show(this, "Could not start the connection: " + ex.Message); _ = Send(new { type = "end" }); }
         }
 
         Task<bool> AskUser()
@@ -198,32 +180,10 @@ namespace SSConnect.App.UI
             return tcs.Task;
         }
 
-        void OnLinkState(string s)
-        {
-            if (s == "connected") { linkDownSince = null; status.Text = peerId != null ? "In session with " + FormatId(peerId) : status.Text; }
-            else if ((s == "disconnected" || s == "failed") && linkDownSince == null)
-            {
-                linkDownSince = DateTime.UtcNow;
-                viewerForm?.ShowNotice("Reconnecting…");
-                bar?.ShowNotice("Reconnecting…");
-            }
-        }
-
-        void CheckLink()
-        {
-            if (peerId != null && linkDownSince.HasValue && (DateTime.UtcNow - linkDownSince.Value).TotalSeconds > ReconnectGraceSeconds)
-            {
-                Send(new { type = "end" });
-                EndSession("lost");
-            }
-        }
-
         void EndSession(string reason)
         {
             if (peerId == null && link == null) return;
             peerId = null;
-            linkDownSince = null;
-            guard.End();
             shared?.Dispose(); shared = null;
             allowDialog?.Close(); allowDialog = null;
             viewer?.Dispose(); viewer = null;
@@ -239,7 +199,6 @@ namespace SSConnect.App.UI
             {
                 case "timeout": msg = "The free session limit of 40 minutes was reached."; break;
                 case "peer-left": msg = "Your partner disconnected."; break;
-                case "lost": msg = "The connection was lost."; break;
                 case "server": msg = "Lost connection to the SS-Connect server."; break;
             }
             if (msg != null) MessageBox.Show(this, msg, "SS-Connect");
