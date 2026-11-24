@@ -40,14 +40,22 @@ namespace SSConnect.App.UI
         public MainForm(Uri server)
         {
             this.server = server;
-            Text = "SS-Connect";
-            ClientSize = new Size(600, 240);
+            Text = "Remote PC";
+            Icon = Branding.Icon;
+            ClientSize = new Size(600, 296);
+            var header = new Panel { Location = new Point(0, 0), Size = new Size(600, 52), BackColor = Branding.Blue };
+            header.Controls.Add(new PictureBox { Image = Branding.Logo, SizeMode = PictureBoxSizeMode.Zoom, Location = new Point(12, 8), Size = new Size(36, 36), BackColor = Color.Transparent });
+            var titles = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Location = new Point(54, 4), BackColor = Color.Transparent };
+            titles.Controls.Add(new Label { Text = "Remote PC", ForeColor = Color.White, Font = new Font("Segoe UI", 12, FontStyle.Bold), AutoSize = true, Margin = new Padding(0) });
+            titles.Controls.Add(new Label { Text = "Secure remote support · control only with your permission", ForeColor = Color.FromArgb(220, 228, 255), Font = new Font("Segoe UI", 8f), AutoSize = true, Margin = new Padding(1, 0, 0, 0) });
+            header.Controls.Add(titles);
+            Controls.Add(header);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             AutoScaleMode = AutoScaleMode.Dpi;
 
-            var left = new GroupBox { Text = "Allow remote control", Location = new Point(12, 10), Size = new Size(300, 218) };
+            var left = new GroupBox { Text = "Allow remote control", Location = new Point(12, 66), Size = new Size(300, 218) };
             left.Controls.AddRange(new Control[] {
                 new Label { Text = "Your ID", AutoSize = true, Location = new Point(16, 26), ForeColor = Color.Gray },
                 idLabel,
@@ -57,7 +65,7 @@ namespace SSConnect.App.UI
             refresh.Click += (s, e) => { password = Password.Generate(); pwLabel.Text = password; };
             left.Controls.Add(refresh);
 
-            var right = new GroupBox { Text = "Control a remote computer", Location = new Point(324, 10), Size = new Size(264, 218) };
+            var right = new GroupBox { Text = "Control a remote computer", Location = new Point(324, 66), Size = new Size(264, 218) };
             right.Controls.AddRange(new Control[] {
                 new Label { Text = "Partner ID", AutoSize = true, Location = new Point(16, 44), ForeColor = Color.Gray }, partnerId,
                 new Label { Text = "Password", AutoSize = true, Location = new Point(16, 104), ForeColor = Color.Gray }, partnerPw, connect });
@@ -82,7 +90,7 @@ namespace SSConnect.App.UI
             else if (st == "offline")
             {
                 idLabel.Text = "— — —";
-                status.Text = "Cannot reach SS-Connect server — retrying";
+                status.Text = "Cannot reach Remote PC server — retrying";
                 if (peerId != null) EndSession("server");
             }
         }
@@ -92,7 +100,7 @@ namespace SSConnect.App.UI
             var id = new string(partnerId.Text.Where(char.IsDigit).ToArray());
             if (id.Length != 9) { MessageBox.Show(this, "Enter the partner's 9-digit ID."); return; }
             if (string.IsNullOrWhiteSpace(partnerPw.Text)) { MessageBox.Show(this, "Enter the partner's password."); return; }
-            if (sig.MyId == null) { MessageBox.Show(this, "Not connected to the SS-Connect server yet."); return; }
+            if (sig.MyId == null) { MessageBox.Show(this, "Not connected to the Remote PC server yet."); return; }
             if (id == sig.MyId) { MessageBox.Show(this, "That is your own ID."); return; }
             connect.Enabled = false;
             connect.Text = "Connecting…";
@@ -111,7 +119,7 @@ namespace SSConnect.App.UI
                 case "connect-result":
                     if ((bool)m["ok"]) break;
                     ResetConnectButton();
-                    MessageBox.Show(this, Reason((string)m["reason"]), "SS-Connect");
+                    MessageBox.Show(this, Reason((string)m["reason"]), "Remote PC");
                     break;
                 case "session-start":
                     StartSession((string)m["role"], (string)m["peerId"], TimeSpan.FromMilliseconds((double)m["limitMs"]));
@@ -199,9 +207,9 @@ namespace SSConnect.App.UI
             {
                 case "timeout": msg = "The free session limit of 40 minutes was reached."; break;
                 case "peer-left": msg = "Your partner disconnected."; break;
-                case "server": msg = "Lost connection to the SS-Connect server."; break;
+                case "server": msg = "Lost connection to the Remote PC server."; break;
             }
-            if (msg != null) MessageBox.Show(this, msg, "SS-Connect");
+            if (msg != null) MessageBox.Show(this, msg, "Remote PC");
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

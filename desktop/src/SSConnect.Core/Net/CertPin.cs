@@ -6,7 +6,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace SSConnect.Core.Net
 {
-    // The SS-Connect server uses its own certificate on a bare IP, so we trust exactly that certificate instead of a CA chain.
+    // The Remote PC server uses its own certificate on a bare IP, so we trust exactly that certificate instead of a CA chain.
     public static class CertPin
     {
         public static bool Matches(X509Certificate cert, string pin)

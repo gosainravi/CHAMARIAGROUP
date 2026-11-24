@@ -1,11 +1,11 @@
-name: Defender scan SS-Connect
+name: Defender scan Remote PC
 
 on:
   workflow_dispatch:
     inputs:
       tag:
         description: Release tag to scan
-        default: ss-connect-desktop-latest
+        default: remote-pc-latest
 
 jobs:
   scan:
@@ -14,14 +14,14 @@ jobs:
       - name: Download exe
         shell: pwsh
         run: |
-          Invoke-WebRequest "https://github.com/${{ github.repository }}/releases/download/${{ inputs.tag }}/SS-Connect.exe" -OutFile SS-Connect.exe
-          Get-FileHash SS-Connect.exe -Algorithm SHA256
+          Invoke-WebRequest "https://github.com/${{ github.repository }}/releases/download/${{ inputs.tag }}/REMOTE-PC.exe" -OutFile REMOTE-PC.exe
+          Get-FileHash REMOTE-PC.exe -Algorithm SHA256
       - name: Scan with Microsoft Defender
         shell: pwsh
         run: |
           Update-MpSignature -ErrorAction SilentlyContinue
           Get-MpComputerStatus | Select-Object AMRunningMode, AntivirusSignatureVersion
-          & "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File "$PWD\SS-Connect.exe" -DisableRemediation
+          & "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File "$PWD\REMOTE-PC.exe" -DisableRemediation
           $code = $LASTEXITCODE
           Get-MpThreatDetection | Select-Object ThreatID, Resources | Format-List
           Get-MpThreat | Select-Object ThreatName, SeverityID | Format-List

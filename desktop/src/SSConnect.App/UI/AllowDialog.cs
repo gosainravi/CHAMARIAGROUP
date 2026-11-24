@@ -16,7 +16,8 @@ namespace SSConnect.App.UI
 
         public AllowDialog(string peerId)
         {
-            Text = "SS-Connect — control request";
+            Text = "Remote PC — control request";
+            Icon = Branding.Icon;
             TopMost = true;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = MinimizeBox = false;

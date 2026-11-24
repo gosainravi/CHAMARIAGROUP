@@ -15,10 +15,10 @@ namespace SSConnect.App
             Mutex single = null;
             if (!Settings.AllowMulti(args))
             {
-                single = new Mutex(true, "SSConnect.SingleInstance", out bool first);
+                single = new Mutex(true, "RemotePC.SingleInstance", out bool first);
                 if (!first)
                 {
-                    MessageBox.Show("SS-Connect is already running.", "SS-Connect");
+                    MessageBox.Show("Remote PC is already running.", "Remote PC");
                     return;
                 }
             }

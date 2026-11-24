@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace SSConnect.Core.Net
 {
-    // One WebSocket to the SS-Connect server: JSON text for signaling, binary frames for relayed session traffic.
+    // One WebSocket to the Remote PC server: JSON text for signaling, binary frames for relayed session traffic.
     public class SignalingClient : IBinaryChannel
     {
         ClientWebSocket ws;

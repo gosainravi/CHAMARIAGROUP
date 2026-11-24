@@ -18,7 +18,7 @@ namespace SSConnect.Core.Net
         Task SendBinaryAsync(byte[] data);
     }
 
-    // Session traffic relayed by the SS-Connect server over the existing secure WebSocket.
+    // Session traffic relayed by the Remote PC server over the existing secure WebSocket.
     // Frame byte 0: 1 = screen tiles (TilePacket already starts with 1), 2 = control JSON.
     public class RelayLink : ISessionLink, IDisposable
     {
