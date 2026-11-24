@@ -53,6 +53,8 @@ static class Smoke
             {
                 Console.WriteLine($"info: screen capture permission = {MacPermissions.HasScreenRecording()}, accessibility = {MacPermissions.HasAccessibility()}");
                 Console.WriteLine($"info: main display {MacScreen.DisplaySizePoints()}");
+                var code = await MacSession();
+                if (code != 0) return code;
             }
             Console.WriteLine("SMOKE OK");
             cts.Cancel();
@@ -62,6 +64,45 @@ static class Smoke
     }
 
     static int Fail(string why) { Console.WriteLine("SMOKE FAIL: " + why); return 1; }
+
+    // Real Mac session in one process: capture this screen -> encrypted session -> viewer, then inject a mouse move.
+    static async Task<int> MacSession()
+    {
+        using (var f = MacScreen.Capture(false))
+        {
+            int distinct = 0; byte last = 0;
+            for (int i = 0; i < f.Bgra.Length; i += 4097) { if (f.Bgra[i] != last) distinct++; last = f.Bgra[i]; }
+            Console.WriteLine($"PASS capture: {f.Width}x{f.Height}, {distinct} pixel changes sampled");
+        }
+
+        var keys = SessionKeys.Derive("ab3k9m", "mac-session");
+        var (a, b) = LoopChannel.Pair();
+        var viewerLink = new RelayLink(new SecureChannel(a, keys, true));
+        var sharedLink = new RelayLink(new SecureChannel(b, keys, false));
+        var canvas = new SkiaCanvas();
+        var viewer = new SSConnect.Core.Session.ViewerSide(viewerLink, canvas);
+        var input = new MacInput();
+        var shared = new SSConnect.Core.Session.SharedSide(sharedLink, () => Task.FromResult(true), _ => { }, input.Apply, MacScreen.Capture, new SkiaCodec());
+        var frame = new TaskCompletionSource<bool>();
+        viewer.FrameChanged += () => frame.TrySetResult(true);
+        shared.Start();
+        if (await Task.WhenAny(frame.Task, Task.Delay(10000)) != frame.Task) return Fail("no screen frame reached the viewer");
+        Console.WriteLine($"PASS session: Mac screen {canvas.Width}x{canvas.Height} arrived at the viewer through the encrypted link");
+
+        viewer.AskControl();
+        for (int i = 0; i < 50 && !viewer.HasControl; i++) await Task.Delay(100);
+        if (!viewer.HasControl) return Fail("control not granted");
+        viewer.SendInput(new SSConnect.Core.Input.InputEvent { Kind = "move", X = 0.25f, Y = 0.5f });
+        await Task.Delay(800);
+        var pos = CG.CursorPosition();
+        var bounds = CG.CGDisplayBounds(CG.CGMainDisplayID());
+        double ex = 0.25 * (bounds.W - 1), ey = 0.5 * (bounds.H - 1);
+        Console.WriteLine($"info: cursor expected ≈ {ex:F0},{ey:F0} actual {pos.X:F0},{pos.Y:F0}");
+        if (Math.Abs(pos.X - ex) > 3 || Math.Abs(pos.Y - ey) > 3) return Fail("mouse injection did not move the cursor");
+        Console.WriteLine("PASS input: remote mouse move moved the Mac cursor");
+        shared.Dispose(); viewer.Dispose();
+        return 0;
+    }
 
     sealed class LoopChannel : IBinaryChannel
     {
