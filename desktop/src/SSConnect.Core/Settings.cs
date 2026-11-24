@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace SSConnect.App
+namespace SSConnect.Core
 {
     public class ServerSettings
     {

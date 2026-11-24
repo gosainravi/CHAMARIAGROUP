@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using SSConnect.App.Win32;
 using SSConnect.Core.Protocol;
 using SSConnect.Core.Screen;
 using Xunit;
@@ -21,12 +22,12 @@ public class TileTests
         Assert.Equal(4 * 3, d.Changed(Solid(200, 130, Color.White), false).Count);
         var f2 = Solid(200, 130, Color.White);
         f2.SetPixel(70, 10, Color.Black);
-        var ch = d.Changed(f2, false);
+        var ch = d.Changed(GdiFrames.FromBitmap(f2), false);
         Assert.Single(ch);
         Assert.Equal(new Rectangle(64, 0, 64, 64), ch[0]);
         var f3 = Solid(200, 130, Color.White);
         f3.SetPixel(70, 10, Color.Black);
-        Assert.Empty(d.Changed(f3, false));
+        Assert.Empty(d.Changed(GdiFrames.FromBitmap(f3), false));
     }
 
     [Fact]
@@ -61,7 +62,7 @@ public class TileTests
     [Fact]
     public void EdgeTilesAreCropped()
     {
-        var all = new TileDiffer(64).Changed(Solid(200, 130, Color.White), false);
+        var all = new TileDiffer(64).Changed(GdiFrames.FromBitmap(Solid(200, 130, Color.White)), false);
         Assert.Contains(new Rectangle(192, 128, 8, 2), all);
     }
 
@@ -101,4 +102,9 @@ public class TileTests
             Assert.True(img.GetPixel(10, 10).R > 200);
         }
     }
+}
+
+static class TileDifferBitmapTestExtensions
+{
+    public static List<Rectangle> Changed(this TileDiffer d, Bitmap b, bool forceAll) => d.Changed(GdiFrames.FromBitmap(b), forceAll);
 }

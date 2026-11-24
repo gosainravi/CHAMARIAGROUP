@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using SSConnect.Core.Screen;
@@ -75,30 +73,6 @@ namespace SSConnect.Core.Protocol
                 }
             }
             catch (EndOfStreamException) { return false; }
-        }
-    }
-
-    public static class JpegCodec
-    {
-        static readonly ImageCodecInfo Jpeg = ImageCodecInfo.GetImageEncoders().First(c => c.FormatID == ImageFormat.Jpeg.Guid);
-
-        public static byte[] Encode(Bitmap src, Rectangle r, int quality)
-        {
-            using (var tile = src.Clone(r, PixelFormat.Format24bppRgb))
-            using (var ms = new MemoryStream())
-            using (var p = new EncoderParameters(1))
-            {
-                p.Param[0] = new EncoderParameter(Encoder.Quality, (long)quality);
-                tile.Save(ms, Jpeg, p);
-                return ms.ToArray();
-            }
-        }
-
-        public static Bitmap Decode(byte[] jpeg)
-        {
-            using (var ms = new MemoryStream(jpeg))
-            using (var img = Image.FromStream(ms))
-                return new Bitmap(img);
         }
     }
 }

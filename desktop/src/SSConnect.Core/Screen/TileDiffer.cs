@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
+using SSConnect.Core.Platform;
 
 namespace SSConnect.Core.Screen
 {
@@ -20,13 +19,10 @@ namespace SSConnect.Core.Screen
 
         public TileDiffer(int tileSize = 64) { size = tileSize; }
 
-        public List<Rectangle> Changed(Bitmap frame, bool forceAll)
+        public List<Rectangle> Changed(Frame frame, bool forceAll)
         {
             int w = frame.Width, h = frame.Height, stride = w * 4;
-            var data = frame.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-            var cur = new byte[stride * h];
-            for (int y = 0; y < h; y++) Marshal.Copy(data.Scan0 + y * data.Stride, cur, y * stride, stride);
-            frame.UnlockBits(data);
+            var cur = frame.Bgra; // each capture produces a fresh buffer, so keeping a reference is safe
 
             bool all = forceAll || prev == null || pw != w || ph != h;
             var result = new List<Rectangle>();

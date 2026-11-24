@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Threading;
+using SSConnect.Core;
 using SSConnect.Core.Net;
 using System.Windows.Forms;
 using SSConnect.App.UI;
