@@ -25,6 +25,7 @@ namespace SSConnect.App.Controller
         readonly CancellationTokenSource cts = new CancellationTokenSource();
         volatile bool forceKey = true;
         volatile int quality = 70;
+        volatile bool disposed;
         int asking;
 
         public SharedSide(PeerLink link, Func<Task<bool>> askUser, Action<bool> onControlChanged,
@@ -76,7 +77,7 @@ namespace SSConnect.App.Controller
                 switch (m.Type)
                 {
                     case "ask-control": await HandleAsk(); break;
-                    case "input": if (gate.Accept(m.Input)) inject(m.Input); break;
+                    case "input": if (!disposed) gate.AcceptAndRun(m.Input, inject); break;
                     case "release": RevokeControl(false); break;
                     case "keyframe-request": forceKey = true; break;
                     case "quality":
@@ -94,6 +95,7 @@ namespace SSConnect.App.Controller
             bool ok;
             try { ok = await askUser(); }
             finally { asking = 0; }
+            if (disposed) return;
             if (ok) { gate.Grant(); onControlChanged(true); }
             Send(ok ? "allow" : "deny");
         }
@@ -103,7 +105,7 @@ namespace SSConnect.App.Controller
         void RevokeControl(bool notify)
         {
             bool was = gate.Granted;
-            foreach (var e in gate.Revoke()) inject(e);
+            gate.RevokeAndRun(inject);
             if (was) onControlChanged(false);
             if (notify) Send("revoke");
         }
@@ -112,6 +114,7 @@ namespace SSConnect.App.Controller
 
         public void Dispose()
         {
+            disposed = true;
             cts.Cancel();
             link.ControlMessage -= OnControl;
             RevokeControl(false);

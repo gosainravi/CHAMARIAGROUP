@@ -37,6 +37,23 @@ namespace SSConnect.Core.Input
             }
         }
 
+        // Accept + inject under one lock so a concurrent Revoke cannot release a key before it is pressed.
+        public bool AcceptAndRun(InputEvent e, System.Action<InputEvent> run)
+        {
+            lock (sync)
+            {
+                if (!Accept(e)) return false;
+                run(e);
+                return true;
+            }
+        }
+
+        public void RevokeAndRun(System.Action<InputEvent> run)
+        {
+            lock (sync)
+                foreach (var e in Revoke()) run(e);
+        }
+
         public bool Accept(InputEvent e)
         {
             lock (sync)

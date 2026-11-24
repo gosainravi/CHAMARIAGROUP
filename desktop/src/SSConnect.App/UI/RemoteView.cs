@@ -11,6 +11,7 @@ namespace SSConnect.App.UI
     {
         const int WM_KEYDOWN = 0x100, WM_KEYUP = 0x101, WM_SYSKEYDOWN = 0x104, WM_SYSKEYUP = 0x105;
         readonly ViewerSide viewer;
+        readonly InputGate held = new InputGate(); // tracks keys/buttons pressed here so focus loss can release them on B
 
         public RemoteView(ViewerSide viewer)
         {
@@ -18,7 +19,28 @@ namespace SSConnect.App.UI
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.Selectable, true);
             BackColor = Color.Black;
             TabStop = true;
-            viewer.FrameChanged += () => { if (IsHandleCreated) BeginInvoke((Action)Invalidate); };
+            held.Grant();
+            viewer.FrameChanged += OnFrame;
+        }
+
+        void OnFrame()
+        {
+            if (!IsHandleCreated || IsDisposed) return;
+            try { BeginInvoke((Action)Invalidate); }
+            catch (InvalidOperationException) { } // window closing while a frame arrives on the network thread
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) viewer.FrameChanged -= OnFrame;
+            base.Dispose(disposing);
+        }
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            foreach (var release in held.Revoke()) viewer.SendInput(release);
+            held.Grant();
+            base.OnLostFocus(e);
         }
 
         Rectangle PictureRect()
@@ -51,7 +73,12 @@ namespace SSConnect.App.UI
             return new InputEvent { Kind = kind, X = n.X, Y = n.Y, Button = button, Delta = e.Delta / 120 };
         }
 
-        void Send(InputEvent ev) { if (ev != null) viewer.SendInput(ev); }
+        void Send(InputEvent ev)
+        {
+            if (ev == null || !viewer.HasControl) return;
+            held.Accept(ev);
+            viewer.SendInput(ev);
+        }
 
         protected override void OnMouseMove(MouseEventArgs e) => Send(Mouse("move", e));
         protected override void OnMouseDown(MouseEventArgs e) { Focus(); Send(Mouse("down", e)); }
@@ -65,7 +92,7 @@ namespace SSConnect.App.UI
             if (m.Msg == WM_KEYDOWN || m.Msg == WM_SYSKEYDOWN || m.Msg == WM_KEYUP || m.Msg == WM_SYSKEYUP)
             {
                 bool down = m.Msg == WM_KEYDOWN || m.Msg == WM_SYSKEYDOWN;
-                viewer.SendInput(new InputEvent { Kind = down ? "keydown" : "keyup", Vk = (int)m.WParam & 0xFF });
+                Send(new InputEvent { Kind = down ? "keydown" : "keyup", Vk = (int)m.WParam & 0xFF });
                 return; // swallow so Alt doesn't open local menus and keys don't act locally
             }
             base.WndProc(ref m);

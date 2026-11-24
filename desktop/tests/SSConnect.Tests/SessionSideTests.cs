@@ -80,6 +80,25 @@ public class SessionSideTests
     }
 
     [Fact]
+    public async Task AllowAfterSessionEndedIsIgnored()
+    {
+        var (vl, sl) = await LinkPair.Connect();
+        var answer = new TaskCompletionSource<bool>();
+        int controlChanges = 0;
+        var shared = new SharedSide(sl, () => answer.Task, _ => controlChanges++, _ => { }, () => new Bitmap(64, 64));
+        var viewer = new ViewerSide(vl);
+        shared.Start();
+        viewer.AskControl();
+        await Task.Delay(500);
+        shared.Dispose();
+        answer.SetResult(true);
+        await Task.Delay(300);
+        Assert.Equal(0, controlChanges);
+        Assert.False(viewer.HasControl);
+        viewer.Dispose(); vl.Dispose(); sl.Dispose();
+    }
+
+    [Fact]
     public async Task ViewerReceivesFrame()
     {
         var (vl, sl) = await LinkPair.Connect();

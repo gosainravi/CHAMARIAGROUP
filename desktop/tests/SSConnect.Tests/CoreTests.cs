@@ -90,6 +90,34 @@ public class InputGateTests
     }
 
     [Fact]
+    public void RevokeDuringInjectionStillReleasesTheKey()
+    {
+        var g = new InputGate();
+        g.Grant();
+        var injected = new System.Collections.Generic.List<string>();
+        var inInject = new System.Threading.ManualResetEventSlim();
+        var t = System.Threading.Tasks.Task.Run(() => g.AcceptAndRun(K("keydown", 0x11), e =>
+        {
+            inInject.Set();
+            System.Threading.Thread.Sleep(200);
+            lock (injected) injected.Add(e.Kind);
+        }));
+        inInject.Wait();
+        g.RevokeAndRun(e => { lock (injected) injected.Add(e.Kind); });
+        t.Wait();
+        Assert.Equal(new[] { "keydown", "keyup" }, injected);
+    }
+
+    [Fact]
+    public void AcceptAndRunSkipsWhenNotGranted()
+    {
+        var g = new InputGate();
+        bool ran = false;
+        Assert.False(g.AcceptAndRun(K("keydown", 1), _ => ran = true));
+        Assert.False(ran);
+    }
+
+    [Fact]
     public void RejectsUnknownKind()
     {
         var g = new InputGate();

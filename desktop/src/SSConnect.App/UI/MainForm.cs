@@ -10,6 +10,7 @@ using SIPSorcery.Net;
 using SSConnect.App.Controller;
 using SSConnect.Core.Net;
 using SSConnect.Core.Security;
+using SSConnect.Core.Session;
 
 namespace SSConnect.App.UI
 {
@@ -27,7 +28,8 @@ namespace SSConnect.App.UI
         readonly TextBox partnerPw = new TextBox { Location = new Point(16, 124), Width = 220, Font = new Font("Segoe UI", 12) };
         readonly Button connect = new Button { Text = "Connect", Location = new Point(16, 164), Size = new Size(220, 34) };
         readonly System.Windows.Forms.Timer watchdog = new System.Windows.Forms.Timer { Interval = 1000 };
-        readonly List<JObject> pendingSignals = new List<JObject>();
+        readonly SessionGuard guard = new SessionGuard();
+        AllowDialog allowDialog;
 
         string password = Password.Generate();
         string peerId;
@@ -120,11 +122,13 @@ namespace SSConnect.App.UI
                     MessageBox.Show(this, Reason((string)m["reason"]), "SS-Connect");
                     break;
                 case "session-start":
+                    guard.Start((string)m["sessionId"]);
                     StartSession((string)m["role"], (string)m["peerId"], TimeSpan.FromMilliseconds((double)m["limitMs"]));
                     break;
                 case "signal":
-                    if (link == null) pendingSignals.Add((JObject)m["data"]);
-                    else _ = link.HandleSignalAsync((JObject)m["data"]);
+                    // The server always sends session-start before any signal, and the link is created synchronously there.
+                    if (link != null && guard.Accepts((string)m["sessionId"]) && m["data"] is JObject data)
+                        _ = link.HandleSignalAsync(data);
                     break;
                 case "session-warning":
                     var left = TimeSpan.FromMilliseconds((double)m["remainingMs"]);
@@ -158,8 +162,6 @@ namespace SSConnect.App.UI
             var ice = new[] { new RTCIceServer { urls = "stun:stun.l.google.com:19302" } };
             link = new PeerLink(isViewer, ice, d => Send(new { type = "signal", data = d }));
             link.StateChanged += s => UI(() => OnLinkState(s));
-            foreach (var d in pendingSignals) _ = link.HandleSignalAsync(d);
-            pendingSignals.Clear();
 
             if (isViewer)
             {
@@ -185,8 +187,11 @@ namespace SSConnect.App.UI
             var tcs = new TaskCompletionSource<bool>();
             UI(() =>
             {
+                allowDialog?.Close();
                 var dlg = new AllowDialog(peerId);
+                allowDialog = dlg;
                 dlg.Result.ContinueWith(t => tcs.TrySetResult(t.Result));
+                dlg.FormClosed += (s, e) => { if (allowDialog == dlg) allowDialog = null; };
                 dlg.Show();
                 dlg.Activate();
             });
@@ -218,8 +223,9 @@ namespace SSConnect.App.UI
             if (peerId == null && link == null) return;
             peerId = null;
             linkDownSince = null;
-            pendingSignals.Clear();
+            guard.End();
             shared?.Dispose(); shared = null;
+            allowDialog?.Close(); allowDialog = null;
             viewer?.Dispose(); viewer = null;
             link?.Dispose(); link = null;
             viewerForm?.CloseFromSession(); viewerForm = null;
