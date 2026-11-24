@@ -29,6 +29,8 @@ namespace SSConnect.App.UI
         string password = Password.Generate();
         string peerId;
         RelayLink link;
+        SecureChannel secure;
+        string sessionPassword;
         SharedSide shared;
         ViewerSide viewer;
         ViewerForm viewerForm;
@@ -113,7 +115,12 @@ namespace SSConnect.App.UI
             if (id == sig.MyId) { MessageBox.Show(this, "That is your own ID."); return; }
             connect.Enabled = false;
             connect.Text = "Connecting…";
-            Send(new { type = "connect", targetId = id, password = partnerPw.Text });
+            var typed = partnerPw.Text;
+            var me = sig.MyId;
+            sessionPassword = typed; // kept only in memory, to derive the end-to-end key
+            // Only a slow-to-guess proof goes to the server; the password itself never leaves this PC.
+            Task.Run(() => AuthProof.Create(typed, me, id))
+                .ContinueWith(t => Send(new { type = "connect", targetId = id, proof = t.Result }), TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
         void ResetConnectButton() { connect.Enabled = true; connect.Text = "Connect"; }
@@ -123,7 +130,15 @@ namespace SSConnect.App.UI
             switch ((string)m["type"])
             {
                 case "auth-request":
-                    Send(new { type = "auth-response", reqId = (string)m["reqId"], ok = Password.Matches(password, (string)m["password"]) });
+                    {
+                        var reqId = (string)m["reqId"]; var proof = (string)m["proof"]; var from = (string)m["fromId"];
+                        var mine = password; var me = sig.MyId;
+                        Task.Run(() => AuthProof.Verify(proof, mine, from, me)).ContinueWith(t =>
+                        {
+                            if (t.Result) UI(() => sessionPassword = mine);
+                            Send(new { type = "auth-response", reqId, ok = t.Result });
+                        }, TaskContinuationOptions.OnlyOnRanToCompletion);
+                    }
                     break;
                 case "connect-result":
                     if ((bool)m["ok"]) break;
@@ -131,7 +146,7 @@ namespace SSConnect.App.UI
                     MessageBox.Show(this, Reason((string)m["reason"]), "Remote PC");
                     break;
                 case "session-start":
-                    StartSession((string)m["role"], (string)m["peerId"], TimeSpan.FromMilliseconds((double)m["limitMs"]));
+                    StartSession((string)m["role"], (string)m["peerId"], (string)m["sessionId"], TimeSpan.FromMilliseconds((double)m["limitMs"]));
                     break;
                 case "session-warning":
                     var left = TimeSpan.FromMilliseconds((double)m["remainingMs"]);
@@ -157,12 +172,18 @@ namespace SSConnect.App.UI
             }
         }
 
-        void StartSession(string role, string peer, TimeSpan limit)
+        async void StartSession(string role, string peer, string sessionId, TimeSpan limit)
         {
             peerId = peer;
             bool isViewer = role == "viewer";
-            // Session traffic rides the server connection; if either side drops, the server ends the session.
-            link = new RelayLink(sig);
+            var pw = sessionPassword;
+            if (pw == null || sessionId == null) { _ = Send(new { type = "end" }); EndSession("crypto"); return; }
+            status.Text = "Securing connection…";
+            var keys = await Task.Run(() => SessionKeys.Derive(pw, sessionId));
+            if (peerId != peer || link != null) return; // session ended while the key was being derived
+            // All session traffic is encrypted end to end; the relay server only ever sees ciphertext.
+            secure = new SecureChannel(sig, keys, isViewer);
+            link = new RelayLink(secure);
 
             if (isViewer)
             {
@@ -205,6 +226,8 @@ namespace SSConnect.App.UI
             allowDialog?.Close(); allowDialog = null;
             viewer?.Dispose(); viewer = null;
             link?.Dispose(); link = null;
+            secure?.Detach(); secure = null;
+            sessionPassword = null;
             viewerForm?.CloseFromSession(); viewerForm = null;
             bar?.Close(); bar = null;
             password = Password.Generate();
@@ -217,6 +240,7 @@ namespace SSConnect.App.UI
                 case "timeout": msg = "The free session limit of 40 minutes was reached."; break;
                 case "peer-left": msg = "Your partner disconnected."; break;
                 case "server": msg = "Lost connection to the Remote PC server."; break;
+                case "crypto": msg = "Could not set up the encrypted connection. Please connect again."; break;
             }
             if (msg != null) MessageBox.Show(this, msg, "Remote PC");
         }
