@@ -1,5 +1,7 @@
 using System;
+using System.Net;
 using System.Threading;
+using SSConnect.Core.Net;
 using System.Windows.Forms;
 using SSConnect.App.UI;
 
@@ -22,7 +24,9 @@ namespace SSConnect.App
             }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm(Settings.ServerUri(args, AppDomain.CurrentDomain.BaseDirectory)));
+            var server = Settings.Load(args, AppDomain.CurrentDomain.BaseDirectory);
+            ServicePointManager.ServerCertificateValidationCallback = (s, cert, chain, errors) => CertPin.Validate(cert, errors, server.Pin);
+            Application.Run(new MainForm(server.Uri));
             GC.KeepAlive(single);
         }
     }
