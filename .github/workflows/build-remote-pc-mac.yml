@@ -1,0 +1,85 @@
+name: Build Remote PC (Mac)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop/**'
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Shared core tests on macOS
+        run: dotnet test desktop/tests/SSConnect.Tests -f net8.0 -c Release
+
+      - name: Icon
+        run: |
+          mkdir -p build/icon.iconset
+          SRC=desktop/src/SSConnect.App/Assets/remote-pc-logo.png
+          for s in 16 32 64 128 256; do
+            sips -z $s $s "$SRC" --out build/icon.iconset/icon_${s}x${s}.png >/dev/null
+            d=$((s*2)); sips -z $d $d "$SRC" --out build/icon.iconset/icon_${s}x${s}@2x.png >/dev/null
+          done
+          iconutil -c icns build/icon.iconset -o build/remote-pc.icns
+
+      - name: Build app bundles and DMGs
+        run: |
+          VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' desktop/src/RemotePC.Mac/RemotePC.Mac.csproj)
+          for RID in osx-arm64 osx-x64; do
+            ARCH=$([ "$RID" = osx-arm64 ] && echo arm64 || echo intel)
+            dotnet publish desktop/src/RemotePC.Mac -c Release -r $RID --self-contained true -o build/$RID
+            APP="build/dmg-$ARCH/Remote PC.app"
+            mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+            cp -R build/$RID/. "$APP/Contents/MacOS/"
+            cp build/remote-pc.icns "$APP/Contents/Resources/remote-pc.icns"
+            cat > "$APP/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleName</key><string>Remote PC</string>
+            <key>CFBundleDisplayName</key><string>Remote PC</string>
+            <key>CFBundleIdentifier</key><string>com.chamariagroup.remotepc</string>
+            <key>CFBundleExecutable</key><string>REMOTE-PC</string>
+            <key>CFBundleIconFile</key><string>remote-pc.icns</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$VERSION</string>
+            <key>CFBundleVersion</key><string>$VERSION</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+            <key>NSHumanReadableCopyright</key><string>© 2026 Chamaria Group</string>
+          </dict></plist>
+          EOF
+            sed -i '' 's/^          //' "$APP/Contents/Info.plist"
+            chmod +x "$APP/Contents/MacOS/REMOTE-PC"
+            codesign --force --deep --sign - "$APP"
+            ln -s /Applications "build/dmg-$ARCH/Applications"
+            hdiutil create -volname "Remote PC" -srcfolder "build/dmg-$ARCH" -ov -format UDZO "build/REMOTE-PC-mac-$ARCH.dmg"
+          done
+          ls -la build/*.dmg
+
+      - name: Smoke test on this Mac (Apple Silicon build)
+        run: '"build/dmg-arm64/Remote PC.app/Contents/MacOS/REMOTE-PC" --smoke'
+
+      - name: Smoke test Intel build (Rosetta)
+        continue-on-error: true
+        run: |
+          softwareupdate --install-rosetta --agree-to-license >/dev/null 2>&1 || true
+          arch -x86_64 "build/dmg-intel/Remote PC.app/Contents/MacOS/REMOTE-PC" --smoke
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: remote-pc-latest
+          name: Remote PC
+          make_latest: false
+          files: |
+            build/REMOTE-PC-mac-arm64.dmg
+            build/REMOTE-PC-mac-intel.dmg

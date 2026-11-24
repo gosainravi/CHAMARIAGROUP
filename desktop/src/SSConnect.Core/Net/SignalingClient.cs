@@ -15,6 +15,9 @@ namespace SSConnect.Core.Net
         ClientWebSocket ws;
         readonly SemaphoreSlim sendLock = new SemaphoreSlim(1, 1);
 
+        // .NET 8 ignores ServicePointManager for WebSockets, so the certificate pin is applied per connection there.
+        public Func<System.Security.Cryptography.X509Certificates.X509Certificate, System.Net.Security.SslPolicyErrors, bool> CertificateCheck;
+
         public event Action<JObject> Message;
         public event Action<byte[]> BinaryMessage;
         public event Action<string> Status;
@@ -28,6 +31,13 @@ namespace SSConnect.Core.Net
                 try
                 {
                     ws = new ClientWebSocket();
+#if !NETFRAMEWORK
+                    if (CertificateCheck != null)
+                    {
+                        var check = CertificateCheck;
+                        ws.Options.RemoteCertificateValidationCallback = (s, cert, chain, errors) => check(cert, errors);
+                    }
+#endif
                     await ws.ConnectAsync(server, ct);
                     await ReceiveLoop(ct);
                 }
