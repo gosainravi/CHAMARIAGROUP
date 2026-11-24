@@ -18,12 +18,12 @@ namespace SSConnect.App.UI
         readonly Uri server;
         readonly SignalingClient sig = new SignalingClient();
         readonly CancellationTokenSource cts = new CancellationTokenSource();
-        readonly Label idLabel = new Label { Text = "— — —", Font = new Font("Segoe UI", 22, FontStyle.Bold), AutoSize = true, Location = new Point(16, 44) };
-        readonly Label pwLabel = new Label { Font = new Font("Consolas", 16, FontStyle.Bold), AutoSize = true, Location = new Point(16, 118), ForeColor = Color.DarkOrange };
-        readonly Label status = new Label { AutoSize = true, Location = new Point(16, 170), ForeColor = Color.Gray, Text = "Connecting to server…" };
-        readonly TextBox partnerId = new TextBox { Location = new Point(16, 64), Width = 220, Font = new Font("Segoe UI", 12) };
-        readonly TextBox partnerPw = new TextBox { Location = new Point(16, 124), Width = 220, Font = new Font("Segoe UI", 12) };
-        readonly Button connect = new Button { Text = "Connect", Location = new Point(16, 164), Size = new Size(220, 34) };
+        readonly Label idLabel = new Label { Text = "— — —", Font = new Font("Segoe UI", 30, FontStyle.Bold), AutoSize = true, Margin = new Padding(0, 0, 0, 12) };
+        readonly Label pwLabel = new Label { Font = new Font("Consolas", 24, FontStyle.Bold), AutoSize = true, ForeColor = Color.DarkOrange, Margin = new Padding(0, 0, 10, 0) };
+        readonly Label status = new Label { AutoSize = true, ForeColor = Color.Gray, Text = "Connecting to server…", Margin = new Padding(0, 16, 0, 0) };
+        readonly TextBox partnerId = new TextBox { Width = 320, Font = new Font("Segoe UI", 16), Margin = new Padding(0, 0, 0, 14) };
+        readonly TextBox partnerPw = new TextBox { Width = 320, Font = new Font("Segoe UI", 16), Margin = new Padding(0, 0, 0, 18) };
+        readonly Button connect = new Button { Text = "Connect", Size = new Size(320, 52), Font = new Font("Segoe UI", 13, FontStyle.Bold), BackColor = Branding.Blue, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
         AllowDialog allowDialog;
 
         string password = Password.Generate();
@@ -42,35 +42,44 @@ namespace SSConnect.App.UI
             this.server = server;
             Text = "Remote PC";
             Icon = Branding.Icon;
-            ClientSize = new Size(600, 296);
-            var header = new Panel { Location = new Point(0, 0), Size = new Size(600, 52), BackColor = Branding.Blue };
-            header.Controls.Add(new PictureBox { Image = Branding.Logo, SizeMode = PictureBoxSizeMode.Zoom, Location = new Point(12, 8), Size = new Size(36, 36), BackColor = Color.Transparent });
-            var titles = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Location = new Point(54, 4), BackColor = Color.Transparent };
-            titles.Controls.Add(new Label { Text = "Remote PC", ForeColor = Color.White, Font = new Font("Segoe UI", 12, FontStyle.Bold), AutoSize = true, Margin = new Padding(0) });
-            titles.Controls.Add(new Label { Text = "Secure remote support · control only with your permission", ForeColor = Color.FromArgb(220, 228, 255), Font = new Font("Segoe UI", 8f), AutoSize = true, Margin = new Padding(1, 0, 0, 0) });
-            header.Controls.Add(titles);
-            Controls.Add(header);
+            Font = new Font("Segoe UI", 11);
+            AutoScaleMode = AutoScaleMode.Dpi;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoSize = true;
+            AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-            var left = new GroupBox { Text = "Allow remote control", Location = new Point(12, 66), Size = new Size(300, 218) };
-            left.Controls.AddRange(new Control[] {
-                new Label { Text = "Your ID", AutoSize = true, Location = new Point(16, 26), ForeColor = Color.Gray },
-                idLabel,
-                new Label { Text = "Password", AutoSize = true, Location = new Point(16, 98), ForeColor = Color.Gray },
-                pwLabel, status });
-            var refresh = new Button { Text = "↻", Location = new Point(150, 118), Size = new Size(32, 30) };
+            // Everything flows top-down so nothing overlaps at any Windows display scaling.
+            var root = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Padding = new Padding(0), Margin = new Padding(0) };
+
+            var header = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, BackColor = Branding.Blue, Size = new Size(860, 76), Margin = new Padding(0), Padding = new Padding(16, 12, 0, 0) };
+            header.Controls.Add(new PictureBox { Image = Branding.Logo, SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(52, 52), Margin = new Padding(0, 0, 12, 0) });
+            var titles = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = new Padding(0, 2, 0, 0) };
+            titles.Controls.Add(new Label { Text = "Remote PC", ForeColor = Color.White, Font = new Font("Segoe UI", 17, FontStyle.Bold), AutoSize = true, Margin = new Padding(0) });
+            titles.Controls.Add(new Label { Text = "Secure remote support · control only with your permission", ForeColor = Color.FromArgb(220, 228, 255), Font = new Font("Segoe UI", 10), AutoSize = true, Margin = new Padding(2, 0, 0, 0) });
+            header.Controls.Add(titles);
+
+            Label Caption(string t) => new Label { Text = t, AutoSize = true, ForeColor = Color.Gray, Font = new Font("Segoe UI", 11), Margin = new Padding(0, 0, 0, 4) };
+
+            var leftBody = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(14, 10, 10, 10) };
+            var pwRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(0) };
+            var refresh = new Button { Text = "↻ New", AutoSize = true, Font = new Font("Segoe UI", 10), Margin = new Padding(0, 8, 0, 0) };
             refresh.Click += (s, e) => { password = Password.Generate(); pwLabel.Text = password; };
-            left.Controls.Add(refresh);
+            pwRow.Controls.Add(pwLabel); pwRow.Controls.Add(refresh);
+            leftBody.Controls.AddRange(new Control[] { Caption("Your ID"), idLabel, Caption("Password"), pwRow, status });
+            var left = new GroupBox { Text = "Allow remote control", Font = new Font("Segoe UI", 12, FontStyle.Bold), Size = new Size(400, 330), Margin = new Padding(20, 18, 10, 20) };
+            leftBody.Font = Font; left.Controls.Add(leftBody);
 
-            var right = new GroupBox { Text = "Control a remote computer", Location = new Point(324, 66), Size = new Size(264, 218) };
-            right.Controls.AddRange(new Control[] {
-                new Label { Text = "Partner ID", AutoSize = true, Location = new Point(16, 44), ForeColor = Color.Gray }, partnerId,
-                new Label { Text = "Password", AutoSize = true, Location = new Point(16, 104), ForeColor = Color.Gray }, partnerPw, connect });
-            Controls.Add(left);
-            Controls.Add(right);
+            var rightBody = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(14, 10, 10, 10) };
+            rightBody.Controls.AddRange(new Control[] { Caption("Partner ID"), partnerId, Caption("Password"), partnerPw, connect });
+            var right = new GroupBox { Text = "Control a remote computer", Font = new Font("Segoe UI", 12, FontStyle.Bold), Size = new Size(390, 330), Margin = new Padding(10, 18, 20, 20) };
+            rightBody.Font = Font; right.Controls.Add(rightBody);
+
+            var panels = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(0) };
+            panels.Controls.Add(left); panels.Controls.Add(right);
+            root.Controls.Add(header); root.Controls.Add(panels);
+            Controls.Add(root);
             AcceptButton = connect;
             pwLabel.Text = password;
 
