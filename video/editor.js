@@ -379,7 +379,7 @@ async function probeNative(f, want) {
 }
 async function addFiles(files) {
   const n0 = media.size;
-  try { await addFilesNow(files); } finally { const n = media.size - n0; if (n) toast(`${n} file${n > 1 ? "s" : ""} added to Media. Click + on a file, or drag it onto a track, to put it on the timeline.`); }
+  try { await addFilesNow(files); } finally { const n = media.size - n0; if (n) toast(`${n} file${n > 1 ? "s" : ""} added to Media. Click + to add a file to the end of V1, or drag it onto the track you want.`); }
 }
 async function addFilesNow(files) {
   for (const f0 of files) {
@@ -490,7 +490,7 @@ async function makePeaks(m, f) {
 }
 function renderBin() {
   const bin = $(".bin");
-  bin.innerHTML = [...media.values()].map(m => `<div class="m" draggable="true" data-m="${m.id}" title="${esc(m.name)}"><canvas width="160" height="90"></canvas><span>${m.kind === "i" ? "Photo" : short(m.dur)}</span><b>${m.kind === "a" ? "♪ " : ""}${esc(m.name)}</b><button class="add" data-add="${m.id}" title="Add at the playhead" aria-label="Add ${esc(m.name)} at the playhead">+</button></div>`).join("") || "";
+  bin.innerHTML = [...media.values()].map(m => `<div class="m" draggable="true" data-m="${m.id}" title="${esc(m.name)}"><canvas width="160" height="90"></canvas><span>${m.kind === "i" ? "Photo" : short(m.dur)}</span><b>${m.kind === "a" ? "♪ " : ""}${esc(m.name)}</b><button class="add" data-add="${m.id}" title="Add to the end of the main track" aria-label="Add ${esc(m.name)} to the timeline">+</button></div>`).join("") || "";
   $$(".m", bin).forEach(el => {
     const m = media.get(el.dataset.m), gg = $("canvas", el).getContext("2d");
     gg.fillStyle = m.kind === "a" ? "#123528" : "#111"; gg.fillRect(0, 0, 160, 90);
@@ -501,26 +501,26 @@ function renderBin() {
   });
 }
 /* Put media on the first track of its kind that is free at time `at`; add a track if none is. */
+/* Put media on ONE track only: the track it was dropped on, or the main track (V1 / A1) for the + button.
+   It never jumps to another layer and never creates tracks by itself. */
 function insertMedia(mid, at = null, trId = null) {
   const m = media.get(mid), kind = m.kind === "a" ? "a" : "v";
   const c = {id:uid(), m:mid, tr:null, start:0, a:0, b:m.kind === "i" ? m.still : m.dur, speed:1, vol:m.kind === "i" ? 0 : 1, op:1, sc:1, x:0, y:0, rot:0, fi:0, fo:0, tin:null, kf:null, col:null};
-  if (at === null) { const same = clips.filter(k => trk(k.tr).kind === kind); at = !clips.length ? 0 : kind === "a" && !same.length ? 0 : T; }
-  c.start = Math.ceil(Math.max(0, at) * FPS - 1e-3) / FPS; /* round up so it never overlaps the clip it was dropped after */
-  const order = kind === "v" ? tracks.filter(t => t.kind === "v").reverse() : tracks.filter(t => t.kind === "a");
-  const cands = trId ? [trk(trId), ...order.filter(t => t.id !== trId)] : order;
-  /* if a clip on a track ends less than a frame after this point, start right after it instead of jumping tracks */
-  const st0 = c.start;
-  let tr = cands.find(t => {
-    if (!t || t.lock) return false;
-    const near = clips.find(o => o.tr === t.id && endOf(o) > st0 && endOf(o) - st0 <= 1.01 / FPS);
-    c.start = near ? endOf(near) : st0;
-    if (!overlaps(c, t.id)) return true;
-    c.start = st0; return false;
-  });
+  const main = kind === "v" ? tracks.filter(t => t.kind === "v").pop() : tracks.find(t => t.kind === "a");
+  const tr = (trId && trk(trId) && trk(trId).kind === kind) ? trk(trId) : main;
+  if (tr.lock) return toast(`${tr.id} is locked. Unlock it to add clips.`);
+  const trackEnd = Math.max(0, ...clips.filter(o => o.tr === tr.id).map(endOf));
+  if (at === null) c.start = trackEnd; /* + button: add after the last clip on the track */
+  else {
+    c.start = Math.ceil(Math.max(0, at) * FPS - 1e-3) / FPS;
+    const near = clips.find(o => o.tr === tr.id && endOf(o) > c.start && endOf(o) - c.start <= 1.01 / FPS);
+    if (near) c.start = endOf(near);
+    if (overlaps(c, tr.id)) { c.start = trackEnd; toast(`No room there, so it went to the end of ${tr.id}`); }
+  }
   commit();
-  if (!tr) { tr = addTrack(kind, true); }
   c.tr = tr.id; clips.push(c); sel = {type:"clip", id:c.id};
   refresh(); fitOnce();
+  return c;
 }
 function addTrack(kind, silent) {
   if (!silent) commit();
@@ -1199,7 +1199,13 @@ const fileIn = $(".drop input"), ACCEPT = fileIn.accept;
 fileIn.addEventListener("change", async () => {
   const files = [...fileIn.files], merge = mergeNext, logo = logoNext; fileIn.value = ""; mergeNext = logoNext = false;
   const before = new Set(media.keys()); await addFiles(files);
-  if (logo) { for (const [id, m] of media) if (!before.has(id) && m.kind === "i") insertMedia(id); return; }
+  if (logo) { /* logo / photo overlay: goes on the layer above the main track, at the playhead */
+    for (const [id, m] of media) if (!before.has(id) && m.kind === "i") {
+      const vs = tracks.filter(t => t.kind === "v"); const up = vs.length > 1 ? vs[vs.length - 2] : addTrack("v", true);
+      const c = insertMedia(id, T, up.id); if (c) { c.sc = .25; c.x = .36; c.y = -.36; refresh(); }
+    }
+    return;
+  }
   if (!merge) return;
   /* Merge: line the new videos up one after another at the end of V1 */
   for (const [id, m] of media) {
