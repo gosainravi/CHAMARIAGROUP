@@ -77,6 +77,7 @@ select.sel{padding:6px 8px;border:1px solid var(--line);border-radius:7px;backgr
 .fxlib button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:7px;padding:7px 8px;cursor:pointer;font:inherit;font-size:.76rem;text-align:left;line-height:1.25}
 .fxlib button:hover{border-color:var(--accent);background:var(--accent-soft)}
 .fxlib button.key{grid-column:1/-1;border-color:#3ecf8e;color:#6ee7b0}
+.fxlib button.tr{border-style:dashed}
 .fxcard{border:1px solid var(--line);border-radius:8px;padding:8px 10px 2px;margin:0 0 8px;background:var(--bg)}
 .fxcard.off{opacity:.55}
 .fxh{display:flex;align-items:center;gap:6px;margin-bottom:6px}
@@ -239,7 +240,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
     </div>
     <div class="pbody" data-pane="fx" hidden>
       <input type="search" class="fxsearch" placeholder="Search effects…" aria-label="Search effects">
-      <p class="empty-note" style="font-size:.76rem;margin:8px 0 4px">Select a video or photo clip, then click an effect (or drag it onto a clip).</p>
+      <p class="empty-note" style="font-size:.76rem;margin:8px 0 4px">Select a clip, then click an effect or transition (or drag it onto a clip). Transitions go at the start of the clip.</p>
       <div class="fxlib"></div>
     </div>
     <div class="pbody" data-pane="text" hidden>
@@ -341,7 +342,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
   </form>
 </dialog>
 <div class="toast" role="status" aria-live="polite"></div>
-<script src="fx.js?v=20261125a"></script>
-<script src="editor.js?v=20261125i"></script>
+<script src="fx.js?v=20261125b"></script>
+<script src="editor.js?v=20261125j"></script>
 </body>
 </html>
