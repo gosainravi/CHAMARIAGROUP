@@ -179,12 +179,16 @@ function drawClip(g, W, H, c, el, t, alpha = 1, dx = 0, sMul = 1) {
   g.translate(W / 2 + valAt(c, "x", t) * W + dx, H / 2 + valAt(c, "y", t) * H);
   g.rotate((rot + (c.qt || 0) * 90) * Math.PI / 180);
   if (c.fh || c.fv) g.scale(c.fh ? -1 : 1, c.fv ? -1 : 1);
+  /* clip effects run on the GPU (fx.js) and come back as a canvas of exactly the drawn size */
+  const fxc = !noFx && c.fx && c.fx.length && window.FX ? FX.render(el, srcW(el), srcH(el), sx, sy, sw, sh, Math.abs(w), Math.abs(h), c.fx, t, H / 1080) : null;
+  const put = () => fxc ? g.drawImage(fxc, 0, 0, fxc.width, fxc.height, -w / 2, -h / 2, w, h) : g.drawImage(el, sx, sy, sw, sh, -w / 2, -h / 2, w, h);
   const rr = (c.rad || 0) * Math.min(w, h) / 2, bd = (c.bd || 0) * W;
-  if (rr || bd) { g.save(); g.beginPath(); g.roundRect ? g.roundRect(-w / 2, -h / 2, w, h, rr) : g.rect(-w / 2, -h / 2, w, h); g.clip(); g.drawImage(el, sx, sy, sw, sh, -w / 2, -h / 2, w, h); g.restore();
+  if (rr || bd) { g.save(); g.beginPath(); g.roundRect ? g.roundRect(-w / 2, -h / 2, w, h, rr) : g.rect(-w / 2, -h / 2, w, h); g.clip(); put(); g.restore();
     if (bd) { g.filter = "none"; g.lineWidth = bd; g.strokeStyle = c.bdc || "#ffffff"; g.beginPath(); g.roundRect ? g.roundRect(-w / 2, -h / 2, w, h, rr) : g.rect(-w / 2, -h / 2, w, h); g.stroke(); } }
-  else g.drawImage(el, sx, sy, sw, sh, -w / 2, -h / 2, w, h);
+  else put();
   g.restore();
 }
+let noFx = false; /* true while the green-screen colour picker samples the untouched picture */
 
 /* ---------- Drawing ---------- */
 function drawFrame(g, W, H, t, pool) {
@@ -673,7 +677,7 @@ function renderTimeline() {
       el.style.left = c.start * pps + "px"; el.style.width = Math.max(4, L * pps) + "px";
       el.appendChild(clipCanvas(c, Math.min(16000, Math.max(4, Math.round(L * pps))), H, t.kind));
       const kfs = c.kf ? [...new Set(Object.values(c.kf).flat().map(p => Math.round(p.t * 1000) / 1000))] : [];
-      el.insertAdjacentHTML("beforeend", `${c.fi ? `<i class="fade in" style="width:${c.fi * pps}px"></i>` : ""}${c.fo ? `<i class="fade out" style="width:${c.fo * pps}px"></i>` : ""}${c.tin && c.tin.type ? `<i class="trn" style="width:${c.tin.d * pps}px" title="${c.tin.type} transition"></i>` : ""}${kfs.map(k => `<i class="kfd" style="left:${k * pps}px"></i>`).join("")}<span class="lab">${c.col && (c.col.p !== "none" || c.col.b !== 1 || c.col.c !== 1 || c.col.s !== 1 || c.col.h || c.col.bl) ? "◐ " : ""}${esc(m.name)}${c.speed !== 1 ? " · " + c.speed + "×" : ""}${c.vol === 0 && m.kind !== "i" ? " · muted" : ""}</span><div class="h l" data-h="l"></div><div class="h r" data-h="r"></div>`);
+      el.insertAdjacentHTML("beforeend", `${c.fi ? `<i class="fade in" style="width:${c.fi * pps}px"></i>` : ""}${c.fo ? `<i class="fade out" style="width:${c.fo * pps}px"></i>` : ""}${c.tin && c.tin.type ? `<i class="trn" style="width:${c.tin.d * pps}px" title="${c.tin.type} transition"></i>` : ""}${kfs.map(k => `<i class="kfd" style="left:${k * pps}px"></i>`).join("")}<span class="lab">${c.fx && c.fx.length ? "✦ " : ""}${c.col && (c.col.p !== "none" || c.col.b !== 1 || c.col.c !== 1 || c.col.s !== 1 || c.col.h || c.col.bl) ? "◐ " : ""}${esc(m.name)}${c.speed !== 1 ? " · " + c.speed + "×" : ""}${c.vol === 0 && m.kind !== "i" ? " · muted" : ""}</span><div class="h l" data-h="l"></div><div class="h r" data-h="r"></div>`);
       row.appendChild(el);
     });
   }
@@ -815,6 +819,48 @@ function kfAction(act, k) {
   const n = act === "next" ? arr.find(p => p.t > r + .5 / FPS) : [...arr].reverse().find(p => p.t < r - .5 / FPS);
   if (n) { setT(o.start + n.t); renderProps(); }
 }
+/* ---------- Effects UI ---------- */
+function fxFmt(p) { return v => p.opts ? p.opts[Math.round(v)] : p.u === "°" ? Math.round(v) + "°" : p.px ? (+v).toFixed(p.step < 1 ? 1 : 0) + " px" : Math.abs(p.max) <= 1 && p.min >= -1 ? Math.round(v * 100) + "%" : (+v).toFixed(p.step < 1 ? (p.step < .1 ? 2 : 1) : 0); }
+function fxSection(o) {
+  if (!window.FX) return "";
+  const list = o.fx || [];
+  const opts = FX.CATS.map(cat => `<optgroup label="${cat}">${FX.LIB.filter(e => e.cat === cat).map(e => `<option value="${e.id}">${e.name}</option>`).join("")}</optgroup>`).join("");
+  return `<div class="sec"><b>Effects${list.length ? ` (${list.length})` : ""}</b>
+    <div class="f"><select data-fxadd aria-label="Add an effect"><option value="">+ Add an effect…</option>${opts}</select></div>
+    ${list.map((e, i) => { const d = FX.byId[e.id]; if (!d) return "";
+      return `<div class="fxcard${e.on === false ? " off" : ""}"><div class="fxh"><label><input type="checkbox" data-k="fx.${i}.on"${e.on !== false ? " checked" : ""} aria-label="Turn ${d.name} on or off"><b>${d.name}</b></label>
+        <button data-fxmv="${i}:-1" title="Move up" aria-label="Move ${d.name} up"${i ? "" : " disabled"}>↑</button><button data-fxmv="${i}:1" title="Move down" aria-label="Move ${d.name} down"${i < list.length - 1 ? "" : " disabled"}>↓</button><button data-fxdel="${i}" title="Remove effect" aria-label="Remove ${d.name}">✕</button></div>
+        ${d.params.map(p => p.opts ? `<div class="f"><label>${p.l}</label><select data-k="fx.${i}.${p.k}">${p.opts.map((l, n) => `<option value="${n}"${Math.round(e[p.k]) === n ? " selected" : ""}>${l}</option>`).join("")}</select></div>`
+          : rng(`fx.${i}.${p.k}`, p.l, p.min, p.max, p.step, e[p.k] ?? p.def, fxFmt(p))).join("")}
+        ${(d.cols || []).map(cdef => `<div class="f"><label>${cdef.l}</label><div style="display:flex;gap:6px"><input type="color" data-k="fx.${i}.${cdef.k}" value="${e[cdef.k] || cdef.def}" style="flex:1;height:31px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--surface)">${cdef.pick ? `<button class="btn ghost small" data-fxpick="${i}" title="Click the background colour in the monitor">Pick from video</button>` : ""}</div></div>`).join("")}
+      </div>`; }).join("")}
+    ${list.length ? "" : `<p class="empty-note" style="font-size:.76rem;margin:0">Blur, glow, vintage film, green screen and more. Or use the Effects tab on the left.</p>`}</div>`;
+}
+function applyFx(id, clip) {
+  if (!window.FX || !FX.supported()) return toast("Effects need a browser with WebGL (graphics card support).");
+  const o = clip || (sel && sel.type === "clip" ? findSel() : null);
+  if (!o || trk(o.tr).kind !== "v") return toast("Select a video or photo clip on the timeline first");
+  commit(); o.fx = [...(o.fx || []), FX.defaults(id)]; sel = {type:"clip", id:o.id};
+  refresh(); showSec("Effects"); toast(FX.byId[id].name + " added to " + media.get(o.m).name);
+}
+function renderFxLib() {
+  const box = $(".fxlib"); if (!box || !window.FX) return;
+  const q = ($(".fxsearch").value || "").trim().toLowerCase();
+  box.innerHTML = FX.CATS.map(cat => { const items = FX.LIB.filter(e => e.cat === cat && (!q || e.name.toLowerCase().includes(q) || cat.toLowerCase().includes(q)));
+    return items.length ? `<h4>${cat}</h4><div class="fxg">${items.map(e => `<button draggable="true" data-fx="${e.id}"${e.id === "chromakey" ? ' class="key"' : ""} title="Add ${e.name} to the selected clip">${e.name}</button>`).join("")}</div>` : ""; }).join("")
+    || `<p class="empty-note">No effect matches "${esc(q)}".</p>`;
+}
+let pickFx = null;
+function startPick(i) { pickFx = i; document.body.classList.add("picking"); if (playing) pause(); toast("Click the background colour you want to remove, in the monitor"); }
+cv.addEventListener("pointerdown", e => {
+  if (pickFx === null) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const o = findSel(), i = pickFx; pickFx = null; document.body.classList.remove("picking");
+  if (!o || !o.fx || !o.fx[i]) return;
+  const r = cv.getBoundingClientRect(), x = Math.round((e.clientX - r.left) / r.width * cv.width), y = Math.round((e.clientY - r.top) / r.height * cv.height);
+  noFx = true; paint(); const px = g.getImageData(clamp(x, 0, cv.width - 1), clamp(y, 0, cv.height - 1), 1, 1).data; noFx = false;
+  commit(); o.fx[i].k1 = "#" + [px[0], px[1], px[2]].map(n => n.toString(16).padStart(2, "0")).join(""); refresh(); toast("Key colour set to " + o.fx[i].k1);
+}, true);
 function renderProps() {
   const box = $(".props"), o = findSel();
   if (!o) {
@@ -840,6 +886,7 @@ function renderProps() {
         <p class="empty-note" style="font-size:.76rem;margin:0">${prevAdj(o) ? "Blends from the clip just before this one on " + o.tr + "." : "No clip right before this one, so it blends from the tracks underneath."}</p></div>
       ${isV ? `<div class="sec"><b>Transform <span style="text-transform:none;letter-spacing:0;font-weight:500">· ◆ adds a keyframe at the playhead</span></b>${rngK("op", "Opacity", 0, 1, .01, o, pct)}${rngK("sc", "Scale", .1, 3, .01, o, pct)}${rngK("x", "Position X", -1, 1, .005, o, pct)}${rngK("y", "Position Y", -1, 1, .005, o, pct)}${rngK("rot", "Rotation", -180, 180, 1, o, v => Math.round(v) + "°")}
         <div class="row2"><button class="btn ghost small" data-act="resetxf">Reset</button><button class="btn ghost small" data-act="clearkf">Clear keyframes</button></div></div>
+      ${fxSection(o)}
       <div class="sec"><b>Picture in picture</b>
         <div class="pipg">${[["tl", "↖ Top left"], ["tr", "↗ Top right"], ["bl", "↙ Bottom left"], ["br", "↘ Bottom right"], ["left", "◧ Left half"], ["right", "◨ Right half"], ["center", "▣ Centre small"], ["full", "⛶ Full frame"]].map(([v, l]) => `<button class="btn ghost small" data-pip="${v}">${l}</button>`).join("")}</div>
         ${rng("bd", "Border", 0, .02, .001, o.bd || 0, v => Math.round(v * 1000) / 10 + "%")}
@@ -888,7 +935,14 @@ props.addEventListener("input", e => {
   const k = e.target.dataset.k, o = findSel(); if (!k || !o || TIMEK.includes(k)) return;
   const raw = e.target.value, num = +raw;
   let shown = raw;
-  if (k.startsWith("cr.")) { o.cr = {l:0, r:0, t:0, b:0, ...(o.cr || {})}; o.cr[k.slice(3)] = num; shown = pct(num); }
+  if (k.startsWith("fx.")) {
+    const [, i, pk] = k.split("."), fe = o.fx && o.fx[+i]; if (!fe) return;
+    const d = FX.byId[fe.id], p = d.params.find(q => q.k === pk);
+    if (pk === "on") { fe.on = e.target.checked; e.target.closest(".fxcard").classList.toggle("off", !fe.on); }
+    else if (pk === "k1" || pk === "k2") fe[pk] = raw;
+    else { fe[pk] = num; shown = p ? fxFmt(p)(num) : num; }
+  }
+  else if (k.startsWith("cr.")) { o.cr = {l:0, r:0, t:0, b:0, ...(o.cr || {})}; o.cr[k.slice(3)] = num; shown = pct(num); }
   else if (k === "fit") o.fit = raw;
   else if (k === "shape" || k === "sc" && sel.type === "text" || k === "bdc") o[k] = raw;
   else if (k === "fill") o.fill = e.target.checked;
@@ -948,6 +1002,7 @@ const QT = {
   merge:() => { toast("Choose the clips to join. They're added one after another."); mergeNext = true; fileIn.click(); },
   text:() => addText("sub"),
   logo:() => { toast("Choose a logo or photo. It goes on a video track above your clip."); logoNext = true; fileIn.accept = "image/*"; fileIn.click(); setTimeout(() => { fileIn.accept = ACCEPT; }, 1000); },
+  greenscreen:() => { const o = pickClip("v"); if (!o) return; if (!(o.fx || []).some(f => f.id === "chromakey")) applyFx("chromakey", o); else showSec("Effects"); toast("Use \u201cPick from video\u201d and click the green, then adjust Similarity"); },
   gif:() => exportAs("gif"), extract:() => exportAs("mp3"), frame:() => saveFrame()
 };
 let mergeNext = false, logoNext = false;
@@ -1157,6 +1212,39 @@ let toastT = 0;
 function toast(msg) { const t = $(".toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2400); }
 function setTool(tl) { tool = tl; document.body.classList.toggle("razor", tl === "razor"); $('[data-act="tool-select"]').setAttribute("aria-pressed", String(tl === "select")); $('[data-act="tool-razor"]').setAttribute("aria-pressed", String(tl === "razor")); }
 $$("[data-act]").forEach(b => { const k = b.dataset.act; if (IC[k] && b.classList.contains("ib")) b.innerHTML = IC[k]; });
+/* ---------- Report a bug: emailed through FormSubmit (the site has no server); falls back to the visitor's email app.
+   The destination address lives in <meta name="report-to"> in editor.html. ---------- */
+const bugTo = () => (($('meta[name="report-to"]') || {}).content || "").trim();
+const bugDlg = $(".bugdlg"), bugForm = $(".bugform");
+if (!bugTo()) $('[data-act="bug"]').hidden = true; /* no destination set yet: don't show a button that can't send */
+function openBug() { if (playing) pause(); $(".bugmsg").textContent = ""; $(".bugmsg").className = "bugmsg"; bugDlg.showModal(); $("#bug-txt").focus(); }
+function bugDetails() {
+  return [`Page: ${location.href.split("#")[0]}`, `Browser: ${navigator.userAgent}`, `Screen: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,
+    `Project: ${clips.length} clips, ${texts.length} text/shapes, ${tracks.length} tracks, length ${tc(total())}, frame ${outSize(1080).join("x")} ${FPS} fps`, `Time: ${new Date().toISOString()}`].join("\n");
+}
+bugDlg.addEventListener("click", e => { if (e.target.dataset.bug === "close") bugDlg.close(); });
+bugForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $(".bugmsg"), txt = $("#bug-txt").value.trim(), mail = $("#bug-mail").value.trim(), btn = $('button[type="submit"]', bugForm);
+  if (txt.length < 5) { msg.className = "bugmsg err"; msg.textContent = "Please describe the problem first."; $("#bug-txt").focus(); return; }
+  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { msg.className = "bugmsg err"; msg.textContent = "That email address doesn't look right."; $("#bug-mail").focus(); return; }
+  const BUG_TO = bugTo();
+  if (!BUG_TO) { msg.className = "bugmsg err"; msg.textContent = "Bug reports aren't set up yet on this site."; return; }
+  const details = bugForm.details.checked ? bugDetails() : "(not included)";
+  btn.disabled = true; msg.className = "bugmsg"; msg.textContent = "Sending…";
+  try {
+    const r = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(BUG_TO)}`, {method:"POST", headers:{"Content-Type":"application/json", Accept:"application/json"},
+      body:JSON.stringify({_subject:"Daftarbox Video Studio: bug report", _template:"box", _captcha:"false", message:txt, reply_to:mail || "(not given)", ...(mail ? {_replyto:mail} : {}), details})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || String(j.success) !== "true") throw new Error(j.message || "send failed");
+    msg.className = "bugmsg ok"; msg.textContent = "Thanks! Your report was sent."; bugForm.reset(); bugForm.details.checked = true;
+    setTimeout(() => { if (bugDlg.open) bugDlg.close(); }, 1800);
+  } catch (err) {
+    msg.className = "bugmsg err"; msg.textContent = "Couldn't send from here, so your email app was opened with the report filled in. Please press Send there.";
+    location.href = `mailto:${BUG_TO}?subject=${encodeURIComponent("Daftarbox Video Studio: bug report")}&body=${encodeURIComponent(txt + "\n\nReply to: " + (mail || "-") + "\n\n" + details)}`;
+  } finally { btn.disabled = false; }
+});
+
 const ACTS = {
   play:toggle, start:() => step(-1e9), end:() => step(1e9), prevf:() => step(-1 / FPS), nextf:() => step(1 / FPS),
   back1s:() => step(-1), fwd1s:() => step(1), prevedit:() => jumpEdit(-1), nextedit:() => jumpEdit(1),
@@ -1165,7 +1253,7 @@ const ACTS = {
   resetxf:() => { const o = findSel(); if (o) { commit(); Object.assign(o, {op:1, sc:1, x:0, y:0, rot:0}); if (o.kf) ["op", "sc", "x", "y", "rot"].forEach(k => delete o.kf[k]); refresh(); } },
   clearkf:() => { const o = findSel(); if (o && o.kf) { commit(); o.kf = null; refresh(); } },
   resetcol:() => { const o = findSel(); if (o) { commit(); o.col = null; refresh(); } },
-  freeze:freezeFrame,
+  freeze:freezeFrame, bug:openBug,
   rotl:() => clipSet(o => { o.qt = ((o.qt || 0) + 3) % 4; }), rotr:() => clipSet(o => { o.qt = ((o.qt || 0) + 1) % 4; }),
   fliph:() => clipSet(o => { o.fh = !o.fh; }), flipv:() => clipSet(o => { o.fv = !o.fv; }),
   snapshot:saveFrame,
@@ -1176,6 +1264,10 @@ const ACTS = {
 };
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (b && ACTS[b.dataset.act]) { ACTS[b.dataset.act](); return; }
+  const fxb = e.target.closest("[data-fx]"); if (fxb) { applyFx(fxb.dataset.fx); return; }
+  const fxd = e.target.closest("[data-fxdel]"); if (fxd) { const o = findSel(); if (o && o.fx) { commit(); o.fx.splice(+fxd.dataset.fxdel, 1); refresh(); showSec("Effects"); } return; }
+  const fxm = e.target.closest("[data-fxmv]"); if (fxm) { const o = findSel(), [i, dd] = fxm.dataset.fxmv.split(":").map(Number), j = i + dd; if (o && o.fx && o.fx[j]) { commit(); [o.fx[i], o.fx[j]] = [o.fx[j], o.fx[i]]; refresh(); showSec("Effects"); } return; }
+  const fxp = e.target.closest("[data-fxpick]"); if (fxp) { startPick(+fxp.dataset.fxpick); return; }
   const pp = e.target.closest("[data-pip]"); if (pp) { pipPreset(pp.dataset.pip); return; }
   const sh = e.target.closest("[data-shape]"); if (sh) { addShape(sh.dataset.shape); return; }
   const go = e.target.closest("[data-go]"); if (go) { const m = markers.find(k => k.id === go.dataset.go); if (m) { if (playing) pause(); setT(m.t); } return; }
@@ -1188,6 +1280,12 @@ document.addEventListener("click", e => {
   if (tab) { $$("[data-tab]").forEach(k => k.setAttribute("aria-selected", String(k === tab))); $$("[data-pane]").forEach(p => { p.hidden = p.dataset.pane !== tab.dataset.tab; }); }
 });
 zm.addEventListener("input", () => setZoom(+zm.value));
+document.addEventListener("change", e => { if (e.target.matches("[data-fxadd]") && e.target.value) { const id = e.target.value; e.target.value = ""; applyFx(id); } });
+$(".fxsearch").addEventListener("input", renderFxLib);
+document.addEventListener("dragstart", e => { const b = e.target.closest && e.target.closest("[data-fx]"); if (b) { e.dataTransfer.setData("text/x-fx", b.dataset.fx); e.dataTransfer.effectAllowed = "copy"; } });
+rows.addEventListener("dragover", e => { if ([...e.dataTransfer.types].includes("text/x-fx")) { const cl = e.target.closest(".clip:not(.txt)"); if (cl) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } } });
+rows.addEventListener("drop", e => { const id = e.dataTransfer.getData("text/x-fx"); if (!id) return; e.preventDefault(); const cl = e.target.closest(".clip:not(.txt)"); const c = cl && clips.find(k => k.id === cl.dataset.id); if (c) applyFx(id, c); });
+renderFxLib();
 document.addEventListener("change", e => {
   const l = e.target.dataset.ml, c = e.target.dataset.mc; if (!l && !c) return;
   const m = markers.find(k => k.id === (l || c)); if (!m) return;
