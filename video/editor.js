@@ -180,7 +180,8 @@ function drawClip(g, W, H, c, el, t, alpha = 1, dx = 0, sMul = 1) {
   g.rotate((rot + (c.qt || 0) * 90) * Math.PI / 180);
   if (c.fh || c.fv) g.scale(c.fh ? -1 : 1, c.fv ? -1 : 1);
   /* clip effects run on the GPU (fx.js) and come back as a canvas of exactly the drawn size */
-  const fxc = !noFx && c.fx && c.fx.length && window.FX ? FX.render(el, srcW(el), srcH(el), sx, sy, sw, sh, Math.abs(w), Math.abs(h), c.fx, t, H / 1080) : null;
+  const gu = !noFx && !noGrade ? gradeU(c) : null;
+  const fxc = !noFx && ((c.fx && c.fx.length) || gu) && window.FX ? FX.render(el, srcW(el), srcH(el), sx, sy, sw, sh, Math.abs(w), Math.abs(h), noFx ? [] : c.fx, t, H / 1080, gu) : null;
   const put = () => fxc ? g.drawImage(fxc, 0, 0, fxc.width, fxc.height, -w / 2, -h / 2, w, h) : g.drawImage(el, sx, sy, sw, sh, -w / 2, -h / 2, w, h);
   const rr = (c.rad || 0) * Math.min(w, h) / 2, bd = (c.bd || 0) * W;
   if (rr || bd) { g.save(); g.beginPath(); g.roundRect ? g.roundRect(-w / 2, -h / 2, w, h, rr) : g.rect(-w / 2, -h / 2, w, h); g.clip(); put(); g.restore();
@@ -189,6 +190,176 @@ function drawClip(g, W, H, c, el, t, alpha = 1, dx = 0, sMul = 1) {
   g.restore();
 }
 let noFx = false; /* true while the green-screen colour picker samples the untouched picture */
+let noGrade = false, beforeAfter = false; /* before/after view on the monitor only */
+
+/* ---------- Colour grading model ----------
+   c.gr = {exp, con, hi, sh, sat, vib, temp, tnt, hue, lift:{x,y,l}, gam:{x,y,l}, gain:{x,y,l}, lut, lamt}
+   Wheels: x,y inside the unit circle pick a hue and strength; l is the brightness slider under the wheel. */
+const luts = new Map(); /* id -> {name, n, rgb}; kept outside undo history like media */
+const defGrade = () => ({exp:0, con:0, hi:0, sh:0, sat:1, vib:0, temp:0, tnt:0, hue:0, lift:{x:0, y:0, l:0}, gam:{x:0, y:0, l:0}, gain:{x:0, y:0, l:0}, lut:"", lamt:1});
+function hueRGB(deg) { /* same hues as the drawn wheels: HSL with full saturation, 50% lightness */
+  const h = ((deg % 360) + 360) % 360 / 60, x = 1 - Math.abs(h % 2 - 1);
+  const [r, g2, b] = h < 1 ? [1, x, 0] : h < 2 ? [x, 1, 0] : h < 3 ? [0, 1, x] : h < 4 ? [0, x, 1] : h < 5 ? [x, 0, 1] : [1, 0, x];
+  return [r, g2, b];
+}
+function wheelVec(wv, kScale, lScale, base) {
+  const rad = Math.min(1, Math.hypot(wv.x, wv.y)), deg = Math.atan2(wv.y, wv.x) * 180 / Math.PI;
+  const c = hueRGB(deg), l = .299 * c[0] + .587 * c[1] + .114 * c[2];
+  return c.map(ch => base + (ch - l) * rad * kScale + (wv.l || 0) * lScale);
+}
+const gradeIsDefault = gr => !gr || JSON.stringify({...defGrade(), ...gr, lut:gr.lut || ""}) === JSON.stringify(defGrade());
+function gradeU(c) {
+  const gr = c.gr; if (gradeIsDefault(gr)) return null;
+  return {exp:gr.exp, con:gr.con, hi:gr.hi, sh:gr.sh, sat:gr.sat, vib:gr.vib, temp:gr.temp, tnt:gr.tnt, hue:gr.hue,
+    lift:wheelVec(gr.lift, .3, .25, 0), gam:wheelVec(gr.gam, .5, .45, 1), gain:wheelVec(gr.gain, .6, .5, 1),
+    lut:gr.lut && luts.has(gr.lut) ? gr.lut : null, lamt:gr.lamt};
+}
+const hueXY = (deg, r) => ({x:Math.cos(deg * Math.PI / 180) * r, y:Math.sin(deg * Math.PI / 180) * r});
+const LOOKS = {
+  natural:{name:"Original", g:{}},
+  tealorange:{name:"Teal & orange", g:{con:.12, sat:1.1, lift:{...hueXY(185, .45), l:0}, gain:{...hueXY(30, .35), l:0}}},
+  warm:{name:"Warm film", g:{temp:.55, sat:1.05, con:.05, gain:{...hueXY(40, .2), l:0}}},
+  cool:{name:"Cool night", g:{temp:-.55, exp:-.15, sat:.9, gain:{...hueXY(215, .25), l:0}}},
+  moody:{name:"Moody", g:{exp:-.2, con:.25, sat:.75, sh:-.15, lift:{...hueXY(190, .3), l:0}}},
+  bleach:{name:"Bleach bypass", g:{sat:.45, con:.35, hi:.1}},
+  vintage:{name:"Vintage fade", g:{sat:.8, con:-.12, lift:{...hueXY(40, .2), l:.12}, gain:{...hueXY(50, .2), l:-.05}}},
+  vivid:{name:"Vivid pop", g:{sat:1.3, vib:.4, con:.15}},
+  bwfilm:{name:"Black & white film", g:{sat:0, con:.3, hi:.05}}
+};
+function lookOf(gr) { if (gradeIsDefault(gr)) return "natural"; for (const [k, L] of Object.entries(LOOKS)) if (k !== "natural" && JSON.stringify({...defGrade(), ...L.g}) === JSON.stringify({...defGrade(), ...gr, lut:"", lamt:1})) return k; return ""; }
+function gradeSection(o) {
+  const gr = {...defGrade(), ...(o.gr || {})}, sl = (k, l, min, max, st, fmt) => rng("gr." + k, l, min, max, st, gr[k], fmt);
+  const sgn = v => (v > 0 ? "+" : "") + Math.round(v * 100);
+  const lk = lookOf(o.gr);
+  const wheel = (k, l) => `<div class="wh"><canvas class="wheel" data-w="${k}" width="132" height="132" aria-label="${l} colour wheel: drag to tint, double-click to reset"></canvas><span>${l}</span>
+    <input type="range" min="-1" max="1" step="0.01" value="${gr[k].l}" data-k="gr.${k}.l" aria-label="${l} brightness" title="${l} brightness"></div>`;
+  return `<div class="sec grsec"><b>Colour grading${gradeIsDefault(o.gr) ? "" : " ●"}</b>
+    <div class="f"><label>Look</label><select data-grlook>${lk ? "" : `<option value="" selected>Custom</option>`}${Object.entries(LOOKS).map(([k, L]) => `<option value="${k}"${k === lk ? " selected" : ""}>${L.name}</option>`).join("")}</select></div>
+    <div class="wheels">${wheel("lift", "Lift (shadows)")}${wheel("gam", "Gamma (mids)")}${wheel("gain", "Gain (highlights)")}</div>
+    <p class="empty-note" style="font-size:.72rem;margin:2px 0 10px">Drag inside a wheel to tint that range; double-click it to reset. The slider under it makes that range darker or brighter.</p>
+    ${sl("exp", "Exposure", -2, 2, .05, v => (v > 0 ? "+" : "") + (+v).toFixed(2) + " EV")}${sl("con", "Contrast", -1, 1, .01, sgn)}${sl("hi", "Highlights", -1, 1, .01, sgn)}${sl("sh", "Shadows", -1, 1, .01, sgn)}
+    ${sl("sat", "Saturation", 0, 2, .01, pct)}${sl("vib", "Vibrance", -1, 1, .01, sgn)}${sl("temp", "Temperature", -1, 1, .01, v => v > .005 ? "warmer " + Math.round(v * 100) : v < -.005 ? "cooler " + Math.round(-v * 100) : "0")}
+    ${sl("tnt", "Tint", -1, 1, .01, v => v > .005 ? "magenta " + Math.round(v * 100) : v < -.005 ? "green " + Math.round(-v * 100) : "0")}${sl("hue", "Hue shift", -180, 180, 1, v => Math.round(v) + "°")}
+    <div class="f"><label>LUT (.cube file)</label><div style="display:flex;gap:6px"><select data-k="gr.lut" style="flex:1"><option value="">None</option>${[...luts].map(([id, L]) => `<option value="${id}"${gr.lut === id ? " selected" : ""}>${esc(L.name)}</option>`).join("")}</select><button class="btn ghost small" data-act="lutimport">Import…</button></div></div>
+    ${gr.lut ? sl("lamt", "LUT strength", 0, 1, .01, pct) : ""}
+    <div class="row2" style="margin-top:4px"><button class="btn ghost small" data-act="gcopy">Copy grade</button><button class="btn ghost small" data-act="gpaste"${gradeClip ? "" : " disabled"}>Paste grade</button></div>
+    <div class="row2" style="margin-top:6px"><button class="btn ghost small" data-act="gall">Apply to all clips</button><button class="btn ghost small" data-act="greset">Reset grade</button></div>
+    ${o.col && (o.col.p !== "none" || o.col.b !== 1 || o.col.c !== 1 || o.col.s !== 1 || o.col.h || o.col.bl) ? `<button class="btn ghost small wide" data-act="resetcol" style="margin-top:6px">Remove old quick colour settings</button>` : ""}
+  </div>`;
+}
+function drawWheels() {
+  const o = findSel(); if (!o || !o.gr && !$(".wheel")) return;
+  const gr = {...defGrade(), ...((o && o.gr) || {})};
+  $$(".wheel").forEach(cvw => {
+    const w = cvw.width, R = w / 2 - 4, gg = cvw.getContext("2d");
+    if (!cvw._bg) {
+      const img = gg.createImageData(w, w);
+      for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) {
+        const dx = x - w / 2, dy = w / 2 - y, d = Math.hypot(dx, dy) / R, i = (y * w + x) * 4;
+        if (d > 1) { img.data[i + 3] = 0; continue; }
+        const c = hueRGB(Math.atan2(dy, dx) * 180 / Math.PI), s = Math.min(1, d) * .85;
+        img.data[i] = (c[0] * s + (1 - s) * .5) * 255; img.data[i + 1] = (c[1] * s + (1 - s) * .5) * 255; img.data[i + 2] = (c[2] * s + (1 - s) * .5) * 255; img.data[i + 3] = 255;
+      }
+      cvw._bg = img;
+    }
+    gg.putImageData(cvw._bg, 0, 0);
+    const v = gr[cvw.dataset.w], px = w / 2 + v.x * R, py = w / 2 - v.y * R;
+    gg.strokeStyle = "rgba(0,0,0,.35)"; gg.beginPath(); gg.moveTo(w / 2 - 6, w / 2); gg.lineTo(w / 2 + 6, w / 2); gg.moveTo(w / 2, w / 2 - 6); gg.lineTo(w / 2, w / 2 + 6); gg.stroke();
+    gg.lineWidth = 2; gg.strokeStyle = "#fff"; gg.fillStyle = "rgba(0,0,0,.4)"; gg.beginPath(); gg.arc(px, py, 6, 0, Math.PI * 2); gg.fill(); gg.stroke();
+  });
+}
+let gradeClip = null;
+function wheelAt(cvw, e) {
+  const r = cvw.getBoundingClientRect(), R = r.width / 2 - 4 * r.width / cvw.width;
+  let x = (e.clientX - r.left - r.width / 2) / R, y = -(e.clientY - r.top - r.height / 2) / R; const d = Math.hypot(x, y); if (d > 1) { x /= d; y /= d; }
+  return {x:Math.round(x * 1000) / 1000, y:Math.round(y * 1000) / 1000};
+}
+document.addEventListener("pointerdown", e => {
+  const cvw = e.target.closest && e.target.closest(".wheel"); if (!cvw) return;
+  const o = findSel(); if (!o || sel.type !== "clip") return;
+  e.preventDefault(); const snap0 = snapshot(); o.gr = {...defGrade(), ...(o.gr || {})}; const k = cvw.dataset.w;
+  const mv = ev => { Object.assign(o.gr[k] = {...o.gr[k]}, wheelAt(cvw, ev)); drawWheels(); if (!playing) paint(); };
+  mv(e);
+  const up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); pushSnap(snap0); renderTimeline(); const sc = $(".panel.right").scrollTop; renderProps(); $(".panel.right").scrollTop = sc; };
+  window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up);
+});
+document.addEventListener("dblclick", e => {
+  const cvw = e.target.closest && e.target.closest(".wheel"); if (!cvw) return;
+  const o = findSel(); if (!o || !o.gr) return; commit(); o.gr[cvw.dataset.w] = {x:0, y:0, l:o.gr[cvw.dataset.w].l || 0}; const sc = $(".panel.right").scrollTop; renderProps(); $(".panel.right").scrollTop = sc; renderTimeline(); if (!playing) paint();
+});
+/* .cube LUT import */
+function parseCube(text) {
+  let n = 0, min = [0, 0, 0], max = [1, 1, 1]; const vals = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim(); if (!line || line[0] === "#") continue;
+    const parts = line.split(/\s+/);
+    if (/^LUT_1D_SIZE$/i.test(parts[0])) throw new Error("This is a 1D LUT. Please use a 3D .cube LUT.");
+    if (/^LUT_3D_SIZE$/i.test(parts[0])) { n = +parts[1]; continue; }
+    if (/^DOMAIN_MIN$/i.test(parts[0])) { min = parts.slice(1, 4).map(Number); continue; }
+    if (/^DOMAIN_MAX$/i.test(parts[0])) { max = parts.slice(1, 4).map(Number); continue; }
+    if (/^[A-Z_]/i.test(parts[0])) continue;
+    if (parts.length >= 3) for (let i = 0; i < 3; i++) vals.push((+parts[i] - min[i]) / ((max[i] - min[i]) || 1));
+  }
+  if (!n || n < 2 || n > 65) throw new Error("This file has no LUT_3D_SIZE (or an unusual size).");
+  if (vals.length < n * n * n * 3 || vals.some(v => !isFinite(v))) throw new Error("The LUT file looks incomplete or damaged.");
+  return {n, rgb:new Float32Array(vals.slice(0, n * n * n * 3))};
+}
+const lutIn = document.createElement("input"); lutIn.type = "file"; lutIn.accept = ".cube"; lutIn.hidden = true; document.body.appendChild(lutIn);
+lutIn.addEventListener("change", async () => {
+  const f = lutIn.files[0]; lutIn.value = ""; if (!f) return;
+  const o = findSel();
+  try {
+    const L = parseCube(await f.text()), id = uid();
+    luts.set(id, {name:f.name.replace(/\.cube$/i, ""), n:L.n, rgb:L.rgb});
+    if (!FX.setLut(id, L.n, L.rgb)) throw new Error("Your browser can't apply LUTs (WebGL is off).");
+    if (o && sel.type === "clip") { commit(); o.gr = {...defGrade(), ...(o.gr || {}), lut:id, lamt:1}; }
+    refresh(); showSec("Colour grading"); toast(`LUT "${f.name}" loaded (${L.n}×${L.n}×${L.n})`);
+  } catch (err) { toast(err.message || "Couldn't read that LUT file"); }
+});
+
+/* ---------- Scopes ---------- */
+let scopeMode = "", scopeAt = 0;
+const scopeSmall = document.createElement("canvas"); scopeSmall.width = 240; scopeSmall.height = 135;
+function scopesTick(force) {
+  if (!scopeMode) return;
+  const now = performance.now(); if (!force && now - scopeAt < 120) return; scopeAt = now;
+  const out = $(".scopes canvas"), sg = out.getContext("2d"), W = out.width, H = out.height;
+  const s = scopeSmall.getContext("2d", {willReadFrequently:true}); s.drawImage(cv, 0, 0, scopeSmall.width, scopeSmall.height);
+  const d = s.getImageData(0, 0, scopeSmall.width, scopeSmall.height).data, sw = scopeSmall.width, shh = scopeSmall.height;
+  sg.fillStyle = "#0b0c0e"; sg.fillRect(0, 0, W, H);
+  sg.strokeStyle = "#ffffff18"; sg.lineWidth = 1; sg.font = "9px system-ui"; sg.fillStyle = "#ffffff55";
+  const plot = sg.createImageData(W, H), P = plot.data;
+  const add = (x, y, r, g2, b) => { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= W || y >= H) return; const i = (y * W + x) * 4; P[i] = Math.min(255, P[i] + r); P[i + 1] = Math.min(255, P[i + 1] + g2); P[i + 2] = Math.min(255, P[i + 2] + b); P[i + 3] = 255; };
+  if (scopeMode === "wave" || scopeMode === "parade") {
+    for (let y = 0; y < shh; y++) for (let x = 0; x < sw; x++) {
+      const i = (y * sw + x) * 4, r = d[i], g2 = d[i + 1], b = d[i + 2];
+      if (scopeMode === "wave") { const l = .299 * r + .587 * g2 + .114 * b; add(x / sw * W, (1 - l / 255) * (H - 1), 18, 40, 18); }
+      else { const third = W / 3; add(x / sw * third, (1 - r / 255) * (H - 1), 40, 6, 6); add(third + x / sw * third, (1 - g2 / 255) * (H - 1), 6, 40, 6); add(2 * third + x / sw * third, (1 - b / 255) * (H - 1), 8, 12, 45); }
+    }
+    for (let i = P.length - 1; i > 0; i -= 4) if (!P[i]) { P[i - 3] = 11; P[i - 2] = 12; P[i - 1] = 14; P[i] = 255; }
+    sg.putImageData(plot, 0, 0);
+    [0, .25, .5, .75, 1].forEach(q => { const y = Math.round((1 - q) * (H - 1)) + .5; sg.beginPath(); sg.moveTo(0, y); sg.lineTo(W, y); sg.stroke(); });
+  } else if (scopeMode === "hist") {
+    const hr = new Uint32Array(256), hg = new Uint32Array(256), hb = new Uint32Array(256);
+    for (let i = 0; i < d.length; i += 4) { hr[d[i]]++; hg[d[i + 1]]++; hb[d[i + 2]]++; }
+    const mx = Math.max(1, ...[...hr, ...hg, ...hb].slice(1, 255));
+    sg.globalCompositeOperation = "lighter";
+    [[hr, "#ff4d4d"], [hg, "#4dff6a"], [hb, "#4d7dff"]].forEach(([h, c2]) => { sg.fillStyle = c2 + "99"; sg.beginPath(); sg.moveTo(0, H); for (let k = 0; k < 256; k++) sg.lineTo(k / 255 * W, H - Math.min(1, h[k] / mx) * (H - 4)); sg.lineTo(W, H); sg.fill(); });
+    sg.globalCompositeOperation = "source-over";
+  } else if (scopeMode === "vector") {
+    const cx = W / 2, cy = H / 2, R = H / 2 - 6;
+    for (let i = 0; i < d.length; i += 4) { const r = d[i] / 255, g2 = d[i + 1] / 255, b = d[i + 2] / 255; const cb = -.169 * r - .331 * g2 + .5 * b, cr = .5 * r - .419 * g2 - .081 * b; add(cx + cb * R * 2, cy - cr * R * 2, 30 + d[i] / 10, 30 + d[i + 1] / 10, 30 + d[i + 2] / 10); }
+    for (let i = P.length - 1; i > 0; i -= 4) if (!P[i]) { P[i - 3] = 11; P[i - 2] = 12; P[i - 1] = 14; P[i] = 255; }
+    sg.putImageData(plot, 0, 0);
+    sg.beginPath(); sg.arc(cx, cy, R, 0, Math.PI * 2); sg.stroke(); sg.beginPath(); sg.moveTo(cx - R, cy); sg.lineTo(cx + R, cy); sg.moveTo(cx, cy - R); sg.lineTo(cx, cy + R); sg.stroke();
+    /* skin-tone line (about 123° on a vectorscope) */
+    sg.strokeStyle = "#ffb36655"; sg.beginPath(); sg.moveTo(cx, cy); sg.lineTo(cx + Math.cos(-123 * Math.PI / 180) * R, cy + Math.sin(-123 * Math.PI / 180) * R); sg.stroke();
+  }
+}
+function setScope(mode) {
+  scopeMode = mode; const box = $(".scopes"); box.hidden = !mode;
+  $('[data-act="scopes"]').setAttribute("aria-pressed", String(!!mode)); if (mode) { $(".scopes select").value = mode; scopesTick(true); }
+}
 
 /* two reusable full-frame layers for transitions (outgoing / incoming) */
 const trLayers = [];
@@ -302,8 +473,10 @@ function renderMarkers() {
 const cv = $(".view"), g = cv.getContext("2d");
 function sizeViewer() { const [w, h] = outSize(720); if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } const [W, H] = outSize(1080); $(".fsize").textContent = `${W}×${H} · ${FPS} fps`; }
 function paint() {
-  drawFrame(g, cv.width, cv.height, T, pv);
+  noGrade = beforeAfter; drawFrame(g, cv.width, cv.height, T, pv); noGrade = false;
+  if (beforeAfter) { g.save(); g.font = `600 ${Math.round(cv.height / 28)}px system-ui`; g.fillStyle = "rgba(0,0,0,.6)"; const tw = g.measureText("Original (before grade)").width; g.fillRect(10, 10, tw + 20, cv.height / 20 + 8); g.fillStyle = "#fff"; g.textBaseline = "top"; g.fillText("Original (before grade)", 20, 16); g.restore(); }
   if (sel && sel.type === "text") { const x = findSel(); if (x && T >= x.s && T < x.e) { const b = textBox(g, cv.width, cv.height, x); g.save(); g.setLineDash([6, 4]); g.strokeStyle = "#fff"; g.lineWidth = 2; g.strokeRect(b.l - 2, b.t - 2, b.bw + 4, b.bh + 4); g.restore(); } }
+  scopesTick();
 }
 let seekGen = 0;
 async function showFrame() {
@@ -694,7 +867,7 @@ function renderTimeline() {
       el.style.left = c.start * pps + "px"; el.style.width = Math.max(4, L * pps) + "px";
       el.appendChild(clipCanvas(c, Math.min(16000, Math.max(4, Math.round(L * pps))), H, t.kind));
       const kfs = c.kf ? [...new Set(Object.values(c.kf).flat().map(p => Math.round(p.t * 1000) / 1000))] : [];
-      el.insertAdjacentHTML("beforeend", `${c.fi ? `<i class="fade in" style="width:${c.fi * pps}px"></i>` : ""}${c.fo ? `<i class="fade out" style="width:${c.fo * pps}px"></i>` : ""}${c.tin && c.tin.type ? `<i class="trn" style="width:${c.tin.d * pps}px" title="${c.tin.type} transition"></i>` : ""}${kfs.map(k => `<i class="kfd" style="left:${k * pps}px"></i>`).join("")}<span class="lab">${c.fx && c.fx.length ? "✦ " : ""}${c.col && (c.col.p !== "none" || c.col.b !== 1 || c.col.c !== 1 || c.col.s !== 1 || c.col.h || c.col.bl) ? "◐ " : ""}${esc(m.name)}${c.speed !== 1 ? " · " + c.speed + "×" : ""}${c.vol === 0 && m.kind !== "i" ? " · muted" : ""}</span><div class="h l" data-h="l"></div><div class="h r" data-h="r"></div>`);
+      el.insertAdjacentHTML("beforeend", `${c.fi ? `<i class="fade in" style="width:${c.fi * pps}px"></i>` : ""}${c.fo ? `<i class="fade out" style="width:${c.fo * pps}px"></i>` : ""}${c.tin && c.tin.type ? `<i class="trn" style="width:${c.tin.d * pps}px" title="${c.tin.type} transition"></i>` : ""}${kfs.map(k => `<i class="kfd" style="left:${k * pps}px"></i>`).join("")}<span class="lab">${c.fx && c.fx.length ? "✦ " : ""}${(c.col && (c.col.p !== "none" || c.col.b !== 1 || c.col.c !== 1 || c.col.s !== 1 || c.col.h || c.col.bl)) || !gradeIsDefault(c.gr) ? "◐ " : ""}${esc(m.name)}${c.speed !== 1 ? " · " + c.speed + "×" : ""}${c.vol === 0 && m.kind !== "i" ? " · muted" : ""}</span><div class="h l" data-h="l"></div><div class="h r" data-h="r"></div>`);
       row.appendChild(el);
     });
   }
@@ -936,9 +1109,7 @@ function renderProps() {
         <div class="row2" style="margin-bottom:8px"><button class="btn ghost small" data-act="rotl">⟲ Rotate left</button><button class="btn ghost small" data-act="rotr">⟳ Rotate right</button></div>
         <div class="row2" style="margin-bottom:10px"><button class="btn ghost small" data-act="fliph" aria-pressed="${!!o.fh}">⇋ Flip horizontal</button><button class="btn ghost small" data-act="flipv" aria-pressed="${!!o.fv}">⇵ Flip vertical</button></div>
         <div class="row2">${["l", "r", "t", "b"].map(s => rng("cr." + s, "Crop " + {l:"left", r:"right", t:"top", b:"bottom"}[s], 0, .45, .005, (o.cr || {})[s] || 0, pct)).join("")}</div></div>
-      <div class="sec"><b>Colour</b><div class="f"><label>Look</label><select data-k="col.p">${[["none", "Original"], ["bw", "Black & white"], ["sepia", "Sepia"], ["warm", "Warm"], ["cool", "Cool"], ["vivid", "Vivid"], ["fade", "Faded film"], ["drama", "Dramatic"]].map(([v, l]) => `<option value="${v}"${col(o).p === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>
-        ${rng("col.b", "Brightness", .3, 2, .01, col(o).b, pct)}${rng("col.c", "Contrast", .3, 2, .01, col(o).c, pct)}${rng("col.s", "Saturation", 0, 3, .01, col(o).s, pct)}${rng("col.h", "Hue", -180, 180, 1, col(o).h, v => Math.round(v) + "°")}${rng("col.bl", "Blur", 0, 20, .5, col(o).bl, v => v)}
-        <button class="btn ghost small wide" data-act="resetcol">Reset colour</button></div>
+      ${gradeSection(o)}
       ${m.kind === "v" ? `<div class="sec"><button class="btn ghost small wide" data-act="freeze">Freeze this frame (2 s)</button></div>` : ""}` : ""}
       <div class="sec"><div class="row3"><button class="btn ghost small" data-act="split">Split</button><button class="btn ghost small" data-act="del">Delete</button><button class="btn ghost small" data-act="ripple" title="Delete and close the gap">Ripple</button></div></div>`;
   } else if (o.shape) {
@@ -974,7 +1145,14 @@ props.addEventListener("input", e => {
   const k = e.target.dataset.k, o = findSel(); if (!k || !o || TIMEK.includes(k)) return;
   const raw = e.target.value, num = +raw;
   let shown = raw;
-  if (k.startsWith("fx.")) {
+  if (k.startsWith("gr.")) {
+    o.gr = {...defGrade(), ...(o.gr || {})}; const parts = k.split(".");
+    if (parts.length === 3) { o.gr[parts[1]] = {...o.gr[parts[1]], [parts[2]]:num}; shown = num; }
+    else if (parts[1] === "lut") o.gr.lut = raw;
+    else { o.gr[parts[1]] = num; const f = e.target.closest(".f"); const fmtEl = f && $("output", f); if (fmtEl) shown = fmtEl.textContent; }
+    if (parts[1] !== "lut") { const f = e.target.closest(".f"); if (f && $("output", f)) { const fmts = {exp:v => (v > 0 ? "+" : "") + v.toFixed(2) + " EV", sat:pct, lamt:pct, hue:v => Math.round(v) + "°"}; shown = (fmts[parts[1]] || (v => (v > 0 ? "+" : "") + Math.round(v * 100)))(num); } }
+  }
+  else if (k.startsWith("fx.")) {
     const [, i, pk] = k.split("."), fe = o.fx && o.fx[+i]; if (!fe) return;
     const d = FX.byId[fe.id], p = d.params.find(q => q.k === pk);
     if (pk === "on") { fe.on = e.target.checked; e.target.closest(".fxcard").classList.toggle("off", !fe.on); }
@@ -1293,6 +1471,13 @@ const ACTS = {
   clearkf:() => { const o = findSel(); if (o && o.kf) { commit(); o.kf = null; refresh(); } },
   resetcol:() => { const o = findSel(); if (o) { commit(); o.col = null; refresh(); } },
   freeze:freezeFrame, bug:openBug, trall:trAll,
+  lutimport:() => { if (!window.FX || !FX.supported()) return toast("LUTs need WebGL (graphics card support)."); lutIn.click(); },
+  gcopy:() => { const o = findSel(); if (!o || sel.type !== "clip") return; gradeClip = JSON.parse(JSON.stringify({...defGrade(), ...(o.gr || {})})); renderProps(); showSec("Colour grading"); toast("Grade copied"); },
+  gpaste:() => { const o = findSel(); if (!o || !gradeClip) return; commit(); o.gr = JSON.parse(JSON.stringify(gradeClip)); refresh(); showSec("Colour grading"); toast("Grade pasted"); },
+  gall:() => { const o = findSel(); if (!o) return; const gr = JSON.parse(JSON.stringify({...defGrade(), ...(o.gr || {})})); const n = clips.filter(c => c !== o && trk(c.tr).kind === "v"); if (!n.length) return toast("There are no other video clips"); commit(); n.forEach(c => { c.gr = JSON.parse(JSON.stringify(gr)); }); refresh(); showSec("Colour grading"); toast(`Grade applied to ${n.length} more clip${n.length > 1 ? "s" : ""}`); },
+  greset:() => { const o = findSel(); if (o && o.gr) { commit(); o.gr = null; refresh(); showSec("Colour grading"); } },
+  ba:() => { beforeAfter = !beforeAfter; $('[data-act="ba"]').setAttribute("aria-pressed", String(beforeAfter)); if (!playing) paint(); },
+  scopes:() => setScope(scopeMode ? "" : "wave"),
   rotl:() => clipSet(o => { o.qt = ((o.qt || 0) + 3) % 4; }), rotr:() => clipSet(o => { o.qt = ((o.qt || 0) + 1) % 4; }),
   fliph:() => clipSet(o => { o.fh = !o.fh; }), flipv:() => clipSet(o => { o.fv = !o.fv; }),
   snapshot:saveFrame,
@@ -1320,6 +1505,10 @@ document.addEventListener("click", e => {
   if (tab) { $$("[data-tab]").forEach(k => k.setAttribute("aria-selected", String(k === tab))); $$("[data-pane]").forEach(p => { p.hidden = p.dataset.pane !== tab.dataset.tab; }); }
 });
 zm.addEventListener("input", () => setZoom(+zm.value));
+document.addEventListener("change", e => {
+  if (e.target.matches("[data-grlook]")) { const o = findSel(); const L = LOOKS[e.target.value]; if (!o || !L) return; commit(); o.gr = e.target.value === "natural" ? null : {...defGrade(), ...JSON.parse(JSON.stringify(L.g)), lut:(o.gr && o.gr.lut) || "", lamt:(o.gr && o.gr.lamt) ?? 1}; refresh(); showSec("Colour grading"); }
+  if (e.target.matches(".scopes select")) setScope(e.target.value);
+});
 document.addEventListener("change", e => { if (e.target.matches("[data-fxadd]") && e.target.value) { const id = e.target.value; e.target.value = ""; applyFx(id); } });
 $(".fxsearch").addEventListener("input", renderFxLib);
 document.addEventListener("dragstart", e => { const t2 = e.target.closest && e.target.closest("[data-tr]"); if (t2) { e.dataTransfer.setData("text/x-tr", t2.dataset.tr); e.dataTransfer.effectAllowed = "copy"; } });
@@ -1379,4 +1568,5 @@ window.addEventListener("resize", () => renderTimeline());
 const noSideScroll = () => { if (scrollX) scrollTo(0, scrollY); if (document.body.scrollLeft) document.body.scrollLeft = 0; if (document.documentElement.scrollLeft) document.documentElement.scrollLeft = 0; };
 window.addEventListener("scroll", noSideScroll, {passive:true}); document.body.addEventListener("scroll", noSideScroll, {passive:true});
 window.addEventListener("beforeunload", e => { if (clips.length) { e.preventDefault(); e.returnValue = ""; } });
+{ const rp0 = renderProps; renderProps = (...args) => { rp0(...args); drawWheels(); }; } /* colour wheels are canvases: redraw after the inspector changes */
 setPlayBtn(); setTool("select"); pps = ppsFromZoom(+zm.value); renderTimeline(); renderProps(); updateTime(); sizeViewer(); paint();

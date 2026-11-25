@@ -86,6 +86,19 @@ select.sel{padding:6px 8px;border:1px solid var(--line);border-radius:7px;backgr
 .fxh button{width:24px;height:24px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--ink);cursor:pointer;padding:0;font-size:.8rem}
 .fxh button:hover{border-color:var(--accent)}
 body.picking .view{cursor:crosshair}
+.scopes{position:absolute;right:16px;bottom:16px;background:#0b0c0ee6;border:1px solid var(--line);border-radius:8px;padding:6px;display:grid;gap:4px;z-index:3;box-shadow:0 6px 24px #0008}
+.scopes[hidden]{display:none}
+.scopes select{padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);font:inherit;font-size:.74rem}
+.scopes{width:clamp(190px,40%,312px)}
+.scopes canvas{display:block;width:100%;height:auto;border-radius:4px}
+.mon-h .btn{white-space:nowrap;padding:5px 9px;font-size:.78rem}
+.mon-h{gap:6px}
+@media (max-width:1400px){.mon-h .fsize{display:none}}
+.mon-h .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.wheels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 6px}
+.wh{display:grid;justify-items:center;gap:3px;font-size:.66rem;color:var(--muted);text-align:center}
+.wh canvas{width:100%;max-width:76px;aspect-ratio:1;cursor:crosshair;touch-action:none}
+.wh input{width:100%;accent-color:var(--accent)}
 .tpl{display:grid;gap:8px}
 .tpl button{border:1px solid var(--line);background:var(--sunk);color:#fff;border-radius:8px;padding:12px;cursor:pointer;text-align:center;font-family:Archivo,sans-serif}
 .tpl button:hover{border-color:var(--accent)}
@@ -286,8 +299,8 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
     </div>
   </aside>
   <section class="center">
-    <div class="mon-h"><b>Monitor</b><span class="sp"></span><span class="fsize"></span><button class="btn ghost small" data-act="snapshot" title="Save the frame under the playhead as a PNG">Save frame</button></div>
-    <div class="viewer"><canvas class="view" width="1280" height="720"></canvas><div class="hint"><span>Import videos, photos or audio into the Media panel, then click + on one (or drag it to a track) to add it to the timeline</span></div></div>
+    <div class="mon-h"><b>Monitor</b><span class="sp"></span><span class="fsize"></span><button class="btn ghost small" data-act="ba" aria-pressed="false" title="Show the picture without colour grading">Before / after</button><button class="btn ghost small" data-act="scopes" aria-pressed="false" title="Waveform, RGB parade, histogram and vectorscope">Scopes</button><button class="btn ghost small" data-act="snapshot" title="Save the frame under the playhead as a PNG">Save frame</button></div>
+    <div class="viewer"><canvas class="view" width="1280" height="720"></canvas><div class="scopes" hidden><select aria-label="Scope type"><option value="wave">Waveform</option><option value="parade">RGB parade</option><option value="hist">Histogram</option><option value="vector">Vectorscope</option></select><canvas width="300" height="170" aria-label="Video scope"></canvas></div><div class="hint"><span>Import videos, photos or audio into the Media panel, then click + on one (or drag it to a track) to add it to the timeline</span></div></div>
     <div class="transport">
       <span class="tc cur">00:00:00:00</span><span class="sp"></span>
       <button class="ib" data-act="start" title="Go to start (Home)" aria-label="Go to start"></button>
@@ -342,7 +355,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
   </form>
 </dialog>
 <div class="toast" role="status" aria-live="polite"></div>
-<script src="fx.js?v=20261125b"></script>
-<script src="editor.js?v=20261125j"></script>
+<script src="fx.js?v=20261125c"></script>
+<script src="editor.js?v=20261125k"></script>
 </body>
 </html>
