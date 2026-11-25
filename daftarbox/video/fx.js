@@ -163,9 +163,62 @@
 
   /* Run `list` (the clip's effects) over source rectangle (sx,sy,sw,sh) of `src`, producing a w×h canvas.
      unit = output frame height / 1080, so pixel-sized settings look the same at every resolution. */
-  function render(src, srcW, srcH, sx, sy, sw, sh, w, h, list, time, unit) {
+  /* ---------- Colour grade pass (runs after the clip's effects) ----------
+     g = {exp, con, hi, sh, sat, vib, temp, tnt, hue, lift:[r,g,b], gam:[r,g,b], gain:[r,g,b], lut:id|null, lamt} */
+  const GRADE = `uniform float exp_,con,hi,shd,sat,vib,tmp,tnt,hue,lsz,lamt;uniform vec3 lift,gam,gain;uniform sampler2D tl;
+    vec3 lutAt(vec3 c){float n=lsz;c=clamp(c,0.,1.)*(n-1.);float b0=floor(c.b),b1=min(b0+1.,n-1.),f=c.b-b0;
+      vec2 u0=vec2((b0*n+c.r+.5)/(n*n),(c.g+.5)/n),u1=vec2((b1*n+c.r+.5)/(n*n),(c.g+.5)/n);return mix(texture2D(tl,u0).rgb,texture2D(tl,u1).rgb,f);}
+    void main(){vec4 o=T(v);vec3 c=o.rgb*pow(2.,exp_);
+      c*=vec3(1.+.12*tmp+.04*tnt,1.-.08*tnt,1.-.12*tmp+.04*tnt);
+      c=gain*(c+lift*(1.-c));c=pow(max(c,0.),1./max(gam,.05));
+      float l=luma(c);c+=hi*smoothstep(.45,1.,l)*.45+shd*(1.-smoothstep(0.,.55,l))*.45;
+      c=(c-.5)*(1.+con)+.5;
+      l=luma(c);c=mix(vec3(l),c,sat);float mx=max(c.r,max(c.g,c.b)),mn=min(c.r,min(c.g,c.b));c=mix(vec3(l),c,1.+vib*(1.-(mx-mn)));
+      if(hue!=0.){float an=radians(hue);mat3 toY=mat3(.299,.596,.211,.587,-.274,-.523,.114,-.322,.312);mat3 fromY=mat3(1.,1.,1.,.956,-.272,-1.106,.621,-.647,1.703);vec3 y=toY*c;float cs=cos(an),sn=sin(an);y=vec3(y.x,y.y*cs-y.z*sn,y.y*sn+y.z*cs);c=fromY*y;}
+      c=clamp(c,0.,1.);if(lamt>0.)c=mix(c,lutAt(c),lamt);gl_FragColor=vec4(c,o.a);}`;
+  let gradeP = null, lutTex = {}, blankLut = null;
+  function gradeProg() {
+    if (gradeP) return gradeP;
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error("Grade shader", gl.getShaderInfoLog(s)); return null; } return s; };
+    const vs = sh(gl.VERTEX_SHADER, VERT), fs = sh(gl.FRAGMENT_SHADER, HEAD + GRADE); if (!vs || !fs) return null;
+    const p = gl.createProgram(); gl.attachShader(p, vs); gl.attachShader(p, fs); gl.bindAttribLocation(p, 0, "p"); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error("Grade link", gl.getProgramInfoLog(p)); return null; }
+    const u = {}; ["t", "r", "tl", "exp_", "con", "hi", "shd", "sat", "vib", "tmp", "tnt", "hue", "lsz", "lamt", "lift", "gam", "gain"].forEach(n => { u[n] = gl.getUniformLocation(p, n); });
+    return (gradeP = {p, u});
+  }
+  /* Upload a 3D LUT (N×N×N, RGB floats 0..1, red fastest) as an (N·N)×N strip texture. */
+  function setLut(id, n, rgb) {
+    if (!init()) return false;
+    const data = new Uint8Array(n * n * n * 4);
+    for (let b = 0; b < n; b++) for (let g2 = 0; g2 < n; g2++) for (let r2 = 0; r2 < n; r2++) {
+      const i = r2 + g2 * n + b * n * n, x = b * n + r2, y = g2, o = (y * n * n + x) * 4;
+      data[o] = Math.round(Math.min(1, Math.max(0, rgb[i * 3])) * 255); data[o + 1] = Math.round(Math.min(1, Math.max(0, rgb[i * 3 + 1])) * 255); data[o + 2] = Math.round(Math.min(1, Math.max(0, rgb[i * 3 + 2])) * 255); data[o + 3] = 255;
+    }
+    const t = lutTex[id] ? lutTex[id].tex : makeTex();
+    gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, n * n, n, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    lutTex[id] = {tex:t, n}; return true;
+  }
+  function gradePass(src, dstFb, w, h, gr) {
+    const pr = gradeProg(); if (!pr) return false;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dstFb); gl.viewport(0, 0, w, h); gl.useProgram(pr.p);
+    if (!blankLut) { gl.activeTexture(gl.TEXTURE1); blankLut = makeTex(); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255])); }
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, src); gl.uniform1i(pr.u.t, 0);
+    const L = gr.lut && lutTex[gr.lut];
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, L ? L.tex : blankLut); gl.uniform1i(pr.u.tl, 1);
+    gl.uniform2f(pr.u.r, w, h);
+    const f = (k, v) => gl.uniform1f(pr.u[k], v);
+    f("exp_", gr.exp || 0); f("con", gr.con || 0); f("hi", gr.hi || 0); f("shd", gr.sh || 0); f("sat", gr.sat ?? 1); f("vib", gr.vib || 0);
+    f("tmp", gr.temp || 0); f("tnt", gr.tnt || 0); f("hue", gr.hue || 0); f("lsz", L ? L.n : 2); f("lamt", L ? (gr.lamt ?? 1) : 0);
+    gl.uniform3fv(pr.u.lift, gr.lift || [0, 0, 0]); gl.uniform3fv(pr.u.gam, gr.gam || [1, 1, 1]); gl.uniform3fv(pr.u.gain, gr.gain || [1, 1, 1]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.activeTexture(gl.TEXTURE0);
+    return true;
+  }
+
+  function render(src, srcW, srcH, sx, sy, sw, sh, w, h, list, time, unit, grade) {
     const active = (list || []).filter(e => e && e.on !== false && byId[e.id]);
-    if (!active.length || !init()) return null;
+    if ((!active.length && !grade) || !init()) return null;
     w = Math.max(1, Math.min(2048, Math.round(w))); h = Math.max(1, Math.min(2048, Math.round(h)));
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     sizeFbos(w, h);
@@ -188,6 +241,8 @@
         draw(pr, fbos[cur].tex, fbos[1 - cur].fb, w, h, uni); cur = 1 - cur;
       }
     }
+    if (grade && gradePass(fbos[cur].tex, fbos[1 - cur].fb, w, h, grade)) cur = 1 - cur;
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     draw(prog("_out", OUT), fbos[cur].tex, null, w, h, {});
     return cv;
   }
@@ -296,5 +351,5 @@
     gl.activeTexture(gl.TEXTURE0);
     return cv;
   }
-  window.FX = {LIB, CATS, byId, render, defaults, supported:() => init(), TR, TRCATS, trById, transition};
+  window.FX = {LIB, CATS, byId, render, defaults, supported:() => init(), TR, TRCATS, trById, transition, setLut, hasLut:id => !!lutTex[id]};
 })();
