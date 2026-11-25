@@ -13,7 +13,8 @@
 <link rel="stylesheet" href="../shared/site.css?v=20261124">
 <style>
 /* The studio is always dark, like desktop editing software. */
-body.studio{--bg:#121316;--surface:#1a1b1f;--sunk:#0b0c0e;--line:#2b2d33;--ink:#e9e9ec;--muted:#9a9ca4;--accent:#4f8cff;--accent-soft:#4f8cff26;--accent-ink:#fff;--danger:#ff5d5d;--ok:#3ecf8e;
+html:has(body.studio){overflow-x:clip}
+body.studio{overflow-x:clip;--bg:#121316;--surface:#1a1b1f;--sunk:#0b0c0e;--line:#2b2d33;--ink:#e9e9ec;--muted:#9a9ca4;--accent:#4f8cff;--accent-soft:#4f8cff26;--accent-ink:#fff;--danger:#ff5d5d;--ok:#3ecf8e;
   color-scheme:dark;display:flex;flex-direction:column;height:100vh;margin:0;background:var(--bg);color:var(--ink);overflow:hidden;font-size:14px}
 .st-bar{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--surface);flex:none}
 .st-bar .mark{font-weight:800;text-decoration:none;color:var(--ink)}
@@ -341,6 +342,6 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </dialog>
 <div class="toast" role="status" aria-live="polite"></div>
 <script src="fx.js?v=20261125a"></script>
-<script src="editor.js?v=20261125h"></script>
+<script src="editor.js?v=20261125i"></script>
 </body>
 </html>

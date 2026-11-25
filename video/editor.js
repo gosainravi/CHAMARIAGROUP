@@ -1332,5 +1332,8 @@ document.addEventListener("keydown", e => {
 });
 scroller.addEventListener("wheel", e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); setZoom(clamp(+zm.value - Math.sign(e.deltaY) * 6, 0, 100), xToT(e.clientX)); } }, {passive:false});
 window.addEventListener("resize", () => renderTimeline());
+/* The studio never scrolls sideways: undo any nudge from focus jumps or sideways trackpad swipes. */
+const noSideScroll = () => { if (scrollX) scrollTo(0, scrollY); if (document.body.scrollLeft) document.body.scrollLeft = 0; if (document.documentElement.scrollLeft) document.documentElement.scrollLeft = 0; };
+window.addEventListener("scroll", noSideScroll, {passive:true}); document.body.addEventListener("scroll", noSideScroll, {passive:true});
 window.addEventListener("beforeunload", e => { if (clips.length) { e.preventDefault(); e.returnValue = ""; } });
 setPlayBtn(); setTool("select"); pps = ppsFromZoom(+zm.value); renderTimeline(); renderProps(); updateTime(); sizeViewer(); paint();
