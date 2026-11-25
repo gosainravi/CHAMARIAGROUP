@@ -190,6 +190,14 @@ function drawClip(g, W, H, c, el, t, alpha = 1, dx = 0, sMul = 1) {
 }
 let noFx = false; /* true while the green-screen colour picker samples the untouched picture */
 
+/* two reusable full-frame layers for transitions (outgoing / incoming) */
+const trLayers = [];
+function trCanvases(W, H) {
+  while (trLayers.length < 2) { const c = document.createElement("canvas"); trLayers.push({c, g:c.getContext("2d")}); }
+  trLayers.forEach(l => { if (l.c.width !== W || l.c.height !== H) { l.c.width = W; l.c.height = H; } });
+  return trLayers;
+}
+
 /* ---------- Drawing ---------- */
 function drawFrame(g, W, H, t, pool) {
   g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
@@ -201,6 +209,15 @@ function drawFrame(g, W, H, t, pool) {
     if (e.pr === undefined) { drawClip(g, W, H, e.c, el, t); continue; }
     const tail = ents.find(k => k.tail && k.c.tr === tr.id), tel = tail && pool.pool.get(tail.c.id), hasT = tail && ready(tel);
     const pr = e.pr, ty = e.c.tin.type, drawPrev = (a = 1, dx = 0) => { if (hasT) drawClip(g, W, H, tail.c, tel, endOf(tail.c) - 1e-3, a, dx); };
+    /* GPU transitions: draw each side full-frame (with its own position, crop and effects), then blend in a shader */
+    if (window.FX && FX.trById[ty]) {
+      const [A, B] = trCanvases(W, H);
+      A.g.clearRect(0, 0, W, H); B.g.clearRect(0, 0, W, H);
+      if (hasT) drawClip(A.g, W, H, tail.c, tel, endOf(tail.c) - 1e-3);
+      drawClip(B.g, W, H, e.c, el, t);
+      const out = FX.transition(A.c, B.c, W, H, ty, pr, t);
+      if (out) { g.drawImage(out, 0, 0, W, H); continue; }
+    }
     if (ty === "dissolve") { drawPrev(); drawClip(g, W, H, e.c, el, t, pr); }
     else if (ty === "black" || ty === "white") {
       if (pr < .5) drawPrev(); else drawClip(g, W, H, e.c, el, t);
@@ -836,6 +853,24 @@ function fxSection(o) {
       </div>`; }).join("")}
     ${list.length ? "" : `<p class="empty-note" style="font-size:.76rem;margin:0">Blur, glow, vintage film, green screen and more. Or use the Effects tab on the left.</p>`}</div>`;
 }
+function trOptions(cur) {
+  const groups = window.FX ? FX.TRCATS.map(cat => `<optgroup label="${cat}">${FX.TR.filter(x => x.cat === cat).map(x => `<option value="${x.id}"${cur === x.id ? " selected" : ""}>${x.name}</option>`).join("")}</optgroup>`).join("") : "";
+  return `<option value=""${cur ? "" : " selected"}>None (cut)</option>` + groups;
+}
+/* Put a transition at the start of a clip (blending from the clip before it on the same track). */
+function applyTr(id, clip) {
+  const o = clip || (sel && sel.type === "clip" ? findSel() : null);
+  if (!o || trk(o.tr).kind !== "v") return toast("Select the video or photo clip the transition should lead into");
+  commit(); o.tin = {type:id, d:Math.min((o.tin && o.tin.d) || 1, len(o))}; sel = {type:"clip", id:o.id};
+  refresh(); showSec("Transition"); toast(`${FX.trById[id].name} added at the start of ${media.get(o.m).name}` + (prevAdj(o) ? "" : " (no clip right before it, so it blends from the tracks below)"));
+}
+function trAll() {
+  const o = findSel(); if (!o || !o.tin || !o.tin.type) return;
+  const cuts = clips.filter(c => c !== o && trk(c.tr).kind === "v" && prevAdj(c));
+  if (!cuts.length) return toast("There are no other cuts between clips yet");
+  commit(); cuts.forEach(c => { c.tin = {type:o.tin.type, d:Math.min(o.tin.d, len(c), len(prevAdj(c)))}; });
+  refresh(); toast(`${FX.trById[o.tin.type].name} applied to ${cuts.length} cut${cuts.length > 1 ? "s" : ""}`);
+}
 function applyFx(id, clip) {
   if (!window.FX || !FX.supported()) return toast("Effects need a browser with WebGL (graphics card support).");
   const o = clip || (sel && sel.type === "clip" ? findSel() : null);
@@ -846,9 +881,12 @@ function applyFx(id, clip) {
 function renderFxLib() {
   const box = $(".fxlib"); if (!box || !window.FX) return;
   const q = ($(".fxsearch").value || "").trim().toLowerCase();
-  box.innerHTML = FX.CATS.map(cat => { const items = FX.LIB.filter(e => e.cat === cat && (!q || e.name.toLowerCase().includes(q) || cat.toLowerCase().includes(q)));
+  const trHtml = FX.TRCATS.map(cat => { const items = FX.TR.filter(x => !q || x.name.toLowerCase().includes(q) || cat.toLowerCase().includes(q) || "transition".includes(q)).filter(x => x.cat === cat);
+    return items.length ? `<h4>Transition · ${cat}</h4><div class="fxg">${items.map(x => `<button draggable="true" data-tr="${x.id}" class="tr" title="Add ${x.name} at the start of the selected clip">${x.name}</button>`).join("")}</div>` : ""; }).join("");
+  box.innerHTML = trHtml + FX.CATS.map(cat => { const items = FX.LIB.filter(e => e.cat === cat && (!q || e.name.toLowerCase().includes(q) || cat.toLowerCase().includes(q)));
     return items.length ? `<h4>${cat}</h4><div class="fxg">${items.map(e => `<button draggable="true" data-fx="${e.id}"${e.id === "chromakey" ? ' class="key"' : ""} title="Add ${e.name} to the selected clip">${e.name}</button>`).join("")}</div>` : ""; }).join("")
-    || `<p class="empty-note">No effect matches "${esc(q)}".</p>`;
+    || "";
+  if (!box.innerHTML.trim()) box.innerHTML = `<p class="empty-note">Nothing matches "${esc(q)}".</p>`;
 }
 let pickFx = null;
 function startPick(i) { pickFx = i; document.body.classList.add("picking"); if (playing) pause(); toast("Click the background colour you want to remove, in the monitor"); }
@@ -881,9 +919,10 @@ function renderProps() {
       <div class="f" style="margin-top:10px"><label>Speed</label><select data-k="speed">${[.25, .5, .75, 1, 1.25, 1.5, 2, 3, 4].map(s => `<option value="${s}"${s === o.speed ? " selected" : ""}>${s}×</option>`).join("")}</select></div></div>
       ${m.kind !== "i" ? `<div class="sec"><b>Audio</b>${rngK("vol", "Volume", 0, 1, .05, o, pct)}${isV && m.kind === "v" ? `<button class="btn ghost small wide" data-act="detach">Detach audio to its own track</button>` : ""}</div>` : ""}
       <div class="sec"><b>Fade</b><div class="row2">${rng("fi", "Fade in", 0, 3, .1, o.fi || 0, v => (+v).toFixed(1) + "s")}${rng("fo", "Fade out", 0, 3, .1, o.fo || 0, v => (+v).toFixed(1) + "s")}</div></div>
-      <div class="sec"><b>Transition in</b><div class="row2"><div class="f"><label>Type</label><select data-k="tin.type">${[["", "None (cut)"], ["dissolve", "Cross dissolve"], ["black", "Dip to black"], ["white", "Dip to white"], ["wipe", "Wipe"], ["slide", "Slide"], ["zoom", "Zoom in"]].map(([v, l]) => `<option value="${v}"${((o.tin && o.tin.type) || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>
+      <div class="sec"><b>Transition in</b><div class="row2"><div class="f"><label>Type</label><select data-k="tin.type">${trOptions((o.tin && o.tin.type) || "")}</select></div>
         ${rng("tin.d", "Length", .2, 3, .1, (o.tin && o.tin.d) || 1, v => (+v).toFixed(1) + "s")}</div>
-        <p class="empty-note" style="font-size:.76rem;margin:0">${prevAdj(o) ? "Blends from the clip just before this one on " + o.tr + "." : "No clip right before this one, so it blends from the tracks underneath."}</p></div>
+        <p class="empty-note" style="font-size:.76rem;margin:0">${prevAdj(o) ? "Blends from the clip just before this one on " + o.tr + "." : "No clip right before this one, so it blends from the tracks underneath."}</p>
+        ${o.tin && o.tin.type ? `<button class="btn ghost small wide" data-act="trall" style="margin-top:8px">Apply this transition to every cut</button>` : ""}</div>
       ${isV ? `<div class="sec"><b>Transform <span style="text-transform:none;letter-spacing:0;font-weight:500">· ◆ adds a keyframe at the playhead</span></b>${rngK("op", "Opacity", 0, 1, .01, o, pct)}${rngK("sc", "Scale", .1, 3, .01, o, pct)}${rngK("x", "Position X", -1, 1, .005, o, pct)}${rngK("y", "Position Y", -1, 1, .005, o, pct)}${rngK("rot", "Rotation", -180, 180, 1, o, v => Math.round(v) + "°")}
         <div class="row2"><button class="btn ghost small" data-act="resetxf">Reset</button><button class="btn ghost small" data-act="clearkf">Clear keyframes</button></div></div>
       ${fxSection(o)}
@@ -1253,7 +1292,7 @@ const ACTS = {
   resetxf:() => { const o = findSel(); if (o) { commit(); Object.assign(o, {op:1, sc:1, x:0, y:0, rot:0}); if (o.kf) ["op", "sc", "x", "y", "rot"].forEach(k => delete o.kf[k]); refresh(); } },
   clearkf:() => { const o = findSel(); if (o && o.kf) { commit(); o.kf = null; refresh(); } },
   resetcol:() => { const o = findSel(); if (o) { commit(); o.col = null; refresh(); } },
-  freeze:freezeFrame, bug:openBug,
+  freeze:freezeFrame, bug:openBug, trall:trAll,
   rotl:() => clipSet(o => { o.qt = ((o.qt || 0) + 3) % 4; }), rotr:() => clipSet(o => { o.qt = ((o.qt || 0) + 1) % 4; }),
   fliph:() => clipSet(o => { o.fh = !o.fh; }), flipv:() => clipSet(o => { o.fv = !o.fv; }),
   snapshot:saveFrame,
@@ -1264,6 +1303,7 @@ const ACTS = {
 };
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (b && ACTS[b.dataset.act]) { ACTS[b.dataset.act](); return; }
+  const trb = e.target.closest("[data-tr]"); if (trb) { applyTr(trb.dataset.tr); return; }
   const fxb = e.target.closest("[data-fx]"); if (fxb) { applyFx(fxb.dataset.fx); return; }
   const fxd = e.target.closest("[data-fxdel]"); if (fxd) { const o = findSel(); if (o && o.fx) { commit(); o.fx.splice(+fxd.dataset.fxdel, 1); refresh(); showSec("Effects"); } return; }
   const fxm = e.target.closest("[data-fxmv]"); if (fxm) { const o = findSel(), [i, dd] = fxm.dataset.fxmv.split(":").map(Number), j = i + dd; if (o && o.fx && o.fx[j]) { commit(); [o.fx[i], o.fx[j]] = [o.fx[j], o.fx[i]]; refresh(); showSec("Effects"); } return; }
@@ -1282,6 +1322,9 @@ document.addEventListener("click", e => {
 zm.addEventListener("input", () => setZoom(+zm.value));
 document.addEventListener("change", e => { if (e.target.matches("[data-fxadd]") && e.target.value) { const id = e.target.value; e.target.value = ""; applyFx(id); } });
 $(".fxsearch").addEventListener("input", renderFxLib);
+document.addEventListener("dragstart", e => { const t2 = e.target.closest && e.target.closest("[data-tr]"); if (t2) { e.dataTransfer.setData("text/x-tr", t2.dataset.tr); e.dataTransfer.effectAllowed = "copy"; } });
+rows.addEventListener("dragover", e => { if ([...e.dataTransfer.types].includes("text/x-tr") && e.target.closest(".clip:not(.txt)")) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } });
+rows.addEventListener("drop", e => { const id = e.dataTransfer.getData("text/x-tr"); if (!id) return; e.preventDefault(); const cl = e.target.closest(".clip:not(.txt)"); const c = cl && clips.find(k => k.id === cl.dataset.id); if (c) applyTr(id, c); });
 document.addEventListener("dragstart", e => { const b = e.target.closest && e.target.closest("[data-fx]"); if (b) { e.dataTransfer.setData("text/x-fx", b.dataset.fx); e.dataTransfer.effectAllowed = "copy"; } });
 rows.addEventListener("dragover", e => { if ([...e.dataTransfer.types].includes("text/x-fx")) { const cl = e.target.closest(".clip:not(.txt)"); if (cl) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } } });
 rows.addEventListener("drop", e => { const id = e.dataTransfer.getData("text/x-fx"); if (!id) return; e.preventDefault(); const cl = e.target.closest(".clip:not(.txt)"); const c = cl && clips.find(k => k.id === cl.dataset.id); if (c) applyFx(id, c); });

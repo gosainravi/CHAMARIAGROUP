@@ -196,5 +196,105 @@
     const e = {id, on:true}; d.params.forEach(p => { e[p.k] = p.def; }); (d.cols || []).forEach(cdef => { e[cdef.k] = cdef.def; });
     return e;
   }
-  window.FX = {LIB, CATS, byId, render, defaults, supported:() => init()};
+  /* ---------- Transitions ----------
+     A = outgoing clip, B = incoming clip, each already drawn full-frame (with its own position, crop and effects).
+     p goes 0 → 1 over the transition. Bodies only use A(), B(), v, p, r, time, asp and the helpers below. */
+  const TR = [
+    /* Fades */
+    {id:"dissolve", name:"Cross Dissolve", cat:"Fades", f:`gl_FragColor=mix(A(v),B(v),p);`},
+    {id:"smoothcut", name:"Smooth Cut", cat:"Fades", f:`gl_FragColor=mix(A(v),B(v),smoothstep(.35,.65,p));`},
+    {id:"black", name:"Dip to Black", cat:"Fades", f:`vec4 c=p<.5?A(v):B(v);gl_FragColor=mix(c,vec4(0.,0.,0.,1.),1.-abs(p*2.-1.));`},
+    {id:"white", name:"Dip to White", cat:"Fades", f:`vec4 c=p<.5?A(v):B(v);gl_FragColor=mix(c,vec4(1.),1.-abs(p*2.-1.));`},
+    {id:"additive", name:"Additive Dissolve", cat:"Fades", f:`vec4 a=A(v),b=B(v);gl_FragColor=vec4(clamp(a.rgb*min(1.,2.-2.*p)+b.rgb*min(1.,2.*p),0.,1.),max(a.a,b.a));`},
+    {id:"blurdis", name:"Blur Dissolve", cat:"Fades", f:`float bl=sin(3.1416*p)*14.;vec4 a=vec4(0.),b=vec4(0.);for(int i=-4;i<=4;i++)for(int j=-4;j<=4;j++){vec2 o=vec2(float(i),float(j))*bl/4./r;a+=A(v+o);b+=B(v+o);}gl_FragColor=mix(a,b,p)/81.;`},
+    /* Wipes */
+    {id:"wipe", name:"Wipe Right", cat:"Wipes", f:`gl_FragColor=mix(A(v),B(v),1.-smoothstep(p-.01,p+.01,v.x*1.02-.01));`},
+    {id:"wipeleft", name:"Wipe Left", cat:"Wipes", f:`gl_FragColor=mix(A(v),B(v),1.-smoothstep(p-.01,p+.01,(1.-v.x)*1.02-.01));`},
+    {id:"wipeup", name:"Wipe Up", cat:"Wipes", f:`gl_FragColor=mix(A(v),B(v),1.-smoothstep(p-.01,p+.01,v.y*1.02-.01));`},
+    {id:"wipedown", name:"Wipe Down", cat:"Wipes", f:`gl_FragColor=mix(A(v),B(v),1.-smoothstep(p-.01,p+.01,(1.-v.y)*1.02-.01));`},
+    {id:"softwipe", name:"Soft Wipe", cat:"Wipes", f:`float e=p*1.3-.15;gl_FragColor=mix(A(v),B(v),1.-smoothstep(e-.15,e+.15,v.x));`},
+    {id:"diagwipe", name:"Diagonal Wipe", cat:"Wipes", f:`float e=p*1.1-.05;gl_FragColor=mix(A(v),B(v),1.-smoothstep(e-.03,e+.03,(v.x+(1.-v.y))*.5));`},
+    {id:"barn", name:"Barn Doors", cat:"Wipes", f:`gl_FragColor=abs(v.x-.5)*2.<p?B(v):A(v);`},
+    {id:"barnv", name:"Barn Doors Vertical", cat:"Wipes", f:`gl_FragColor=abs(v.y-.5)*2.<p?B(v):A(v);`},
+    {id:"iris", name:"Iris", cat:"Wipes", f:`float d=length((v-.5)*vec2(asp,1.));float m=p*length(vec2(asp,1.))*.5;gl_FragColor=mix(A(v),B(v),1.-smoothstep(m-.01,m+.01,d));`},
+    {id:"diamond", name:"Diamond", cat:"Wipes", f:`float d=abs(v.x-.5)*asp+abs(v.y-.5);gl_FragColor=d<p*(asp*.5+.5)?B(v):A(v);`},
+    {id:"clock", name:"Clock Wipe", cat:"Wipes", f:`vec2 q=v-.5;float an=atan(q.x,q.y)/6.2832+.5;gl_FragColor=an<p?B(v):A(v);`},
+    {id:"blinds", name:"Venetian Blinds", cat:"Wipes", f:`gl_FragColor=fract(v.y*10.)<p?B(v):A(v);`},
+    {id:"curtain", name:"Curtain Call", cat:"Wipes", f:`float q=ease(p);if(v.x<.5){float sx=v.x+q*.5;gl_FragColor=sx<.5?A(vec2(sx,v.y)):B(v);}else{float sx=v.x-q*.5;gl_FragColor=sx>=.5?A(vec2(sx,v.y)):B(v);}`},
+    {id:"dots", name:"Dots", cat:"Wipes", f:`vec2 q=v*vec2(asp,1.)*10.;float d=length(fract(q)-.5);gl_FragColor=d<p*.75?B(v):A(v);`},
+    {id:"checker", name:"Checkerboard", cat:"Wipes", f:`vec2 c=floor(v*vec2(asp,1.)*6.);float par=mod(c.x+c.y,2.);gl_FragColor=p*2.>par+fract(v.x*asp*6.)?B(v):A(v);`},
+    {id:"blocks", name:"Random Blocks", cat:"Wipes", f:`float k=rnd(floor(v*vec2(16.,9.)));gl_FragColor=p>k?B(v):A(v);`},
+    /* Slide & push */
+    {id:"slide", name:"Push Left", cat:"Slide & Push", f:`float q=ease(p);gl_FragColor=v.x<1.-q?A(v+vec2(q,0.)):B(v-vec2(1.-q,0.));`},
+    {id:"pushright", name:"Push Right", cat:"Slide & Push", f:`float q=ease(p);gl_FragColor=v.x>q?A(v-vec2(q,0.)):B(v+vec2(1.-q,0.));`},
+    {id:"pushup", name:"Push Up", cat:"Slide & Push", f:`float q=ease(p);gl_FragColor=v.y>q?A(v-vec2(0.,q)):B(v+vec2(0.,1.-q));`},
+    {id:"pushdown", name:"Push Down", cat:"Slide & Push", f:`float q=ease(p);gl_FragColor=v.y<1.-q?A(v+vec2(0.,q)):B(v-vec2(0.,1.-q));`},
+    {id:"cover", name:"Slide In (cover)", cat:"Slide & Push", f:`float q=ease(p);gl_FragColor=v.x>1.-q?B(v-vec2(1.-q,0.)):A(v);`},
+    {id:"reveal", name:"Slide Out (reveal)", cat:"Slide & Push", f:`float q=ease(p);gl_FragColor=v.x<1.-q?A(v+vec2(q,0.)):B(v);`},
+    {id:"whip", name:"Whip Pan", cat:"Slide & Push", f:`float q=ease(p);float bl=sin(3.1416*p)*.08;vec4 s=vec4(0.);for(int i=-6;i<=6;i++){vec2 u=v+vec2(float(i)*bl/6.,0.);s+=u.x<1.-q?A(u+vec2(q,0.)):B(u-vec2(1.-q,0.));}gl_FragColor=s/13.;`},
+    {id:"bounce", name:"Bounce In", cat:"Slide & Push", f:`float x=p-1.;float q=1.+2.70158*x*x*x+1.70158*x*x;gl_FragColor=v.x>1.-q?B(v-vec2(1.-q,0.)):A(v);`},
+    /* Zoom */
+    {id:"zoom", name:"Zoom In", cat:"Zoom", f:`vec4 a=A(.5+(v-.5)/(1.+p*1.5));vec4 b=B(.5+(v-.5)/(.6+.4*p));gl_FragColor=mix(a,b,smoothstep(.2,.8,p));`},
+    {id:"zoomout", name:"Zoom Out", cat:"Zoom", f:`vec4 a=A(.5+(v-.5)*(1.+p*1.5));vec4 b=B(.5+(v-.5)/(1.+(1.-p)*1.2));gl_FragColor=mix(a,b,smoothstep(.2,.8,p));`},
+    {id:"crosszoom", name:"Cross Zoom", cat:"Zoom", f:`float st=sin(3.1416*p)*.35;vec4 a=vec4(0.),b=vec4(0.);for(int i=0;i<16;i++){float s=1.-st*float(i)/15.;a+=A(.5+(v-.5)*s);b+=B(.5+(v-.5)*s);}gl_FragColor=mix(a,b,smoothstep(.3,.7,p))/16.;`},
+    {id:"spin", name:"Rotation Zoom", cat:"Zoom", f:`float q=ease(p);vec2 c=(v-.5)*vec2(asp,1.);float an=q*6.2832;float s=1.+sin(3.1416*q)*2.;c=mat2(cos(an),-sin(an),sin(an),cos(an))*c*s;vec2 u=c/vec2(asp,1.)+.5;gl_FragColor=q<.5?Ac(u):Bc(u);`},
+    {id:"pixelzoom", name:"Pixelate", cat:"Zoom", f:`float bs=max(1.,sin(3.1416*p)*60.);vec2 cell=vec2(bs)/r;vec2 u=(floor(v/cell)+.5)*cell;gl_FragColor=p<.5?A(u):B(u);`},
+    /* Light & blur */
+    {id:"flash", name:"Flash", cat:"Light & Blur", f:`vec4 c=mix(A(v),B(v),smoothstep(.45,.55,p));float fl=exp(-abs(p-.5)*14.);gl_FragColor=vec4(mix(c.rgb,vec3(1.),fl),max(c.a,fl));`},
+    {id:"burn", name:"Film Burn", cat:"Light & Blur", f:`float n=rnd(floor(v*vec2(40.,22.)))*.25;float e=p*1.4-.2+n;float m=smoothstep(e-.2,e+.2,v.x+v.y*.3);vec4 c=mix(B(v),A(v),m);float g=(1.-abs(m*2.-1.))*sin(3.1416*p);gl_FragColor=vec4(clamp(c.rgb+vec3(1.,.55,.15)*g*1.4,0.,1.),c.a);`},
+    {id:"leak", name:"Light Leak", cat:"Light & Blur", f:`vec4 c=mix(A(v),B(v),smoothstep(.3,.7,p));vec2 cp=vec2(-.2+p*1.4,.7);float d=length((v-cp)*vec2(asp,1.));float g=exp(-d*d*3.)*sin(3.1416*p)*1.2;gl_FragColor=vec4(1.-(1.-c.rgb)*(1.-vec3(1.,.5,.2)*g),c.a);`},
+    {id:"blink", name:"Blink", cat:"Light & Blur", f:`float q=1.-abs(p*2.-1.);float lid=abs(v.y-.5)*2.;vec4 c=p<.5?A(v):B(v);gl_FragColor=lid>1.-q*1.05?vec4(0.,0.,0.,1.):c;`},
+    /* Distort */
+    {id:"ripple", name:"Ripple", cat:"Distort", f:`vec2 q=(v-.5)*vec2(asp,1.);float d=length(q);float amp=sin(3.1416*p)*.03;vec2 u=v+normalize(q+1e-5)*sin(d*40.-p*20.)*amp;gl_FragColor=mix(A(u),B(u),p);`},
+    {id:"swirl", name:"Swirl", cat:"Distort", f:`vec2 q=(v-.5)*vec2(asp,1.);float d=length(q);float an=sin(3.1416*p)*6.*max(0.,1.-d*1.6);q=mat2(cos(an),-sin(an),sin(an),cos(an))*q;vec2 u=q/vec2(asp,1.)+.5;gl_FragColor=mix(A(u),B(u),smoothstep(.3,.7,p));`},
+    {id:"wave", name:"Wave", cat:"Distort", f:`float amp=sin(3.1416*p)*.05;vec2 u=v+vec2(sin(v.y*18.+p*10.)*amp,0.);gl_FragColor=mix(A(u),B(u),p);`},
+    {id:"glitch", name:"Glitch", cat:"Distort", f:`float st=sin(3.1416*p);float row=floor(v.y*30.);float k=floor(p*20.);float sh=rnd(vec2(row,k))>.6?(rnd(vec2(k,row))-.5)*st*.3:0.;vec2 u=vec2(fract(v.x+sh),v.y);float o=st*.02;vec4 a=p<.5?A(u):B(u);vec4 ar=p<.5?A(u+vec2(o,0.)):B(u+vec2(o,0.));vec4 ab=p<.5?A(u-vec2(o,0.)):B(u-vec2(o,0.));gl_FragColor=vec4(ar.r,a.g,ab.b,a.a);`},
+    {id:"morph", name:"Morph", cat:"Distort", f:`vec4 a0=A(v),b0=B(v);vec2 oa=(b0.rg-.5)*p*.12,ob=(a0.rg-.5)*(1.-p)*.12;gl_FragColor=mix(A(v+oa),B(v-ob),p);`},
+    {id:"squeeze", name:"Squeeze", cat:"Distort", f:`float q=ease(p);float w=max(1.-q,.001);float x=(v.x-.5)/w+.5;gl_FragColor=(x>=0.&&x<=1.)?mix(A(vec2(x,v.y)),B(v),q*q):B(v);`},
+    {id:"kaleido", name:"Kaleidoscope", cat:"Distort", f:`float st=sin(3.1416*p);vec2 q=(v-.5)*vec2(asp,1.);float an=atan(q.y,q.x);float rr=length(q);float sg=6.2832/6.;float a2=abs(mod(an,sg)-sg*.5);vec2 k=vec2(cos(a2),sin(a2))*rr/vec2(asp,1.)+.5;vec2 u=mix(v,k,st);gl_FragColor=mix(A(u),B(u),smoothstep(.35,.65,p));`},
+    /* Impact */
+    {id:"shake", name:"Shake", cat:"Impact", f:`float st=sin(3.1416*p)*.04;vec2 o=vec2(rnd(vec2(floor(p*30.),1.))-.5,rnd(vec2(floor(p*30.),2.))-.5)*st*2.;vec2 u=v+o;gl_FragColor=mix(A(u),B(u),smoothstep(.4,.6,p));`},
+    {id:"punch", name:"Zoom Punch", cat:"Impact", f:`float q=smoothstep(.45,.55,p);float s=p<.5?1.+p*.6:1.+(1.-p)*.5;vec2 u=.5+(v-.5)/s;vec4 c=mix(A(u),B(u),q);float fl=exp(-abs(p-.5)*20.)*.8;gl_FragColor=vec4(mix(c.rgb,vec3(1.),fl),c.a);`}
+  ];
+  const trById = Object.fromEntries(TR.map(x => [x.id, x]));
+  const TRCATS = [...new Set(TR.map(x => x.cat))];
+  const THEAD = `precision highp float;varying vec2 v;uniform sampler2D ta,tb;uniform vec2 r;uniform float p,time;
+    vec4 A(vec2 u){return texture2D(ta,clamp(u,0.,1.));}vec4 B(vec2 u){return texture2D(tb,clamp(u,0.,1.));}
+    vec4 Ac(vec2 u){return (u.x<0.||u.x>1.||u.y<0.||u.y>1.)?vec4(0.):texture2D(ta,u);}vec4 Bc(vec2 u){return (u.x<0.||u.x>1.||u.y<0.||u.y>1.)?vec4(0.):texture2D(tb,u);}
+    float rnd(vec2 co){return fract(sin(dot(co,vec2(12.9898,78.233)))*43758.5453);}float ease(float x){return x<.5?2.*x*x:1.-pow(-2.*x+2.,2.)/2.;}`;
+  let texA = null, texB = null;
+  const trProgs = {};
+  function trProg(id) {
+    if (trProgs[id] !== undefined) return trProgs[id];
+    const def = trById[id]; if (!def) return (trProgs[id] = null);
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error("Transition shader", id, gl.getShaderInfoLog(s)); return null; } return s; };
+    /* bodies write OUTC in straight colour; the canvas wants premultiplied, so convert once at the end */
+    const body = def.f.replace(/gl_FragColor/g, "OUTC");
+    const vs = sh(gl.VERTEX_SHADER, VERT), fs = sh(gl.FRAGMENT_SHADER, THEAD + "void main(){float asp=r.x/r.y;vec4 OUTC=vec4(0.);" + body + "gl_FragColor=vec4(OUTC.rgb*OUTC.a,OUTC.a);}");
+    if (!vs || !fs) return (trProgs[id] = null);
+    const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.bindAttribLocation(pr, 0, "p"); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { console.error("Transition link", id, gl.getProgramInfoLog(pr)); return (trProgs[id] = null); }
+    const u = {}; ["ta", "tb", "r", "p", "time"].forEach(n => { u[n] = gl.getUniformLocation(pr, n); });
+    return (trProgs[id] = {p:pr, u});
+  }
+  /* Blend canvases a (outgoing) and b (incoming), both w×h with transparent background, at progress p. */
+  function transition(a, b, w, h, id, p, time) {
+    if (!init()) return null;
+    const pr = trProg(id); if (!pr) return null;
+    if (!texA) { texA = makeTex(); texB = makeTex(); }
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    gl.disable(gl.BLEND);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    try {
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texA); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, a);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texB); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, b);
+    } catch (e) { return null; }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h); gl.useProgram(pr.p);
+    gl.uniform1i(pr.u.ta, 0); gl.uniform1i(pr.u.tb, 1); gl.uniform2f(pr.u.r, w, h); gl.uniform1f(pr.u.p, Math.min(1, Math.max(0, p))); gl.uniform1f(pr.u.time, time || 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.activeTexture(gl.TEXTURE0);
+    return cv;
+  }
+  window.FX = {LIB, CATS, byId, render, defaults, supported:() => init(), TR, TRCATS, trById, transition};
 })();
