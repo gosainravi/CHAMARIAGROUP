@@ -55,6 +55,19 @@ select.sel{padding:6px 8px;border:1px solid var(--line);border-radius:7px;backgr
 .conv[hidden]{display:none}
 .conv progress{width:100%}
 .drop small{display:block;margin-top:6px;font-size:.72rem;line-height:1.4}
+.shp{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.shp button{display:grid;justify-items:center;gap:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:8px 4px;cursor:pointer;font:inherit;font-size:.74rem}
+.shp button:hover{border-color:var(--accent)}
+.shp svg{width:24px;height:24px;fill:var(--accent);stroke:var(--accent)}
+.ruler .mk{position:absolute;top:0;width:10px;height:13px;margin-left:-5px;background:var(--c);clip-path:polygon(0 0,100% 0,100% 62%,50% 100%,0 62%);cursor:pointer;z-index:3}
+.ruler .mk:hover{filter:brightness(1.25)}
+.mkrow{display:grid;grid-template-columns:8px auto 1fr auto auto;gap:6px;align-items:center;margin-bottom:6px}
+.mkrow i{width:8px;height:22px;border-radius:2px}
+.mkrow .mkt{border:0;background:none;color:var(--accent);font:inherit;font-size:.78rem;font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.mkrow input,.mkrow select{min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);font:inherit;font-size:.78rem}
+.mkrow .ib{width:24px;height:24px}.mkrow .ib svg{width:14px;height:14px}
+.pipg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.pipg .btn{padding:6px 4px;font-size:.76rem}
 .tpl{display:grid;gap:8px}
 .tpl button{border:1px solid var(--line);background:var(--sunk);color:#fff;border-radius:8px;padding:12px;cursor:pointer;text-align:center;font-family:Archivo,sans-serif}
 .tpl button:hover{border-color:var(--accent)}
@@ -178,7 +191,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </header>
 <div class="st-main">
   <aside class="panel left">
-    <div class="ptabs" role="tablist"><button role="tab" data-tab="media" aria-selected="true">Media</button><button role="tab" data-tab="tools" aria-selected="false">Tools</button><button role="tab" data-tab="text" aria-selected="false">Text</button><button role="tab" data-tab="keys" aria-selected="false">Keys</button></div>
+    <div class="ptabs" role="tablist"><button role="tab" data-tab="media" aria-selected="true">Media</button><button role="tab" data-tab="tools" aria-selected="false">Tools</button><button role="tab" data-tab="text" aria-selected="false">Text</button><button role="tab" data-tab="markers" aria-selected="false">Markers</button><button role="tab" data-tab="keys" aria-selected="false">Keys</button></div>
     <div class="pbody" data-pane="tools" hidden>
       <div class="qt">
         <button data-qt="trim"><b>Trim video</b><span>Cut the start, end or a middle part</span></button>
@@ -208,6 +221,19 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
         <button data-tpl="lower" style="text-align:left;font-weight:700;border-left:4px solid var(--accent)">Lower third</button>
         <button data-tpl="plain" style="font-weight:500">Plain text</button>
       </div>
+      <h2>Shapes</h2>
+      <div class="shp">
+        <button data-shape="rect" title="Rectangle"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/></svg>Box</button>
+        <button data-shape="ellipse" title="Circle"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>Circle</button>
+        <button data-shape="triangle" title="Triangle"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/></svg>Triangle</button>
+        <button data-shape="star" title="Star"><svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.8 6.3.7-4.7 4.3 1.3 6.2L12 17l-5.6 3 1.3-6.2L3 9.5l6.3-.7z"/></svg>Star</button>
+        <button data-shape="line" title="Line"><svg viewBox="0 0 24 24"><path d="M3 12h18" stroke-width="2.4"/></svg>Line</button>
+        <button data-shape="arrow" title="Arrow"><svg viewBox="0 0 24 24"><path d="M3 12h14M13 7l5 5-5 5" stroke-width="2.4" fill="none"/></svg>Arrow</button>
+      </div>
+    </div>
+    <div class="pbody" data-pane="markers" hidden>
+      <button class="btn ghost small wide" data-act="marker" style="margin-bottom:10px">+ Add marker at playhead (M)</button>
+      <div class="mklist"></div>
     </div>
     <div class="pbody" data-pane="keys" hidden>
       <div class="kbd">
@@ -219,6 +245,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
         <kbd>V</kbd><span>Select tool</span>
         <kbd>C</kbd><span>Razor (blade) tool</span>
         <kbd>S</kbd><span>Split at playhead</span>
+        <kbd>M</kbd><span>Add a marker</span>
         <kbd>Delete</kbd><span>Delete selected</span>
         <kbd>Shift Delete</kbd><span>Ripple delete (close the gap)</span>
         <kbd>Ctrl D</kbd><span>Duplicate</span>
@@ -259,6 +286,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
       <button class="ib" data-act="ripple" title="Ripple delete (Shift+Delete)" aria-label="Ripple delete"></button>
       <button class="ib" data-act="dup" title="Duplicate (Ctrl+D)" aria-label="Duplicate"></button>
       <button class="ib" data-act="addtext" title="Add text (T)" aria-label="Add text"></button>
+      <button class="ib" data-act="marker" title="Add marker (M)" aria-label="Add marker"></button>
       <span class="sep"></span>
       <button class="ib" data-act="snap" aria-pressed="true" title="Snapping" aria-label="Snapping"></button>
       <button class="btn ghost small" data-act="addv">+ Video track</button>
@@ -274,6 +302,6 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </div>
 <dialog class="exp"></dialog>
 <div class="toast" role="status" aria-live="polite"></div>
-<script src="editor.js?v=20261124f"></script>
+<script src="editor.js?v=20261125a"></script>
 </body>
 </html>
