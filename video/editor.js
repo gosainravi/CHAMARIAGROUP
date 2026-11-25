@@ -68,14 +68,14 @@ const total = () => Math.max(0, ...clips.map(endOf), ...texts.map(x => x.e));
 const trk = id => tracks.find(t => t.id === id);
 const localAt = (c, t) => clamp(c.a + (t - c.start) * c.speed, c.a, c.b);
 const activeAt = t => clips.filter(c => t >= c.start - 1e-4 && t < endOf(c) - 1e-4);
-const snapshot = () => JSON.stringify({tracks, clips, texts, textTrack, markers});
+const snapshot = () => JSON.stringify({tracks, clips, texts, textTrack, markers, master});
 function commit() { undoS.push(snapshot()); if (undoS.length > 200) undoS.shift(); redoS.length = 0; syncUndo(); }
 function pushSnap(s) { if (s !== snapshot()) { undoS.push(s); redoS.length = 0; syncUndo(); } }
-function restore(s) { const o = JSON.parse(s); ({tracks, clips, texts, textTrack} = o); markers = o.markers || []; if (sel && !findSel()) sel = null; refresh(); }
+function restore(s) { const o = JSON.parse(s); ({tracks, clips, texts, textTrack} = o); markers = o.markers || []; if (o.master) master = o.master; if (pvMix) pvMix.update(); if (sel && !findSel()) sel = null; refresh(); }
 function undo() { if (!undoS.length) return; redoS.push(snapshot()); restore(undoS.pop()); syncUndo(); }
 function redo() { if (!redoS.length) return; undoS.push(snapshot()); restore(redoS.pop()); syncUndo(); }
 function syncUndo() { $('[data-act="undo"]').disabled = !undoS.length; $('[data-act="redo"]').disabled = !redoS.length; }
-function findSel() { if (!sel) return null; return sel.type === "clip" ? clips.find(c => c.id === sel.id) : texts.find(x => x.id === sel.id); }
+function findSel() { if (!sel) return null; if (sel.type === "track") return sel.id === "master" ? master : trk(sel.id) || null; return sel.type === "clip" ? clips.find(c => c.id === sel.id) : texts.find(x => x.id === sel.id); }
 const overlaps = (c, tr = c.tr, st = c.start) => clips.some(o => o !== c && o.tr === tr && st < endOf(o) - 1e-6 && st + len(c) > o.start + 1e-6);
 
 /* ---------- Frame size ---------- */
@@ -500,14 +500,96 @@ function updateTime() {
 
 /* ---------- Playback: a master clock drives every active clip ---------- */
 let rafId = 0, clock0 = 0, T0 = 0;
+
+/* ---------- Audio mixer ----------
+   One graph shape, used for playback, video export and MP3/WAV export:
+   clip gain → track strip [low-cut → EQ (low/mid/high) → compressor → dry + reverb send + echo send → pan → fader → mute/solo gate → meters]
+            → master [limiter → fader → meters] → output.
+   Settings live on each track as tr.mix and on `master`; both are part of undo history. */
+const defMix = () => ({vol:0, pan:0, solo:false, hp:{on:false, f:80}, eq:{on:false, lo:0, mid:0, hi:0}, comp:{on:false, thr:-18, ratio:3}, rev:{on:false, mix:.25, size:2}, echo:{on:false, time:.3, fb:.3, mix:.25}});
+let master = {vol:0, limiter:true};
+const mixOf = tr => { tr.mix = tr.mix || defMix(); for (const [k, v] of Object.entries(defMix())) if (tr.mix[k] === undefined) tr.mix[k] = v; return tr.mix; };
+const dbToGain = db => db <= -60 ? 0 : Math.pow(10, db / 20);
+const impulseCache = new Map();
+function impulse(ctx, secs) {
+  const key = ctx.sampleRate + ":" + secs.toFixed(1); if (impulseCache.has(key)) return impulseCache.get(key);
+  const len = Math.max(1, Math.round(ctx.sampleRate * secs)), b = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4); }
+  impulseCache.set(key, b); return b;
+}
+function makeMixer(ctx, out) {
+  const M = {ctx, strips:new Map()};
+  const mIn = ctx.createGain(), lim = ctx.createDynamicsCompressor(), mFader = ctx.createGain(), mSplit = ctx.createChannelSplitter(2);
+  const mAn = [ctx.createAnalyser(), ctx.createAnalyser()]; mAn.forEach(a => { a.fftSize = 1024; });
+  const limDry = ctx.createGain(), limWet = ctx.createGain();
+  mIn.connect(limDry).connect(mFader); mIn.connect(lim).connect(limWet).connect(mFader); mFader.connect(out); /* browsers add make-up gain inside compressors, so "off" must bypass them */ mFader.connect(mSplit); mSplit.connect(mAn[0], 0); mSplit.connect(mAn[1], 1);
+  M.master = {an:mAn};
+  M.strip = id => {
+    if (M.strips.has(id)) return M.strips.get(id);
+    const n = {in:ctx.createGain(), hp:ctx.createBiquadFilter(), lo:ctx.createBiquadFilter(), mid:ctx.createBiquadFilter(), hi:ctx.createBiquadFilter(), comp:ctx.createDynamicsCompressor(), compDry:ctx.createGain(), compWet:ctx.createGain(),
+      post:ctx.createGain(), dry:ctx.createGain(), revSend:ctx.createGain(), conv:ctx.createConvolver(), echoSend:ctx.createGain(), delay:ctx.createDelay(2), fb:ctx.createGain(),
+      pan:ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain(), fader:ctx.createGain(), gate:ctx.createGain(), split:ctx.createChannelSplitter(2), an:[ctx.createAnalyser(), ctx.createAnalyser()]};
+    n.hp.type = "highpass"; n.hp.Q.value = .7071; n.lo.type = "lowshelf"; n.lo.frequency.value = 200; n.mid.type = "peaking"; n.mid.frequency.value = 1500; n.mid.Q.value = .9; n.hi.type = "highshelf"; n.hi.frequency.value = 5000;
+    n.an.forEach(a => { a.fftSize = 1024; });
+    n.in.connect(n.hp).connect(n.lo).connect(n.mid).connect(n.hi); n.hi.connect(n.compDry).connect(n.post); n.hi.connect(n.comp).connect(n.compWet).connect(n.post);
+    n.post.connect(n.dry).connect(n.pan);
+    n.post.connect(n.revSend).connect(n.conv).connect(n.pan);
+    n.post.connect(n.echoSend).connect(n.delay); n.delay.connect(n.fb).connect(n.delay); n.delay.connect(n.pan);
+    n.pan.connect(n.fader).connect(n.gate); n.gate.connect(mIn); n.gate.connect(n.split); n.split.connect(n.an[0], 0); n.split.connect(n.an[1], 1);
+    M.strips.set(id, n); M.update(); return n;
+  };
+  M.update = () => {
+    const anySolo = tracks.some(t => t.mix && t.mix.solo);
+    for (const [id, n] of M.strips) {
+      const tr = trk(id); if (!tr) { n.gate.gain.value = 0; continue; }
+      const x = mixOf(tr), now = ctx.currentTime;
+      const set = (p, v) => { if (!n._ready) { p.value = v; return; } try { p.setTargetAtTime(v, now, .015); } catch (e) { p.value = v; } }; /* new strips jump straight to their settings (no glide from the default 1) */
+      set(n.hp.frequency, x.hp.on ? x.hp.f : 10);
+      set(n.lo.gain, x.eq.on ? x.eq.lo : 0); set(n.mid.gain, x.eq.on ? x.eq.mid : 0); set(n.hi.gain, x.eq.on ? x.eq.hi : 0);
+      n.comp.threshold.value = x.comp.thr; n.comp.ratio.value = x.comp.ratio; n.comp.knee.value = 6; n.comp.attack.value = .01; n.comp.release.value = .2; set(n.compWet.gain, x.comp.on ? 1 : 0); set(n.compDry.gain, x.comp.on ? 0 : 1);
+      set(n.post.gain, 1); /* the browser compressor already adds its own make-up gain */
+      if (x.rev.on) { if (n._rs !== x.rev.size) { n.conv.buffer = impulse(ctx, x.rev.size); n._rs = x.rev.size; } set(n.revSend.gain, x.rev.mix); } else set(n.revSend.gain, 0);
+      set(n.echoSend.gain, x.echo.on ? x.echo.mix : 0); set(n.delay.delayTime, x.echo.time); set(n.fb.gain, x.echo.on ? Math.min(.9, x.echo.fb) : 0);
+      if (n.pan.pan) set(n.pan.pan, x.pan);
+      set(n.fader.gain, dbToGain(x.vol));
+      set(n.gate.gain, tr.mute || (anySolo && !x.solo) ? 0 : 1);
+      n._ready = true;
+    }
+    lim.threshold.value = -1; lim.ratio.value = 20; lim.knee.value = 0; lim.attack.value = .002; lim.release.value = .12; limWet.gain.value = master.limiter ? 1 : 0; limDry.gain.value = master.limiter ? 0 : 1;
+    mFader.gain.value = dbToGain(master.vol);
+  };
+  M.update();
+  return M;
+}
+/* Playback mixer: created on the first Play (browsers only start audio after a click). */
+let pvMix = null;
+function ensurePreviewMixer() {
+  if (pvMix || !AC) return pvMix;
+  const ctx = new AC(); pvMix = makeMixer(ctx, ctx.destination); return pvMix;
+}
+/* Send one media element into a track strip of mixer M (creates its source node once). */
+function routeEl(M, el, c, gain) {
+  if (!el._srcNode || el._ctx !== M.ctx) { el._srcNode = M.ctx.createMediaElementSource(el); el._ctx = M.ctx; el._g = M.ctx.createGain(); el._srcNode.connect(el._g); el._tr = null; }
+  if (el._tr !== c.tr) { try { el._g.disconnect(); } catch (e) { /* not connected yet */ } el._g.connect(M.strip(c.tr).in); el._tr = c.tr; }
+  el._g.gain.value = gain; el.muted = false; el.volume = 1;
+}
+function meterDb(an) {
+  const buf = new Float32Array(an.fftSize); an.getFloatTimeDomainData(buf);
+  let pk = 0, sq = 0; for (let i = 0; i < buf.length; i++) { const v = Math.abs(buf[i]); if (v > pk) pk = v; sq += buf[i] * buf[i]; }
+  const rms = Math.sqrt(sq / buf.length), db = v => v > 0 ? 20 * Math.log10(v) : -90;
+  return {peak:db(pk), rms:db(rms)};
+}
+
 function syncEls(pool, t, opts = {}) {
   const ents = entries(t);
   pool.pool.forEach((el, id) => { if (el.pause && !ents.some(e => e.c.id === id) && !el.paused) el.pause(); });
   for (const {c, local:want, mix, tail} of ents) {
     if (media.get(c.m).kind === "i") { pool.get(c); continue; }
     const tr = trk(c.tr), el = pool.get(c);
-    const gain = tr.mute ? 0 : clamp(valAt(c, "vol", tail ? endOf(c) - 1e-3 : t) * (tail ? 1 : fadeMul(c, t)) * mix, 0, 1);
-    if (opts.gain) opts.gain(c, el, gain); else { el.muted = gain === 0; el.volume = gain; }
+    const gain = clamp(valAt(c, "vol", tail ? endOf(c) - 1e-3 : t) * (tail ? 1 : fadeMul(c, t)) * mix, 0, 2); /* track mute/solo happen in the mixer */
+    if (opts.gain) opts.gain(c, el, gain);
+    else if (pvMix) routeEl(pvMix, el, c, gain);
+    else { el.muted = gain === 0 || tr.mute; el.volume = Math.min(1, gain); }
     if (el.playbackRate !== c.speed) el.playbackRate = c.speed;
     el.preservesPitch = true;
     if (el.paused) { if (el.readyState >= 1) el.currentTime = want; el.play().catch(() => {}); }
@@ -516,6 +598,7 @@ function syncEls(pool, t, opts = {}) {
 }
 function play() {
   if (!clips.length && !texts.length) return;
+  const M = ensurePreviewMixer(); if (M && M.ctx.state !== "running") M.ctx.resume().catch(() => {});
   if (T >= total() - 1 / FPS) T = 0;
   playing = true; setPlayBtn(); clock0 = performance.now(); T0 = T;
   const tick = () => {
@@ -874,7 +957,7 @@ function renderTimeline() {
   $('[data-act="export"]').disabled = !clips.length;
   $(".viewer .hint").hidden = clips.length > 0 || texts.length > 0;
 }
-function refresh() { pv.prune(); renderTimeline(); renderProps(); renderMarkers(); setT(T); }
+function refresh() { pv.prune(); renderTimeline(); renderProps(); renderMarkers(); if (pvMix) pvMix.update(); if (mixerOn) renderMixer(); setT(T); }
 scroller.addEventListener("scroll", () => { if (pps / FPS >= 5) renderRuler(inner.offsetWidth); }, {passive:true});
 
 const xToT = clientX => Math.max(0, (clientX - inner.getBoundingClientRect().left) / pps);
@@ -1082,6 +1165,7 @@ function renderProps() {
       <p class="empty-note">Select a clip or text to edit it.<br><br>Put the playhead where you want to cut and press <kbd>S</kbd>, or pick the razor <kbd>C</kbd> and click a clip. Use <kbd>←</kbd> <kbd>→</kbd> to move one frame.</p>`;
     return;
   }
+  if (sel.type === "track") { box.innerHTML = trackAudioProps(o); return; }
   if (sel.type === "clip") {
     const m = media.get(o.m), isV = trk(o.tr).kind === "v";
     box.innerHTML = `<div class="f"><span class="l">${o.tr} · ${isV ? "Video" : "Audio"} clip</span><span style="font-size:.84rem;word-break:break-all">${esc(m.name)}</span></div>
@@ -1090,7 +1174,7 @@ function renderProps() {
       <div class="row2"><div class="f"><label>Source in</label><input type="text" data-k="a" value="${tc(o.a)}"></div><div class="f"><label>Source out</label><input type="text" data-k="b" value="${tc(o.b)}"></div></div>
       <div class="row2"><button class="btn ghost small" data-act="setin">Trim start here</button><button class="btn ghost small" data-act="setout">Trim end here</button></div>
       <div class="f" style="margin-top:10px"><label>Speed</label><select data-k="speed">${[.25, .5, .75, 1, 1.25, 1.5, 2, 3, 4].map(s => `<option value="${s}"${s === o.speed ? " selected" : ""}>${s}×</option>`).join("")}</select></div></div>
-      ${m.kind !== "i" ? `<div class="sec"><b>Audio</b>${rngK("vol", "Volume", 0, 1, .05, o, pct)}${isV && m.kind === "v" ? `<button class="btn ghost small wide" data-act="detach">Detach audio to its own track</button>` : ""}</div>` : ""}
+      ${m.kind !== "i" ? `<div class="sec"><b>Audio</b>${rngK("vol", "Volume", 0, 2, .05, o, pct)}${isV && m.kind === "v" ? `<button class="btn ghost small wide" data-act="detach">Detach audio to its own track</button>` : ""}</div>` : ""}
       <div class="sec"><b>Fade</b><div class="row2">${rng("fi", "Fade in", 0, 3, .1, o.fi || 0, v => (+v).toFixed(1) + "s")}${rng("fo", "Fade out", 0, 3, .1, o.fo || 0, v => (+v).toFixed(1) + "s")}</div></div>
       <div class="sec"><b>Transition in</b><div class="row2"><div class="f"><label>Type</label><select data-k="tin.type">${trOptions((o.tin && o.tin.type) || "")}</select></div>
         ${rng("tin.d", "Length", .2, 3, .1, (o.tin && o.tin.d) || 1, v => (+v).toFixed(1) + "s")}</div>
@@ -1145,6 +1229,16 @@ props.addEventListener("input", e => {
   const k = e.target.dataset.k, o = findSel(); if (!k || !o || TIMEK.includes(k)) return;
   const raw = e.target.value, num = +raw;
   let shown = raw;
+  if (k.startsWith("mx.")) {
+    const parts = k.split(".").slice(1), obj = sel.id === "master" ? master : mixOf(o);
+    const val = e.target.type === "checkbox" ? e.target.checked : num;
+    if (parts.length === 2) obj[parts[0]] = {...obj[parts[0]], [parts[1]]:val}; else obj[parts[0]] = val;
+    if (pvMix) pvMix.update();
+    const f = e.target.closest(".f"), out = f && $("output", f);
+    if (out && e.target.type === "range") { const fm = {vol:fmtDb, pan:panTxt, f:v => Math.round(v) + " Hz", thr:v => Math.round(v) + " dB", ratio:v => (+v).toFixed(1) + ":1", mix:pct, fb:pct, size:v => (+v).toFixed(1) + " s", time:v => (+v).toFixed(2) + " s", lo:v => (v > 0 ? "+" : "") + v.toFixed(1) + " dB", mid:v => (v > 0 ? "+" : "") + v.toFixed(1) + " dB", hi:v => (v > 0 ? "+" : "") + v.toFixed(1) + " dB"}; out.textContent = (fm[parts[parts.length - 1]] || (v => v))(num); }
+    if (mixerOn) { const st = $(`.strip[data-strip="${sel.id}"]`); if (st && parts[0] === "vol") { $(".fader", st).value = num; $(".db", st).textContent = fmtDb(num); } if (st && parts[0] === "pan") { $(".panr", st).value = num; $(".pn", st).textContent = panTxt(num); } }
+    return;
+  }
   if (k.startsWith("gr.")) {
     o.gr = {...defGrade(), ...(o.gr || {})}; const parts = k.split(".");
     if (parts.length === 3) { o.gr[parts[1]] = {...o.gr[parts[1]], [parts[2]]:num}; shown = num; }
@@ -1259,12 +1353,13 @@ async function decodeMedia(m) {
 }
 async function mixAudio(from, to, onp) {
   const rate = 48000, D = to - from, oc = new OfflineAudioContext(2, Math.ceil(D * rate), rate);
-  const list = clips.filter(c => media.get(c.m).kind !== "i" && !trk(c.tr).mute && endOf(c) > from && c.start < to);
+  const list = clips.filter(c => media.get(c.m).kind !== "i" && endOf(c) > from && c.start < to);
+  const OM = makeMixer(oc, oc.destination);
   let n = 0;
   for (const c of list) {
     const buf = await decodeMedia(media.get(c.m)); onp(++n / list.length * .5); if (!buf) continue;
     const src = oc.createBufferSource(), gn = oc.createGain(); src.buffer = buf; src.playbackRate.value = c.speed;
-    src.connect(gn).connect(oc.destination);
+    src.connect(gn).connect(OM.strip(c.tr).in);
     /* volume, keyframes and fades as automation, sampled every 50 ms */
     const s0 = Math.max(c.start, from), s1 = Math.min(endOf(c), to);
     for (let t = s0; t <= s1 + 1e-6; t += .05) gn.gain.setValueAtTime(clamp(valAt(c, "vol", t) * fadeMul(c, t), 0, 2), t - from);
@@ -1382,12 +1477,8 @@ async function render(shortSide, from, to, ctl, onp, bpp = .09) {
   const holder = hiddenBox(), pool = makePool(holder);
   let ac = null, dest = null; const gains = new Map();
   if (AC) { ac = new AC(); dest = ac.createMediaStreamDestination(); tracksOut.push(...dest.stream.getAudioTracks()); await ac.resume(); }
-  const gainFor = (cl, el, v) => {
-    if (!ac) { el.muted = true; return; }
-    let gn = gains.get(cl.id);
-    if (!gn) { gn = ac.createGain(); ac.createMediaElementSource(el).connect(gn).connect(dest); gains.set(cl.id, gn); }
-    gn.gain.value = v;
-  };
+  const exMix = ac ? makeMixer(ac, dest) : null;
+  const gainFor = (cl, el, v) => { if (!exMix) { el.muted = true; return; } routeEl(exMix, el, cl, v); };
   const rec = new MediaRecorder(new MediaStream(tracksOut), Object.assign({videoBitsPerSecond:Math.round(clamp(W * H * FPS * bpp, 2e5, 25e6)), audioBitsPerSecond:192000}, mime ? {mimeType:mime} : {}));
   const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   const stopped = new Promise(r => { rec.onstop = r; });
@@ -1425,6 +1516,110 @@ async function render(shortSide, from, to, ctl, onp, bpp = .09) {
 }
 
 /* ---------- Wiring ---------- */
+
+/* ---------- Mixer view ---------- */
+let mixerOn = false, meterRaf = 0;
+const meterHold = new Map();
+const fmtDb = v => v <= -60 ? "−∞ dB" : (v > 0 ? "+" : "") + (+v).toFixed(1) + " dB";
+const panTxt = v => Math.abs(v) < .02 ? "C" : (v < 0 ? "L" : "R") + Math.round(Math.abs(v) * 100);
+const fxCount = x => ["hp", "eq", "comp", "rev", "echo"].filter(k => x[k] && x[k].on).length;
+function renderMixer() {
+  const box = $(".mixer"); if (!box) return;
+  const strip = t => { const x = mixOf(t), on = sel && sel.type === "track" && sel.id === t.id, n = fxCount(x);
+    return `<div class="strip${on ? " sel" : ""}${t.mute ? " muted" : ""}" data-strip="${t.id}">
+      <div class="sn"><b>${t.id}</b><small>${t.kind === "v" ? "video sound" : "audio"}</small></div>
+      <div class="sbody"><canvas class="meter" data-meter="${t.id}" width="24" height="140" aria-hidden="true"></canvas><input type="range" class="fader" min="-60" max="12" step="0.5" value="${x.vol}" data-mx="${t.id}.vol" aria-label="${t.id} volume" title="Double-click for 0 dB"></div>
+      <output class="db">${fmtDb(x.vol)}</output>
+      <input type="range" class="panr" min="-1" max="1" step="0.05" value="${x.pan}" data-mx="${t.id}.pan" aria-label="${t.id} pan" title="Pan (double-click for centre)"><span class="pn">${panTxt(x.pan)}</span>
+      <div class="ms"><button data-mute="${t.id}" aria-pressed="${!!t.mute}" title="Mute">M</button><button data-solo="${t.id}" aria-pressed="${!!x.solo}" title="Solo">S</button></div>
+      <button class="fxb${n ? " on" : ""}" data-strip-fx="${t.id}">FX${n ? ` (${n})` : ""}</button></div>`; };
+  box.innerHTML = `<div class="strips">${tracks.map(strip).join("")}
+    <div class="strip master${sel && sel.type === "track" && sel.id === "master" ? " sel" : ""}" data-strip="master">
+      <div class="sn"><b>Master</b><small>output</small></div>
+      <div class="sbody"><canvas class="meter" data-meter="master" width="24" height="140" aria-hidden="true"></canvas><input type="range" class="fader" min="-60" max="12" step="0.5" value="${master.vol}" data-mx="master.vol" aria-label="Master volume" title="Double-click for 0 dB"></div>
+      <output class="db">${fmtDb(master.vol)}</output>
+      <button class="lim${master.limiter ? " on" : ""}" data-limiter title="Stops the final mix from clipping">Limiter ${master.limiter ? "on" : "off"}</button>
+      <button class="fxb" data-strip-fx="master">Settings</button></div></div>
+    <p class="mixnote">${pvMix ? "" : "Meters start moving after you press Play. "}Click FX on a track to add EQ, compression, reverb or echo. Everything here is also in the export.</p>`;
+  if (!meterRaf) meterLoop();
+}
+function drawMeter(cvm, L, R, id) {
+  const gg = cvm.getContext("2d"), W = cvm.width, H = cvm.height, y = db => H - (Math.max(-60, Math.min(6, db)) + 60) / 66 * H;
+  gg.fillStyle = "#0b0c0e"; gg.fillRect(0, 0, W, H);
+  const hold = meterHold.get(id) || {l:-90, r:-90, clip:0};
+  [[L, 1, "l"], [R, W / 2 + 1, "r"]].forEach(([lv, x, k]) => {
+    const grd = gg.createLinearGradient(0, H, 0, 0); grd.addColorStop(0, "#2fbf71"); grd.addColorStop(.72, "#2fbf71"); grd.addColorStop(.85, "#e8c547"); grd.addColorStop(1, "#ff4d4d");
+    gg.fillStyle = grd; const top = y(lv.rms + 3); gg.fillRect(x, top, W / 2 - 2, H - top);
+    hold[k] = Math.max(lv.peak, hold[k] - .6); gg.fillStyle = "#fff"; gg.fillRect(x, y(hold[k]), W / 2 - 2, 1.5);
+    if (lv.peak > -0.3) hold.clip = 90;
+  });
+  if (hold.clip > 0) { hold.clip--; gg.fillStyle = "#ff4d4d"; gg.fillRect(0, 0, W, 4); }
+  gg.fillStyle = "#ffffff30"; [0, -6, -12, -24, -48].forEach(db => gg.fillRect(0, y(db), W, 1));
+  meterHold.set(id, hold);
+}
+function meterLoop() {
+  cancelAnimationFrame(meterRaf); meterRaf = 0;
+  if (!mixerOn) return;
+  const silent = {peak:-90, rms:-90};
+  $$(".mixer .meter").forEach(cvm => {
+    const id = cvm.dataset.meter;
+    let L = silent, R = silent;
+    if (pvMix && playing) { const an = id === "master" ? pvMix.master.an : pvMix.strips.has(id) ? pvMix.strips.get(id).an : null; if (an) { L = meterDb(an[0]); R = meterDb(an[1]); } }
+    drawMeter(cvm, L, R, id);
+  });
+  meterRaf = requestAnimationFrame(meterLoop);
+}
+function setView(mix) {
+  mixerOn = mix; $(".tlbody").hidden = mix; $(".mixer").hidden = !mix;
+  $('[data-act="view-tl"]').setAttribute("aria-pressed", String(!mix)); $('[data-act="view-mix"]').setAttribute("aria-pressed", String(mix));
+  if (mix) renderMixer(); else { cancelAnimationFrame(meterRaf); meterRaf = 0; renderTimeline(); }
+}
+let mixSnap = null;
+document.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest("[data-mx]")) mixSnap = snapshot(); });
+document.addEventListener("input", e => {
+  const k = e.target.dataset && e.target.dataset.mx; if (!k) return;
+  const [id, key] = k.split("."), obj = id === "master" ? master : mixOf(trk(id)), v = +e.target.value;
+  obj[key] = v;
+  const st = e.target.closest(".strip"); if (st) { if (key === "vol") $(".db", st).textContent = fmtDb(v); if (key === "pan") $(".pn", st).textContent = panTxt(v); }
+  if (pvMix) pvMix.update();
+});
+document.addEventListener("change", e => { if (e.target.dataset && e.target.dataset.mx) { if (mixSnap) pushSnap(mixSnap); mixSnap = null; if (sel && sel.type === "track") renderProps(); } });
+document.addEventListener("dblclick", e => {
+  const f = e.target.closest && e.target.closest("[data-mx]"); if (!f) return;
+  const [id, key] = f.dataset.mx.split("."), obj = id === "master" ? master : mixOf(trk(id));
+  commit(); obj[key] = 0; renderMixer(); if (pvMix) pvMix.update(); if (sel && sel.type === "track") renderProps();
+});
+document.addEventListener("click", e => {
+  const m = e.target.closest("[data-mute]"); if (m) { const t = trk(m.dataset.mute); commit(); t.mute = !t.mute; refresh(); return; }
+  const s2 = e.target.closest("[data-solo]"); if (s2) { const x = mixOf(trk(s2.dataset.solo)); commit(); x.solo = !x.solo; refresh(); return; }
+  const l = e.target.closest("[data-limiter]"); if (l) { commit(); master.limiter = !master.limiter; refresh(); return; }
+  const fx = e.target.closest("[data-strip-fx]"); if (fx) { sel = {type:"track", id:fx.dataset.stripFx}; renderTimeline(); renderProps(); renderMixer(); return; }
+  const pre = e.target.closest("[data-mixpreset]"); if (pre) { const t = findSel(); if (!t || sel.id === "master") return; const x = mixOf(t), P = MIX_PRESETS[pre.dataset.mixpreset]; commit(); Object.assign(x, JSON.parse(JSON.stringify(P.set(x)))); refresh(); toast(P.name + " applied to " + t.id); }
+});
+const MIX_PRESETS = {
+  voice:{name:"Voice clarity", set:x => ({hp:{on:true, f:90}, eq:{on:true, lo:-2, mid:3, hi:2}, comp:{on:true, thr:-20, ratio:3}})},
+  podcast:{name:"Podcast", set:x => ({hp:{on:true, f:100}, eq:{on:true, lo:1, mid:2, hi:3}, comp:{on:true, thr:-24, ratio:4}})},
+  music:{name:"Warm music", set:x => ({eq:{on:true, lo:3, mid:-1, hi:2}, comp:{on:true, thr:-14, ratio:2}})},
+  rumble:{name:"Remove rumble", set:x => ({hp:{on:true, f:120}})},
+  room:{name:"Big room", set:x => ({rev:{on:true, mix:.35, size:3}})},
+  reset:{name:"Clean (no effects)", set:x => { const d = defMix(); return {hp:d.hp, eq:d.eq, comp:d.comp, rev:d.rev, echo:d.echo}; }}
+};
+function trackAudioProps(t) {
+  if (sel.id === "master") return `<div class="f"><span class="l">Master output</span></div>
+    <div class="sec"><b>Output</b>${rng("mx.vol", "Volume", -60, 12, .5, master.vol, fmtDb)}
+    <label style="display:flex;gap:8px;align-items:center;font-size:.84rem"><input type="checkbox" data-k="mx.limiter"${master.limiter ? " checked" : ""}> Limiter (stops the final mix from clipping)</label></div>`;
+  const x = mixOf(t), chk = (k, on, l) => `<label class="fxon"><input type="checkbox" data-k="mx.${k}.on"${on ? " checked" : ""}> ${l}</label>`;
+  const hz = v => Math.round(v) + " Hz", db = v => (v > 0 ? "+" : "") + (+v).toFixed(1) + " dB", sec = v => (+v).toFixed(2) + " s";
+  return `<div class="f"><span class="l">${t.id} · ${t.kind === "v" ? "sound of the video clips" : "audio track"}</span><span style="font-size:.78rem;color:var(--muted)">These settings apply to every clip on ${t.id}.</span></div>
+    <div class="sec"><b>Level</b>${rng("mx.vol", "Volume", -60, 12, .5, x.vol, fmtDb)}${rng("mx.pan", "Pan", -1, 1, .05, x.pan, panTxt)}</div>
+    <div class="sec"><b>Presets</b><div class="mixpre">${Object.entries(MIX_PRESETS).map(([k, P]) => `<button class="btn ghost small" data-mixpreset="${k}">${P.name}</button>`).join("")}</div></div>
+    <div class="sec"><b>Low-cut</b>${chk("hp", x.hp.on, "Remove low rumble")}${rng("mx.hp.f", "Cut below", 20, 300, 1, x.hp.f, hz)}</div>
+    <div class="sec"><b>Equaliser</b>${chk("eq", x.eq.on, "On")}${rng("mx.eq.lo", "Bass (200 Hz)", -12, 12, .5, x.eq.lo, db)}${rng("mx.eq.mid", "Mids (1.5 kHz)", -12, 12, .5, x.eq.mid, db)}${rng("mx.eq.hi", "Treble (5 kHz)", -12, 12, .5, x.eq.hi, db)}</div>
+    <div class="sec"><b>Compressor</b>${chk("comp", x.comp.on, "Even out loud and quiet parts")}${rng("mx.comp.thr", "Threshold", -50, 0, 1, x.comp.thr, v => Math.round(v) + " dB")}${rng("mx.comp.ratio", "Ratio", 1, 12, .5, x.comp.ratio, v => (+v).toFixed(1) + ":1")}</div>
+    <div class="sec"><b>Reverb</b>${chk("rev", x.rev.on, "Room sound")}${rng("mx.rev.mix", "Amount", 0, 1, .01, x.rev.mix, pct)}${rng("mx.rev.size", "Room size", .5, 6, .1, x.rev.size, v => (+v).toFixed(1) + " s")}</div>
+    <div class="sec"><b>Echo</b>${chk("echo", x.echo.on, "Repeat")}${rng("mx.echo.time", "Delay", .05, 1.5, .01, x.echo.time, sec)}${rng("mx.echo.fb", "Repeats", 0, .9, .01, x.echo.fb, pct)}${rng("mx.echo.mix", "Amount", 0, 1, .01, x.echo.mix, pct)}</div>`;
+}
+
 let toastT = 0;
 function toast(msg) { const t = $(".toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2400); }
 function setTool(tl) { tool = tl; document.body.classList.toggle("razor", tl === "razor"); $('[data-act="tool-select"]').setAttribute("aria-pressed", String(tl === "select")); $('[data-act="tool-razor"]').setAttribute("aria-pressed", String(tl === "razor")); }
@@ -1471,6 +1666,7 @@ const ACTS = {
   clearkf:() => { const o = findSel(); if (o && o.kf) { commit(); o.kf = null; refresh(); } },
   resetcol:() => { const o = findSel(); if (o) { commit(); o.col = null; refresh(); } },
   freeze:freezeFrame, bug:openBug, trall:trAll,
+  "view-tl":() => setView(false), "view-mix":() => setView(true),
   lutimport:() => { if (!window.FX || !FX.supported()) return toast("LUTs need WebGL (graphics card support)."); lutIn.click(); },
   gcopy:() => { const o = findSel(); if (!o || sel.type !== "clip") return; gradeClip = JSON.parse(JSON.stringify({...defGrade(), ...(o.gr || {})})); renderProps(); showSec("Colour grading"); toast("Grade copied"); },
   gpaste:() => { const o = findSel(); if (!o || !gradeClip) return; commit(); o.gr = JSON.parse(JSON.stringify(gradeClip)); refresh(); showSec("Colour grading"); toast("Grade pasted"); },

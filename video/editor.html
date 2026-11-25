@@ -99,6 +99,33 @@ body.picking .view{cursor:crosshair}
 .wh{display:grid;justify-items:center;gap:3px;font-size:.66rem;color:var(--muted);text-align:center}
 .wh canvas{width:100%;max-width:76px;aspect-ratio:1;cursor:crosshair;touch-action:none}
 .wh input{width:100%;accent-color:var(--accent)}
+.vseg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-right:4px}
+.vseg button{background:none;border:0;color:var(--muted);font:inherit;font-size:.78rem;font-weight:600;padding:5px 10px;cursor:pointer}
+.vseg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.mixer{flex:1;min-height:0;overflow:auto;padding:8px 10px}
+.mixer[hidden]{display:none}
+.tlbody[hidden]{display:none}
+.strips{display:flex;gap:8px;align-items:stretch;min-width:max-content}
+.strip{display:grid;justify-items:center;gap:4px;width:92px;padding:6px 6px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.strip.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.strip.muted .meter{opacity:.35}
+.strip.master{background:color-mix(in srgb,var(--accent) 8%,var(--bg));margin-left:8px}
+.strip .sn{display:grid;justify-items:center;line-height:1.15}
+.strip .sn b{font-size:.84rem}.strip .sn small{font-size:.64rem;color:var(--muted)}
+.strip .sbody{display:flex;gap:6px;align-items:stretch;height:112px}
+.strip .meter{width:24px;height:112px;border-radius:3px}
+.strip .fader{writing-mode:vertical-lr;direction:rtl;width:22px;height:112px;accent-color:var(--accent);margin:0}
+.strip .db{font-size:.72rem;font-variant-numeric:tabular-nums;color:var(--ink)}
+.strip .panr{width:76px;accent-color:var(--accent);margin:0}
+.strip .pn{font-size:.66rem;color:var(--muted);margin-top:-4px}
+.strip .ms{display:flex;gap:4px}
+.strip .ms button,.strip .fxb,.strip .lim{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:5px;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer;padding:3px 8px}
+.strip .ms button[aria-pressed="true"]:first-child{background:#ff5d5d33;border-color:#ff5d5d;color:#ff8a8a}
+.strip .ms button[aria-pressed="true"]:last-child{background:#e8c54733;border-color:#e8c547;color:#f0d77a}
+.strip .fxb.on,.strip .lim.on{border-color:var(--accent);color:var(--accent)}
+.mixnote{font-size:.74rem;color:var(--muted);margin:8px 2px 0}
+.mixpre{display:flex;flex-wrap:wrap;gap:5px}
+.fxon{display:flex;gap:6px;align-items:center;font-size:.82rem;margin-bottom:6px}
 .tpl{display:grid;gap:8px}
 .tpl button{border:1px solid var(--line);background:var(--sunk);color:#fff;border-radius:8px;padding:12px;cursor:pointer;text-align:center;font-family:Archivo,sans-serif}
 .tpl button:hover{border-color:var(--accent)}
@@ -332,6 +359,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
       <button class="ib" data-act="marker" title="Add marker (M)" aria-label="Add marker"></button>
       <span class="sep"></span>
       <button class="ib" data-act="snap" aria-pressed="true" title="Snapping" aria-label="Snapping"></button>
+      <span class="vseg" role="group" aria-label="Timeline or mixer"><button data-act="view-tl" aria-pressed="true">Timeline</button><button data-act="view-mix" aria-pressed="false">Mixer</button></span>
       <button class="btn ghost small" data-act="addv">+ Video track</button>
       <button class="btn ghost small" data-act="adda">+ Audio track</button>
       <span class="sp"></span>
@@ -341,6 +369,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
       <div class="tlheads"></div>
       <div class="tlscroll"><div class="tlinner"><div class="ruler"></div><div class="rows"></div><div class="ph"></div><div class="razorline"></div></div></div>
     </div>
+    <div class="mixer" hidden></div>
   </section>
 </div>
 <dialog class="exp"></dialog>
@@ -356,6 +385,6 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </dialog>
 <div class="toast" role="status" aria-live="polite"></div>
 <script src="fx.js?v=20261125c"></script>
-<script src="editor.js?v=20261125k"></script>
+<script src="editor.js?v=20261125l"></script>
 </body>
 </html>
