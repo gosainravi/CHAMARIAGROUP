@@ -29,6 +29,7 @@ const IC = {
   ripple:ICON('<path d="M3 8h6v8H3zM15 8h6v8h-6z"/><path d="M11 12h2M13 10l-2 2 2 2"/>'),
   dup:ICON('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'),
   addtext:ICON('<path d="M5 6V4h14v2M12 4v16M9 20h6"/>'),
+  marker:ICON('<path d="M6 3h12v12l-6 6-6-6z"/>'),
   zin:ICON('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M8 11h6M11 8v6"/>'),
   zout:ICON('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M8 11h6"/>'),
   eye:ICON('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
@@ -57,7 +58,7 @@ function parseTC(str) {
    texts:  {id, text, s, e, x, y, size, color, bg, bold, font} on the text track */
 const media = new Map();
 let tracks = [{id:"V2", kind:"v", hide:false, mute:false, lock:false}, {id:"V1", kind:"v", hide:false, mute:false, lock:false}, {id:"A1", kind:"a", hide:false, mute:false, lock:false}, {id:"A2", kind:"a", hide:false, mute:false, lock:false}];
-let clips = [], texts = [], textTrack = {hide:false, lock:false};
+let clips = [], texts = [], textTrack = {hide:false, lock:false}, markers = [];
 let sel = null, T = 0, playing = false, snapOn = true, pps = 40, tool = "select";
 const undoS = [], redoS = [];
 
@@ -67,10 +68,10 @@ const total = () => Math.max(0, ...clips.map(endOf), ...texts.map(x => x.e));
 const trk = id => tracks.find(t => t.id === id);
 const localAt = (c, t) => clamp(c.a + (t - c.start) * c.speed, c.a, c.b);
 const activeAt = t => clips.filter(c => t >= c.start - 1e-4 && t < endOf(c) - 1e-4);
-const snapshot = () => JSON.stringify({tracks, clips, texts, textTrack});
+const snapshot = () => JSON.stringify({tracks, clips, texts, textTrack, markers});
 function commit() { undoS.push(snapshot()); if (undoS.length > 200) undoS.shift(); redoS.length = 0; syncUndo(); }
 function pushSnap(s) { if (s !== snapshot()) { undoS.push(s); redoS.length = 0; syncUndo(); } }
-function restore(s) { const o = JSON.parse(s); ({tracks, clips, texts, textTrack} = o); if (sel && !findSel()) sel = null; refresh(); }
+function restore(s) { const o = JSON.parse(s); ({tracks, clips, texts, textTrack} = o); markers = o.markers || []; if (sel && !findSel()) sel = null; refresh(); }
 function undo() { if (!undoS.length) return; redoS.push(snapshot()); restore(undoS.pop()); syncUndo(); }
 function redo() { if (!redoS.length) return; undoS.push(snapshot()); restore(redoS.pop()); syncUndo(); }
 function syncUndo() { $('[data-act="undo"]').disabled = !undoS.length; $('[data-act="redo"]').disabled = !redoS.length; }
@@ -178,7 +179,10 @@ function drawClip(g, W, H, c, el, t, alpha = 1, dx = 0, sMul = 1) {
   g.translate(W / 2 + valAt(c, "x", t) * W + dx, H / 2 + valAt(c, "y", t) * H);
   g.rotate((rot + (c.qt || 0) * 90) * Math.PI / 180);
   if (c.fh || c.fv) g.scale(c.fh ? -1 : 1, c.fv ? -1 : 1);
-  g.drawImage(el, sx, sy, sw, sh, -w / 2, -h / 2, w, h);
+  const rr = (c.rad || 0) * Math.min(w, h) / 2, bd = (c.bd || 0) * W;
+  if (rr || bd) { g.save(); g.beginPath(); g.roundRect ? g.roundRect(-w / 2, -h / 2, w, h, rr) : g.rect(-w / 2, -h / 2, w, h); g.clip(); g.drawImage(el, sx, sy, sw, sh, -w / 2, -h / 2, w, h); g.restore();
+    if (bd) { g.filter = "none"; g.lineWidth = bd; g.strokeStyle = c.bdc || "#ffffff"; g.beginPath(); g.roundRect ? g.roundRect(-w / 2, -h / 2, w, h, rr) : g.rect(-w / 2, -h / 2, w, h); g.stroke(); } }
+  else g.drawImage(el, sx, sy, sw, sh, -w / 2, -h / 2, w, h);
   g.restore();
 }
 
@@ -206,6 +210,7 @@ function drawFrame(g, W, H, t, pool) {
 }
 const FONTS = {sans:"Archivo, system-ui, sans-serif", serif:"Georgia, 'Times New Roman', serif", mono:"Consolas, ui-monospace, monospace", hand:"'Comic Sans MS', 'Segoe Print', cursive"};
 function textBox(g, W, H, x) {
+  if (x.shape) { const bw = x.w * W, bh = (x.shape === "line" || x.shape === "arrow") ? Math.max(x.sw * H / 100 * 3, H * .03) : x.h * H; return {fs:H * .05, lines:[], lh:0, pad:0, bw, bh, cx:x.x * W, l:x.x * W - bw / 2, t:x.y * H - bh / 2}; }
   const fs = Math.max(8, x.size / 100 * H);
   g.font = `${x.bold ? 800 : 500} ${fs}px ${FONTS[x.font] || FONTS.sans}`;
   const lines = String(x.text || " ").split("\n"), lh = fs * 1.2;
@@ -221,13 +226,55 @@ function drawText(g, W, H, x, t = x.s + 1) {
     g.globalAlpha = p;
     if (x.anim === "up") g.translate(0, (1 - p) * H * .06);
     if (x.anim === "pop") { const s = .6 + .4 * p; g.translate(b.cx, x.y * H); g.scale(s, s); g.translate(-b.cx, -x.y * H); }
-    if (x.anim === "type") { const n = Math.round(String(x.text).length * clamp((t - x.s) / Math.max(.3, (x.e - x.s) * .6), 0, 1)); b.lines = String(x.text).slice(0, n).split("\n"); g.globalAlpha = pout; }
+    if (x.anim === "type" && !x.shape) { const n = Math.round(String(x.text).length * clamp((t - x.s) / Math.max(.3, (x.e - x.s) * .6), 0, 1)); b.lines = String(x.text).slice(0, n).split("\n"); g.globalAlpha = pout; }
   }
+  if (x.shape) { drawShape(g, W, H, x, b); g.restore(); return; }
   if (x.bg) { g.fillStyle = x.bgc || "rgba(0,0,0,.6)"; g.beginPath(); g.roundRect ? g.roundRect(b.l, b.t, b.bw, b.bh, b.fs * .2) : g.rect(b.l, b.t, b.bw, b.bh); g.fill(); }
   g.fillStyle = x.color; g.textAlign = "center"; g.textBaseline = "middle";
   if (!x.bg) { g.lineWidth = b.fs * .12; g.strokeStyle = "rgba(0,0,0,.75)"; g.lineJoin = "round"; }
   b.lines.forEach((l, i) => { const y = b.t + b.pad + b.lh * (i + .5); if (!x.bg) g.strokeText(l, b.cx, y); g.fillText(l, b.cx, y); });
   g.restore();
+}
+
+function drawShape(g, W, H, x, b) {
+  g.globalAlpha *= x.op ?? 1;
+  g.translate(b.cx, x.y * H); if (x.rot) g.rotate(x.rot * Math.PI / 180);
+  const w = b.bw, h = b.bh, lw = (x.sw || 0) * H / 100;
+  g.fillStyle = x.color; g.strokeStyle = x.sc || "#ffffff"; g.lineWidth = lw; g.lineJoin = "round"; g.lineCap = "round";
+  g.beginPath();
+  if (x.shape === "rect") { const r = (x.rad || 0) * Math.min(w, h) / 2; g.roundRect ? g.roundRect(-w / 2, -h / 2, w, h, r) : g.rect(-w / 2, -h / 2, w, h); }
+  else if (x.shape === "ellipse") g.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+  else if (x.shape === "triangle") { g.moveTo(0, -h / 2); g.lineTo(w / 2, h / 2); g.lineTo(-w / 2, h / 2); g.closePath(); }
+  else if (x.shape === "star") { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .45 : 1; g.lineTo(Math.cos(a) * w / 2 * r, Math.sin(a) * h / 2 * r); } g.closePath(); }
+  else if (x.shape === "line" || x.shape === "arrow") {
+    const L = Math.max(lw, H * .004); g.lineWidth = L; g.strokeStyle = x.color;
+    g.moveTo(-w / 2, 0); g.lineTo(w / 2 - (x.shape === "arrow" ? L * 1.5 : 0), 0); g.stroke();
+    if (x.shape === "arrow") { g.beginPath(); g.fillStyle = x.color; g.moveTo(w / 2, 0); g.lineTo(w / 2 - L * 4, -L * 2.6); g.lineTo(w / 2 - L * 4, L * 2.6); g.closePath(); g.fill(); }
+    return;
+  }
+  if (x.fill !== false) g.fill();
+  if (lw > 0) g.stroke();
+}
+const SHAPES = {rect:"Rectangle", ellipse:"Circle", triangle:"Triangle", star:"Star", line:"Line", arrow:"Arrow"};
+function addShape(kind) {
+  commit();
+  const s = fq(T), sq = kind === "ellipse" || kind === "star" || kind === "triangle", ln = kind === "line" || kind === "arrow";
+  const [W, H] = outSize(1080), x = {id:uid(), shape:kind, text:SHAPES[kind], s, e:s + 3, x:.5, y:.5, w:sq ? .2 * H / W : .3, h:sq ? .2 : .14,
+    color:ln ? "#ffd54a" : "#4f8cff", fill:true, sc:"#ffffff", sw:ln ? .8 : 0, rad:.15, rot:0, op:1, anim:"none"};
+  texts.push(x); sel = {type:"text", id:x.id}; refresh();
+}
+
+/* ---------- Markers ---------- */
+const MKC = {red:"#ff5d5d", yellow:"#ffd54a", green:"#3ecf8e", blue:"#4f8cff", purple:"#b67cff"};
+function addMarker() {
+  const t = fq(T); if (markers.some(m => Math.abs(m.t - t) < .5 / FPS)) return toast("There's already a marker here");
+  commit(); markers.push({id:uid(), t, label:"Marker " + (markers.length + 1), color:"yellow"}); markers.sort((a, b) => a.t - b.t);
+  refresh(); toast("Marker added at " + tc(t));
+}
+function renderMarkers() {
+  const box = $(".mklist"); if (!box) return;
+  box.innerHTML = markers.length ? markers.map(m => `<div class="mkrow"><i style="background:${MKC[m.color]}"></i><button class="mkt" data-go="${m.id}" title="Jump to marker">${tc(m.t)}</button><input value="${esc(m.label)}" data-ml="${m.id}" aria-label="Marker name"><select data-mc="${m.id}" aria-label="Marker colour">${Object.keys(MKC).map(c => `<option${c === m.color ? " selected" : ""}>${c}</option>`).join("")}</select><button class="ib" data-mdel="${m.id}" aria-label="Delete marker">${IC.x}</button></div>`).join("")
+    : `<p class="empty-note">No markers yet. Press <kbd>M</kbd> or the button above to drop one at the playhead: handy for beats, cues and spots to fix.</p>`;
 }
 
 /* ---------- Monitor ---------- */
@@ -290,7 +337,7 @@ function pause() { playing = false; cancelAnimationFrame(rafId); pv.pauseAll(); 
 const toggle = () => playing ? pause() : play();
 function setPlayBtn() { const b = $('[data-act="play"]'); b.innerHTML = playing ? IC.pause : IC.play; b.setAttribute("aria-label", playing ? "Pause" : "Play"); }
 function step(d) { if (playing) pause(); setT(T + d); }
-function editPoints() { const s = new Set([0, total()]); clips.forEach(c => { s.add(fq(c.start)); s.add(fq(endOf(c))); }); texts.forEach(x => { s.add(fq(x.s)); s.add(fq(x.e)); }); return [...s].sort((a, b) => a - b); }
+function editPoints() { const s = new Set([0, total()]); clips.forEach(c => { s.add(fq(c.start)); s.add(fq(endOf(c))); }); texts.forEach(x => { s.add(fq(x.s)); s.add(fq(x.e)); }); markers.forEach(m => s.add(fq(m.t))); return [...s].sort((a, b) => a - b); }
 function jumpEdit(dir) { const p = editPoints(), cur = fq(T); const n = dir > 0 ? p.find(x => x > cur + 1e-6) : [...p].reverse().find(x => x < cur - 1e-6); if (n !== undefined) step(n - T); }
 
 /* ---------- Import ---------- */
@@ -568,6 +615,7 @@ function renderRuler(width) {
     const f0 = Math.floor(scroller.scrollLeft / pps * FPS), f1 = Math.ceil((scroller.scrollLeft + scroller.clientWidth) / pps * FPS);
     for (let f = f0; f <= f1; f++) h += `<i class="tk fr" style="left:${f / FPS * pps}px"></i>`;
   }
+  h += markers.map(m => `<b class="mk" data-mk="${m.id}" style="left:${m.t * pps}px;--c:${MKC[m.color]}" title="${esc(m.label)} · ${tc(m.t)}"></b>`).join("");
   ruler.innerHTML = h;
 }
 function clipCanvas(c, W, H, kind) {
@@ -592,11 +640,17 @@ function renderTimeline() {
   /* Rows */
   rows.innerHTML = "";
   const trow = document.createElement("div"); trow.className = "track t" + (textTrack.hide ? " off" : ""); trow.dataset.track = "T"; rows.appendChild(trow);
+  /* overlapping text/shape layers stack into lanes so none hides another */
+  const laneEnd = [], lane = new Map();
+  [...texts].sort((a, b) => a.s - b.s).forEach(x => { let i = laneEnd.findIndex(e => e <= x.s + 1e-4); if (i < 0) { i = laneEnd.length; laneEnd.push(0); } laneEnd[i] = x.e; lane.set(x.id, i); });
+  const lanes = Math.max(1, laneEnd.length), tH = lanes * 28 + 6;
+  trow.style.height = tH + "px"; $(".th-row.t", heads).style.height = tH + "px";
   texts.forEach(x => {
     const el = document.createElement("div");
+    el.style.top = 3 + lane.get(x.id) * 28 + "px"; el.style.bottom = "auto"; el.style.height = "25px";
     el.className = "clip txt" + (sel && sel.id === x.id ? " sel" : ""); el.dataset.id = x.id; el.dataset.type = "text";
     el.style.left = x.s * pps + "px"; el.style.width = Math.max(6, (x.e - x.s) * pps) + "px";
-    el.innerHTML = `<span class="lab">T ${esc(x.text.split("\n")[0])}</span><div class="h l" data-h="l"></div><div class="h r" data-h="r"></div>`;
+    el.innerHTML = `<span class="lab">${x.shape ? "◆ " + SHAPES[x.shape] : "T " + esc(x.text.split("\n")[0])}</span><div class="h l" data-h="l"></div><div class="h r" data-h="r"></div>`;
     trow.appendChild(el);
   });
   for (const t of tracks) {
@@ -615,7 +669,7 @@ function renderTimeline() {
   $('[data-act="export"]').disabled = !clips.length;
   $(".viewer .hint").hidden = clips.length > 0 || texts.length > 0;
 }
-function refresh() { pv.prune(); renderTimeline(); renderProps(); setT(T); }
+function refresh() { pv.prune(); renderTimeline(); renderProps(); renderMarkers(); setT(T); }
 scroller.addEventListener("scroll", () => { if (pps / FPS >= 5) renderRuler(inner.offsetWidth); }, {passive:true});
 
 const xToT = clientX => Math.max(0, (clientX - inner.getBoundingClientRect().left) / pps);
@@ -631,7 +685,7 @@ function scrub(e) {
   const up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
   window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up);
 }
-ruler.addEventListener("pointerdown", scrub);
+ruler.addEventListener("pointerdown", e => { const mk = e.target.closest(".mk"); if (mk) { const m = markers.find(k => k.id === mk.dataset.mk); if (m) { if (playing) pause(); setT(m.t); } return; } scrub(e); });
 const rowAt = y => $$(".track", rows).find(r => { const b = r.getBoundingClientRect(); return y >= b.top && y < b.bottom; });
 
 rows.addEventListener("pointermove", e => { if (tool === "razor") $(".razorline").style.left = snapT(xToT(e.clientX)) * pps + "px"; });
@@ -775,6 +829,11 @@ function renderProps() {
         <p class="empty-note" style="font-size:.76rem;margin:0">${prevAdj(o) ? "Blends from the clip just before this one on " + o.tr + "." : "No clip right before this one, so it blends from the tracks underneath."}</p></div>
       ${isV ? `<div class="sec"><b>Transform <span style="text-transform:none;letter-spacing:0;font-weight:500">· ◆ adds a keyframe at the playhead</span></b>${rngK("op", "Opacity", 0, 1, .01, o, pct)}${rngK("sc", "Scale", .1, 3, .01, o, pct)}${rngK("x", "Position X", -1, 1, .005, o, pct)}${rngK("y", "Position Y", -1, 1, .005, o, pct)}${rngK("rot", "Rotation", -180, 180, 1, o, v => Math.round(v) + "°")}
         <div class="row2"><button class="btn ghost small" data-act="resetxf">Reset</button><button class="btn ghost small" data-act="clearkf">Clear keyframes</button></div></div>
+      <div class="sec"><b>Picture in picture</b>
+        <div class="pipg">${[["tl", "↖ Top left"], ["tr", "↗ Top right"], ["bl", "↙ Bottom left"], ["br", "↘ Bottom right"], ["left", "◧ Left half"], ["right", "◨ Right half"], ["center", "▣ Centre small"], ["full", "⛶ Full frame"]].map(([v, l]) => `<button class="btn ghost small" data-pip="${v}">${l}</button>`).join("")}</div>
+        ${rng("bd", "Border", 0, .02, .001, o.bd || 0, v => Math.round(v * 1000) / 10 + "%")}
+        <div class="row2"><div class="f"><label>Border colour</label><input type="color" data-k="bdc" value="${o.bdc || "#ffffff"}" style="width:100%;height:31px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--bg)"></div>${rng("rad", "Rounded corners", 0, 1, .01, o.rad || 0, pct)}</div>
+        <p class="empty-note" style="font-size:.76rem;margin:0">Put this clip on a track above another clip (V2 over V1) to see both.</p></div>
       <div class="sec"><b>Crop, rotate & fit</b>
         <div class="f"><label>Fit in frame</label><select data-k="fit">${[["contain", "Fit (show everything)"], ["cover", "Fill (crop edges)"], ["blur", "Fit on blurred background"]].map(([v, l]) => `<option value="${v}"${(o.fit || "contain") === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>
         <div class="row2" style="margin-bottom:8px"><button class="btn ghost small" data-act="rotl">⟲ Rotate left</button><button class="btn ghost small" data-act="rotr">⟳ Rotate right</button></div>
@@ -785,6 +844,17 @@ function renderProps() {
         <button class="btn ghost small wide" data-act="resetcol">Reset colour</button></div>
       ${m.kind === "v" ? `<div class="sec"><button class="btn ghost small wide" data-act="freeze">Freeze this frame (2 s)</button></div>` : ""}` : ""}
       <div class="sec"><div class="row3"><button class="btn ghost small" data-act="split">Split</button><button class="btn ghost small" data-act="del">Delete</button><button class="btn ghost small" data-act="ripple" title="Delete and close the gap">Ripple</button></div></div>`;
+  } else if (o.shape) {
+    const ln = o.shape === "line" || o.shape === "arrow", cl = (k, l, v) => `<div class="f"><label>${l}</label><input type="color" data-k="${k}" value="${v}" style="width:100%;height:31px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--bg)"></div>`;
+    box.innerHTML = `<div class="f"><span class="l">T1 · Shape</span></div>
+      <div class="f"><label>Shape</label><select data-k="shape">${Object.entries(SHAPES).map(([v, l]) => `<option value="${v}"${o.shape === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>
+      <div class="sec"><b>Timing</b><div class="row2"><div class="f"><label>Starts</label><input type="text" data-k="s" value="${tc(o.s)}"></div><div class="f"><label>Ends</label><input type="text" data-k="e" value="${tc(o.e)}"></div></div>
+        <div class="f"><label>Animation</label><select data-k="anim">${[["none", "None"], ["fade", "Fade in & out"], ["up", "Rise up"], ["pop", "Pop"]].map(([v, l]) => `<option value="${v}"${(o.anim || "none") === v ? " selected" : ""}>${l}</option>`).join("")}</select></div></div>
+      <div class="sec"><b>Style</b><div class="row2">${cl("color", ln ? "Colour" : "Fill", o.color)}${ln ? "" : cl("sc", "Outline", o.sc || "#ffffff")}</div>
+        ${ln ? "" : `<label style="display:flex;gap:6px;align-items:center;font-size:.84rem;margin-bottom:8px"><input type="checkbox" data-k="fill"${o.fill !== false ? " checked" : ""}> Filled (untick for an outline only)</label>`}
+        ${rng("sw", ln ? "Thickness" : "Outline width", 0, 4, .1, o.sw || 0, v => (+v).toFixed(1))}${o.shape === "rect" ? rng("rad", "Rounded corners", 0, 1, .01, o.rad || 0, pct) : ""}${rng("op", "Opacity", 0, 1, .01, o.op ?? 1, pct)}</div>
+      <div class="sec"><b>Size & position</b>${rng("w", ln ? "Length" : "Width", .02, 1.2, .005, o.w, pct)}${ln ? "" : rng("h", "Height", .02, 1.2, .005, o.h, pct)}${rng("rot", "Rotation", -180, 180, 1, o.rot || 0, v => Math.round(v) + "°")}${rng("x", "Left ↔ right", 0, 1, .01, o.x, pct)}${rng("y", "Top ↕ bottom", 0, 1, .01, o.y, pct)}<p class="empty-note" style="font-size:.78rem;margin:0">Or drag it on the monitor.</p></div>
+      <div class="sec"><div class="row3"><button class="btn ghost small" data-act="split">Split</button><button class="btn ghost small" data-act="dup">Copy</button><button class="btn ghost small" data-act="del">Delete</button></div></div>`;
   } else {
     box.innerHTML = `<div class="f"><span class="l">T1 · Text</span></div><div class="f"><label>Text</label><textarea data-k="text">${esc(o.text)}</textarea></div>
       <div class="sec"><b>Timing</b><div class="row2"><div class="f"><label>Starts</label><input type="text" data-k="s" value="${tc(o.s)}"></div><div class="f"><label>Ends</label><input type="text" data-k="e" value="${tc(o.e)}"></div></div></div>
@@ -809,6 +879,8 @@ props.addEventListener("input", e => {
   let shown = raw;
   if (k.startsWith("cr.")) { o.cr = {l:0, r:0, t:0, b:0, ...(o.cr || {})}; o.cr[k.slice(3)] = num; shown = pct(num); }
   else if (k === "fit") o.fit = raw;
+  else if (k === "shape" || k === "sc" && sel.type === "text" || k === "bdc") o[k] = raw;
+  else if (k === "fill") o.fill = e.target.checked;
   else if (k.startsWith("col.")) { o.col = {...col(o)}; const kk = k.slice(4); o.col[kk] = kk === "p" ? raw : num; shown = kk === "h" ? Math.round(num) + "°" : kk === "bl" ? num : pct(num); }
   else if (k.startsWith("tin.")) { o.tin = {type:"", d:1, ...(o.tin || {})}; if (k === "tin.type") o.tin.type = raw; else { o.tin.d = Math.min(num, len(o)); shown = o.tin.d.toFixed(1) + "s"; } }
   else if (k === "fi" || k === "fo") { o[k] = Math.min(num, len(o) / 2); shown = o[k].toFixed(1) + "s"; }
@@ -818,7 +890,7 @@ props.addEventListener("input", e => {
     if (T < o.start || T > endOf(o)) { toast("Move the playhead inside the clip to change an animated value"); return; }
     setKf(o, k, num); shown = k === "rot" ? Math.round(num) + "°" : pct(num);
   }
-  else { o[k] = num; shown = k === "rot" ? Math.round(num) + "°" : ["vol", "op", "sc", "x", "y"].includes(k) ? pct(num) : num; }
+  else { o[k] = num; shown = k === "rot" ? Math.round(num) + "°" : ["vol", "op", "sc", "x", "y", "w", "h", "rad"].includes(k) ? pct(num) : k === "bd" ? Math.round(num * 1000) / 10 + "%" : num; }
   if (k === "speed" && sel.type === "clip" && overlaps(o)) { o.speed = +JSON.parse(propSnap).clips.find(c => c.id === o.id).speed; e.target.value = o.speed; toast("Not enough room on the track for that speed"); }
   const out = e.target.closest(".f") && $("output", e.target.closest(".f"));
   if (out && e.target.type === "range") out.textContent = shown;
@@ -868,6 +940,21 @@ const QT = {
   gif:() => exportAs("gif"), extract:() => exportAs("mp3"), frame:() => saveFrame()
 };
 let mergeNext = false;
+function pipPreset(kind) {
+  clipSet(o => {
+    const [W, H] = outSize(1080), m = media.get(o.m), cr = o.cr || {l:0, r:0, t:0, b:0};
+    let mw = m.w * (1 - cr.l - cr.r), mh = m.h * (1 - cr.t - cr.b); if ((o.qt || 0) % 2) [mw, mh] = [mh, mw];
+    const k0 = Math.min(W / mw, H / mh), cw = mw * k0 / W, ch = mh * k0 / H, mx = .03, my = .03 * W / H;
+    let s = .32, x = 0, y = 0;
+    if (kind === "full") s = 1;
+    else if (kind === "center") s = .5;
+    else if (kind === "left" || kind === "right") { s = Math.min(1, .5 / cw); x = kind === "left" ? -.25 : .25; }
+    else { x = (kind[1] === "l" ? -1 : 1) * (.5 - mx - cw * s / 2); y = (kind[0] === "t" ? -1 : 1) * (.5 - my - ch * s / 2); }
+    o.fit = "contain"; o.sc = s; o.x = x; o.y = y; if (o.kf) ["sc", "x", "y"].forEach(k => delete o.kf[k]);
+    if (kind !== "full" && !o.bd) { o.bd = .004; o.rad = .08; }
+    if (kind === "full") { o.bd = 0; o.rad = 0; }
+  });
+}
 function clipSet(fn) { const o = findSel(); if (!o || sel.type !== "clip") return toast("Select a clip first"); commit(); fn(o); refresh(); }
 function download(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); }
 const projName = () => ($(".pname").value.trim() || "video").replace(/[\\/:*?"<>|]+/g, "-");
@@ -1062,7 +1149,7 @@ $$("[data-act]").forEach(b => { const k = b.dataset.act; if (IC[k] && b.classLis
 const ACTS = {
   play:toggle, start:() => step(-1e9), end:() => step(1e9), prevf:() => step(-1 / FPS), nextf:() => step(1 / FPS),
   back1s:() => step(-1), fwd1s:() => step(1), prevedit:() => jumpEdit(-1), nextedit:() => jumpEdit(1),
-  split, del:() => del(false), ripple:() => del(true), dup, addtext:() => addText("sub"), undo, redo, fit, export:openExport,
+  split, del:() => del(false), ripple:() => del(true), dup, addtext:() => addText("sub"), undo, redo, fit, export:openExport, marker:addMarker,
   setin:() => trimTo("in"), setout:() => trimTo("out"), detach:detachAudio,
   resetxf:() => { const o = findSel(); if (o) { commit(); Object.assign(o, {op:1, sc:1, x:0, y:0, rot:0}); if (o.kf) ["op", "sc", "x", "y", "rot"].forEach(k => delete o.kf[k]); refresh(); } },
   clearkf:() => { const o = findSel(); if (o && o.kf) { commit(); o.kf = null; refresh(); } },
@@ -1078,6 +1165,10 @@ const ACTS = {
 };
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (b && ACTS[b.dataset.act]) { ACTS[b.dataset.act](); return; }
+  const pp = e.target.closest("[data-pip]"); if (pp) { pipPreset(pp.dataset.pip); return; }
+  const sh = e.target.closest("[data-shape]"); if (sh) { addShape(sh.dataset.shape); return; }
+  const go = e.target.closest("[data-go]"); if (go) { const m = markers.find(k => k.id === go.dataset.go); if (m) { if (playing) pause(); setT(m.t); } return; }
+  const md = e.target.closest("[data-mdel]"); if (md) { commit(); markers = markers.filter(k => k.id !== md.dataset.mdel); refresh(); return; }
   const kb = e.target.closest("[data-kf]"); if (kb) { e.preventDefault(); kfAction(kb.dataset.kf, kb.dataset.kk); return; }
   const a = e.target.closest("[data-add]"); if (a) { insertMedia(a.dataset.add); return; }
   const tp = e.target.closest("[data-tpl]"); if (tp) addText(tp.dataset.tpl);
@@ -1086,6 +1177,11 @@ document.addEventListener("click", e => {
   if (tab) { $$("[data-tab]").forEach(k => k.setAttribute("aria-selected", String(k === tab))); $$("[data-pane]").forEach(p => { p.hidden = p.dataset.pane !== tab.dataset.tab; }); }
 });
 zm.addEventListener("input", () => setZoom(+zm.value));
+document.addEventListener("change", e => {
+  const l = e.target.dataset.ml, c = e.target.dataset.mc; if (!l && !c) return;
+  const m = markers.find(k => k.id === (l || c)); if (!m) return;
+  commit(); if (l) m.label = e.target.value.trim() || m.label; else m.color = e.target.value; refresh();
+});
 $(".fps").addEventListener("change", e => { FPS = +e.target.value; setT(T); renderTimeline(); renderProps(); });
 $(".aspect").addEventListener("change", () => { showFrame(); renderProps(); });
 const fileIn = $(".drop input"), ACCEPT = fileIn.accept;
@@ -1114,7 +1210,7 @@ document.addEventListener("keydown", e => {
   if (mod && lk === "d") { e.preventDefault(); dup(); return; }
   if (mod) return;
   const map = {" ":toggle, arrowleft:() => step(e.shiftKey ? -1 : -1 / FPS), arrowright:() => step(e.shiftKey ? 1 : 1 / FPS), ",":() => step(-1 / FPS), ".":() => step(1 / FPS),
-    arrowup:() => jumpEdit(-1), arrowdown:() => jumpEdit(1), home:() => step(-1e9), end:() => step(1e9), s:split, v:() => setTool("select"), c:() => setTool("razor"), b:() => setTool("razor"),
+    arrowup:() => jumpEdit(-1), arrowdown:() => jumpEdit(1), home:() => step(-1e9), end:() => step(1e9), s:split, m:addMarker, v:() => setTool("select"), c:() => setTool("razor"), b:() => setTool("razor"),
     delete:() => del(e.shiftKey), backspace:() => del(e.shiftKey), t:() => addText("sub"), "+":ACTS.zin, "=":ACTS.zin, "-":ACTS.zout, escape:() => { setTool("select"); sel = null; renderTimeline(); renderProps(); paint(); }};
   if (map[lk]) { e.preventDefault(); if (document.activeElement && document.activeElement.type === "range") document.activeElement.blur(); map[lk](); }
 });
