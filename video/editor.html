@@ -28,10 +28,10 @@ select.sel{padding:6px 8px;border:1px solid var(--line);border-radius:7px;backgr
 .btn.small{padding:6px 11px;font-size:.84rem}
 .btn.ghost{color:var(--ink);border-color:var(--line)}
 .st-main{flex:1;display:grid;grid-template-columns:270px 1fr 290px;grid-template-rows:minmax(0,1fr) 300px;min-height:0}
-.panel{background:var(--surface);overflow:auto;min-height:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.panel{background:var(--surface);overflow-y:auto;overflow-x:hidden;min-height:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .panel.right{border-right:0;border-left:1px solid var(--line)}
-.ptabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 8px;position:sticky;top:0;background:var(--surface);z-index:2}
-.ptabs button{background:none;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.84rem;padding:9px 8px;border-bottom:2px solid transparent;cursor:pointer}
+.ptabs{display:flex;gap:0;justify-content:space-between;border-bottom:1px solid var(--line);padding:0 8px;position:sticky;top:0;background:var(--surface);z-index:2}
+.ptabs button{background:none;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.8rem;padding:9px 5px;white-space:nowrap;border-bottom:2px solid transparent;cursor:pointer}
 .ptabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .pbody{padding:12px}
 .pbody[hidden]{display:none}
@@ -107,7 +107,7 @@ kbd{font:inherit;font-size:.72rem;border:1px solid var(--line);border-bottom-wid
 .tltools .sp{flex:1}
 .tltools .zoom{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
 .tltools .zoom input{width:120px;accent-color:var(--accent)}
-.tlbody{flex:1;display:flex;min-height:0;overflow-y:auto;overflow-x:hidden}
+.tlbody{flex:1;display:flex;align-items:flex-start;min-height:0;overflow-y:auto;overflow-x:hidden}
 .tlheads{width:116px;flex:none;border-right:1px solid var(--line);background:var(--surface);position:sticky;left:0;z-index:8}
 .tlheads .rh{height:24px;border-bottom:1px solid var(--line)}
 .th-row{display:flex;align-items:center;gap:2px;padding:0 4px 0 8px;border-bottom:1px solid var(--line);font-size:.74rem;font-weight:700;color:var(--muted)}
@@ -115,7 +115,7 @@ kbd{font:inherit;font-size:.72rem;border:1px solid var(--line);border-bottom-wid
 .th-row .ib{width:24px;height:24px}
 .th-row .ib svg{width:14px;height:14px}
 .th-row.v{height:58px}.th-row.a{height:46px}.th-row.t{height:34px}
-.tlscroll{flex:1;overflow-x:auto;overflow-y:hidden;position:relative;min-width:0}
+.tlscroll{flex:1;overflow-x:auto;overflow-y:hidden;position:relative;min-width:0;min-height:100%}
 .tlinner{position:relative;min-width:100%}
 .ruler{position:sticky;top:0;height:24px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;background:var(--surface);z-index:5}
 .ruler .tk{position:absolute;bottom:0;width:1px;background:#ffffff30}
@@ -258,7 +258,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
   </aside>
   <section class="center">
     <div class="mon-h"><b>Monitor</b><span class="sp"></span><span class="fsize"></span><button class="btn ghost small" data-act="snapshot" title="Save the frame under the playhead as a PNG">Save frame</button></div>
-    <div class="viewer"><canvas class="view" width="1280" height="720"></canvas><div class="hint">Import a video or audio file to start editing</div></div>
+    <div class="viewer"><canvas class="view" width="1280" height="720"></canvas><div class="hint">Import videos, photos or audio into the Media panel, then click <b>+</b> on one (or drag it to a track) to add it to the timeline</div></div>
     <div class="transport">
       <span class="tc cur">00:00:00:00</span><span class="sp"></span>
       <button class="ib" data-act="start" title="Go to start (Home)" aria-label="Go to start"></button>
@@ -303,6 +303,6 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </div>
 <dialog class="exp"></dialog>
 <div class="toast" role="status" aria-live="polite"></div>
-<script src="editor.js?v=20261125b"></script>
+<script src="editor.js?v=20261125d"></script>
 </body>
 </html>

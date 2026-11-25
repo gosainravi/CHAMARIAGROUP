@@ -378,6 +378,10 @@ async function probeNative(f, want) {
   finally { el.removeAttribute("src"); el.load(); }
 }
 async function addFiles(files) {
+  const n0 = media.size;
+  try { await addFilesNow(files); } finally { const n = media.size - n0; if (n) toast(`${n} file${n > 1 ? "s" : ""} added to Media. Click + on a file, or drag it onto a track, to put it on the timeline.`); }
+}
+async function addFilesNow(files) {
   for (const f0 of files) {
     let f = f0, k = kindOf(f);
     if (k === "?") k = "v"; /* unknown extension: let ffmpeg work out what it is */
@@ -399,7 +403,6 @@ async function addFiles(files) {
     const kind = k === "v" && info.w ? "v" : "a";
     const m = {id:uid(), name:f0.name, url:info.url, kind, dur:info.dur, w:info.w, h:info.h, thumbs:[], step:Math.max(.5, info.dur / 400), peaks:null};
     media.set(m.id, m); renderBin();
-    if (!clips.length || kind === "a") insertMedia(m.id);
     if (kind === "v") makeThumbs(m);
     makePeaks(m, f);
   }
@@ -440,7 +443,7 @@ async function convertNow(f, k) {
   finally { ff.off("progress", onP); ff.deleteFile(inName).catch(() => {}); ff.deleteFile(out).catch(() => {}); conv(null); }
 }
 /* Photos and logos become still clips. They can be stretched to any length. */
-async function addImage(blob, name, insertAt = null) {
+async function addImage(blob, name, insertAt = false) {
   const url = URL.createObjectURL(blob), img = new Image(); img.src = url;
   try { await img.decode(); } catch (e) { toast(`Can't open ${name}`); return null; }
   const m = {id:uid(), name, url, kind:"i", dur:3600, still:5, w:img.naturalWidth || 640, h:img.naturalHeight || 360, thumbs:[], step:1e9, peaks:null};
@@ -505,7 +508,15 @@ function insertMedia(mid, at = null, trId = null) {
   c.start = Math.ceil(Math.max(0, at) * FPS - 1e-3) / FPS; /* round up so it never overlaps the clip it was dropped after */
   const order = kind === "v" ? tracks.filter(t => t.kind === "v").reverse() : tracks.filter(t => t.kind === "a");
   const cands = trId ? [trk(trId), ...order.filter(t => t.id !== trId)] : order;
-  let tr = cands.find(t => t && !t.lock && !overlaps(c, t.id));
+  /* if a clip on a track ends less than a frame after this point, start right after it instead of jumping tracks */
+  const st0 = c.start;
+  let tr = cands.find(t => {
+    if (!t || t.lock) return false;
+    const near = clips.find(o => o.tr === t.id && endOf(o) > st0 && endOf(o) - st0 <= 1.01 / FPS);
+    c.start = near ? endOf(near) : st0;
+    if (!overlaps(c, t.id)) return true;
+    c.start = st0; return false;
+  });
   commit();
   if (!tr) { tr = addTrack(kind, true); }
   c.tr = tr.id; clips.push(c); sel = {type:"clip", id:c.id};
@@ -936,10 +947,10 @@ const QT = {
   audio:() => { if (pickClip("v")) showSec("Audio"); toast("Set volume to 0 to mute. Import music and it goes on an audio track."); },
   merge:() => { toast("Choose the clips to join. They're added one after another."); mergeNext = true; fileIn.click(); },
   text:() => addText("sub"),
-  logo:() => { toast("Choose a logo or photo. It lands on a video track above your clip."); fileIn.accept = "image/*"; fileIn.click(); setTimeout(() => { fileIn.accept = ACCEPT; }, 1000); },
+  logo:() => { toast("Choose a logo or photo. It goes on a video track above your clip."); logoNext = true; fileIn.accept = "image/*"; fileIn.click(); setTimeout(() => { fileIn.accept = ACCEPT; }, 1000); },
   gif:() => exportAs("gif"), extract:() => exportAs("mp3"), frame:() => saveFrame()
 };
-let mergeNext = false;
+let mergeNext = false, logoNext = false;
 function pipPreset(kind) {
   clipSet(o => {
     const [W, H] = outSize(1080), m = media.get(o.m), cr = o.cr || {l:0, r:0, t:0, b:0};
@@ -1186,8 +1197,9 @@ $(".fps").addEventListener("change", e => { FPS = +e.target.value; setT(T); rend
 $(".aspect").addEventListener("change", () => { showFrame(); renderProps(); });
 const fileIn = $(".drop input"), ACCEPT = fileIn.accept;
 fileIn.addEventListener("change", async () => {
-  const files = [...fileIn.files], merge = mergeNext; fileIn.value = ""; mergeNext = false;
+  const files = [...fileIn.files], merge = mergeNext, logo = logoNext; fileIn.value = ""; mergeNext = logoNext = false;
   const before = new Set(media.keys()); await addFiles(files);
+  if (logo) { for (const [id, m] of media) if (!before.has(id) && m.kind === "i") insertMedia(id); return; }
   if (!merge) return;
   /* Merge: line the new videos up one after another at the end of V1 */
   for (const [id, m] of media) {
