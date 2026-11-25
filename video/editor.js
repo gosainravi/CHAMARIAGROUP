@@ -1216,6 +1216,7 @@ $$("[data-act]").forEach(b => { const k = b.dataset.act; if (IC[k] && b.classLis
    The destination address lives in <meta name="report-to"> in editor.html. ---------- */
 const bugTo = () => (($('meta[name="report-to"]') || {}).content || "").trim();
 const bugDlg = $(".bugdlg"), bugForm = $(".bugform");
+if (!bugTo()) $('[data-act="bug"]').hidden = true; /* no destination set yet: don't show a button that can't send */
 function openBug() { if (playing) pause(); $(".bugmsg").textContent = ""; $(".bugmsg").className = "bugmsg"; bugDlg.showModal(); $("#bug-txt").focus(); }
 function bugDetails() {
   return [`Page: ${location.href.split("#")[0]}`, `Browser: ${navigator.userAgent}`, `Screen: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,
