@@ -427,7 +427,8 @@ function renderHome() {
       <p style="margin-top:16px"><a class="btn" href="editor.html">Open the Studio editor</a> <span class="muted" style="font-size:.9rem;margin-left:8px">Multi-track timeline, frame-by-frame cutting, layers, music and text</span></p>
     </section>
     <div class="chips" role="group" aria-label="Show tools by type">${CATS.map(([id, l]) => `<button type="button" data-cat="${id}" aria-pressed="${id === cur}">${l}</button>`).join("")}</div>
-    <ul class="tgrid">${TOOLS.map(t => `<li class="tcard" data-cats="${t.cats.join(" ")}"><div class="ti">${I[t.icon]}</div>
+    <ul class="tgrid"><li class="tcard" data-cats="edit social audio convert"><div class="ti">${svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18M8 15v5M13 15v5M7 8l3 2-3 2z"/>')}</div>
+      <h3><a href="editor.html">Studio editor</a><span class="badge new">New</span></h3><p>Full editor with a frame-by-frame timeline: layers, music, text, transitions and more.</p></li>${TOOLS.map(t => `<li class="tcard" data-cats="${t.cats.join(" ")}"><div class="ti">${I[t.icon]}</div>
       <h3><a href="index.html#/t/${t.id}">${esc(t.name)}</a>${t.isNew ? '<span class="badge new">New</span>' : ""}</h3><p>${esc(t.desc)}</p></li>`).join("")}</ul>
     <ul class="trust">
       <li><span class="ic">${I.lock}</span><div><b>Your files stay with you</b><span>Videos are edited on your device. Nothing is uploaded.</span></div></li>
