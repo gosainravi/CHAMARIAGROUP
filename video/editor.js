@@ -1157,6 +1157,38 @@ let toastT = 0;
 function toast(msg) { const t = $(".toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2400); }
 function setTool(tl) { tool = tl; document.body.classList.toggle("razor", tl === "razor"); $('[data-act="tool-select"]').setAttribute("aria-pressed", String(tl === "select")); $('[data-act="tool-razor"]').setAttribute("aria-pressed", String(tl === "razor")); }
 $$("[data-act]").forEach(b => { const k = b.dataset.act; if (IC[k] && b.classList.contains("ib")) b.innerHTML = IC[k]; });
+/* ---------- Report a bug: emailed through FormSubmit (the site has no server); falls back to the visitor's email app.
+   The destination address lives in <meta name="report-to"> in editor.html. ---------- */
+const bugTo = () => (($('meta[name="report-to"]') || {}).content || "").trim();
+const bugDlg = $(".bugdlg"), bugForm = $(".bugform");
+function openBug() { if (playing) pause(); $(".bugmsg").textContent = ""; $(".bugmsg").className = "bugmsg"; bugDlg.showModal(); $("#bug-txt").focus(); }
+function bugDetails() {
+  return [`Page: ${location.href.split("#")[0]}`, `Browser: ${navigator.userAgent}`, `Screen: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,
+    `Project: ${clips.length} clips, ${texts.length} text/shapes, ${tracks.length} tracks, length ${tc(total())}, frame ${outSize(1080).join("x")} ${FPS} fps`, `Time: ${new Date().toISOString()}`].join("\n");
+}
+bugDlg.addEventListener("click", e => { if (e.target.dataset.bug === "close") bugDlg.close(); });
+bugForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $(".bugmsg"), txt = $("#bug-txt").value.trim(), mail = $("#bug-mail").value.trim(), btn = $('button[type="submit"]', bugForm);
+  if (txt.length < 5) { msg.className = "bugmsg err"; msg.textContent = "Please describe the problem first."; $("#bug-txt").focus(); return; }
+  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { msg.className = "bugmsg err"; msg.textContent = "That email address doesn't look right."; $("#bug-mail").focus(); return; }
+  const BUG_TO = bugTo();
+  if (!BUG_TO) { msg.className = "bugmsg err"; msg.textContent = "Bug reports aren't set up yet on this site."; return; }
+  const details = bugForm.details.checked ? bugDetails() : "(not included)";
+  btn.disabled = true; msg.className = "bugmsg"; msg.textContent = "Sending…";
+  try {
+    const r = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(BUG_TO)}`, {method:"POST", headers:{"Content-Type":"application/json", Accept:"application/json"},
+      body:JSON.stringify({_subject:"Daftarbox Video Studio: bug report", _template:"box", _captcha:"false", message:txt, reply_to:mail || "(not given)", ...(mail ? {_replyto:mail} : {}), details})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || String(j.success) !== "true") throw new Error(j.message || "send failed");
+    msg.className = "bugmsg ok"; msg.textContent = "Thanks! Your report was sent."; bugForm.reset(); bugForm.details.checked = true;
+    setTimeout(() => { if (bugDlg.open) bugDlg.close(); }, 1800);
+  } catch (err) {
+    msg.className = "bugmsg err"; msg.textContent = "Couldn't send from here, so your email app was opened with the report filled in. Please press Send there.";
+    location.href = `mailto:${BUG_TO}?subject=${encodeURIComponent("Daftarbox Video Studio: bug report")}&body=${encodeURIComponent(txt + "\n\nReply to: " + (mail || "-") + "\n\n" + details)}`;
+  } finally { btn.disabled = false; }
+});
+
 const ACTS = {
   play:toggle, start:() => step(-1e9), end:() => step(1e9), prevf:() => step(-1 / FPS), nextf:() => step(1 / FPS),
   back1s:() => step(-1), fwd1s:() => step(1), prevedit:() => jumpEdit(-1), nextedit:() => jumpEdit(1),
@@ -1165,7 +1197,7 @@ const ACTS = {
   resetxf:() => { const o = findSel(); if (o) { commit(); Object.assign(o, {op:1, sc:1, x:0, y:0, rot:0}); if (o.kf) ["op", "sc", "x", "y", "rot"].forEach(k => delete o.kf[k]); refresh(); } },
   clearkf:() => { const o = findSel(); if (o && o.kf) { commit(); o.kf = null; refresh(); } },
   resetcol:() => { const o = findSel(); if (o) { commit(); o.col = null; refresh(); } },
-  freeze:freezeFrame,
+  freeze:freezeFrame, bug:openBug,
   rotl:() => clipSet(o => { o.qt = ((o.qt || 0) + 3) % 4; }), rotr:() => clipSet(o => { o.qt = ((o.qt || 0) + 1) % 4; }),
   fliph:() => clipSet(o => { o.fh = !o.fh; }), flipv:() => clipSet(o => { o.fv = !o.fv; }),
   snapshot:saveFrame,

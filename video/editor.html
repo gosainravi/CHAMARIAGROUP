@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Bug reports from the "Report a bug" window are emailed to the address in content="" below. -->
+<meta name="report-to" content="">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Video Studio – Daftarbox</title>
 <meta name="description" content="A free multi-track video editor in your browser: frame-by-frame timeline, split, trim, layers, music and voiceover, text, speed and volume, then export. Nothing is uploaded.">
@@ -154,6 +156,10 @@ body.razor .clip .h{display:none}
 .ph::before{content:"";position:absolute;top:0;left:-6px;border:7px solid transparent;border-top:9px solid var(--danger)}
 .razorline{position:absolute;top:24px;bottom:0;width:1px;background:#fff;z-index:6;pointer-events:none;display:none}
 body.razor .razorline{display:block}
+.bugform textarea{min-height:120px}
+.bugchk{display:flex;gap:8px;align-items:flex-start;font-size:.8rem;color:var(--muted);margin:4px 0 6px}
+.bugmsg{font-size:.84rem;margin:6px 0 0;min-height:1.2em}
+.bugmsg.err{color:var(--danger)}.bugmsg.ok{color:var(--ok)}
 dialog{border:1px solid var(--line);border-radius:12px;padding:20px;max-width:440px;width:calc(100% - 32px);background:var(--surface);color:var(--ink)}
 dialog::backdrop{background:#000a}
 dialog h3{margin:0 0 12px}
@@ -188,6 +194,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
   <select class="sel fps" aria-label="Frame rate" title="Timeline frame rate">
     <option value="24">24 fps</option><option value="25">25 fps</option><option value="30" selected>30 fps</option><option value="50">50 fps</option><option value="60">60 fps</option>
   </select>
+  <button class="btn ghost small" data-act="bug" title="Tell us about a problem">Report a bug</button>
   <button class="btn small" data-act="export" disabled>Export</button>
 </header>
 <div class="st-main">
@@ -258,7 +265,7 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
   </aside>
   <section class="center">
     <div class="mon-h"><b>Monitor</b><span class="sp"></span><span class="fsize"></span><button class="btn ghost small" data-act="snapshot" title="Save the frame under the playhead as a PNG">Save frame</button></div>
-    <div class="viewer"><canvas class="view" width="1280" height="720"></canvas><div class="hint">Import videos, photos or audio into the Media panel, then click <b>+</b> on one (or drag it to a track) to add it to the timeline</div></div>
+    <div class="viewer"><canvas class="view" width="1280" height="720"></canvas><div class="hint"><span>Import videos, photos or audio into the Media panel, then click + on one (or drag it to a track) to add it to the timeline</span></div></div>
     <div class="transport">
       <span class="tc cur">00:00:00:00</span><span class="sp"></span>
       <button class="ib" data-act="start" title="Go to start (Home)" aria-label="Go to start"></button>
@@ -302,7 +309,17 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
   </section>
 </div>
 <dialog class="exp"></dialog>
+<dialog class="bugdlg" aria-labelledby="bug-h">
+  <form class="bugform" novalidate>
+    <h3 id="bug-h">Report a bug</h3>
+    <div class="f"><label for="bug-txt">What went wrong?</label><textarea id="bug-txt" name="message" rows="6" maxlength="5000" required placeholder="What did you do, what did you expect, and what happened instead?"></textarea></div>
+    <div class="f"><label for="bug-mail">Your email <span style="font-weight:400">(optional, so we can reply)</span></label><input id="bug-mail" type="email" name="email" autocomplete="email" placeholder="you@example.com"></div>
+    <label class="bugchk"><input type="checkbox" name="details" checked> Include technical details (browser, screen size, number of clips; no video content)</label>
+    <p class="bugmsg" role="status" aria-live="polite"></p>
+    <div class="acts"><button type="button" class="btn ghost small" data-bug="close">Cancel</button><button type="submit" class="btn small">Send</button></div>
+  </form>
+</dialog>
 <div class="toast" role="status" aria-live="polite"></div>
-<script src="editor.js?v=20261125e"></script>
+<script src="editor.js?v=20261125f"></script>
 </body>
 </html>
