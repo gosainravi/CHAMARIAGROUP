@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Shell from "@/components/Shell";
-import { api, Category, inr, Item } from "@/lib/api";
+import { api, api3, Category, inr, Item, Quote } from "@/lib/api";
 
 const FIELDS: { k: keyof Item; label: string; num?: boolean; w?: number }[] = [
   { k: "manufacturer", label: "Manufacturer", w: 110 }, { k: "model", label: "Model", w: 130 },
@@ -12,11 +12,43 @@ const FIELDS: { k: keyof Item; label: string; num?: boolean; w?: number }[] = [
   { k: "datasheet_url", label: "Datasheet URL", w: 140 },
 ];
 
+function Quotes({ item, cols }: { item: Item; cols: number }) {
+  const [qs, setQs] = useState<Quote[] | null>(null);
+  const [f, setF] = useState({ vendor: "", rate: "", quote_ref: "", quote_date: "" });
+  const [err, setErr] = useState("");
+  useEffect(() => { api3.quotes(item.id).then(setQs); }, [item.id]);
+  return (
+    <tr><td colSpan={cols} style={{ background: "var(--bg)" }}>
+      <b className="small">Vendor quotes for {item.manufacturer} {item.model}</b> <span className="muted small">(ex-GST; compare them per project under Vendors)</span>
+      <table style={{ maxWidth: 640, margin: "4px 0" }}><tbody>
+        {(qs || []).map((q) => (
+          <tr key={q.id}><td>{q.vendor}</td><td className="num">{inr(q.rate)}</td><td className="small">{q.quote_ref}</td><td className="small">{q.quote_date}</td>
+            <td><button className="ghost danger" onClick={async () => setQs(await api3.deleteQuote(q.id))}>✕</button></td></tr>
+        ))}
+        <tr>
+          <td><input placeholder="Vendor" value={f.vendor} onChange={(e) => setF({ ...f, vendor: e.target.value })} /></td>
+          <td><input placeholder="Rate ₹" type="number" value={f.rate} onChange={(e) => setF({ ...f, rate: e.target.value })} style={{ width: 100 }} /></td>
+          <td><input placeholder="Quote ref" value={f.quote_ref} onChange={(e) => setF({ ...f, quote_ref: e.target.value })} /></td>
+          <td><input type="date" value={f.quote_date} onChange={(e) => setF({ ...f, quote_date: e.target.value })} /></td>
+          <td><button onClick={async () => {
+            if (!f.vendor.trim() || f.rate === "" || Number(f.rate) < 0) { setErr("Enter a vendor and a rate"); return; }
+            try { setQs(await api3.addQuote(item.id, { ...f, rate: Number(f.rate) })); setF({ vendor: "", rate: "", quote_ref: "", quote_date: "" }); setErr(""); }
+            catch (e) { setErr((e as Error).message); }
+          }}>Add</button></td>
+        </tr>
+      </tbody></table>
+      {err && <span className="issue-err small">{err}</span>}
+    </td></tr>
+  );
+}
+
 function Row({ item, onSaved, onDeleted }: { item: Item; onSaved: (i: Item) => void; onDeleted: (msg?: string) => void }) {
   const [d, setD] = useState<Item>(item);
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const dirty = FIELDS.some((f) => d[f.k] !== item[f.k]);
   return (
+    <>
     <tr style={item.is_active ? undefined : { opacity: 0.5 }}>
       {FIELDS.map((f) => (
         <td key={f.k} className={f.num ? "num" : ""}>
@@ -43,9 +75,12 @@ function Row({ item, onSaved, onDeleted }: { item: Item; onSaved: (i: Item) => v
           }}>Delete</button>
         ) : (
           <button className="ghost" onClick={async () => onSaved(await api.patchItem(item.id, { is_active: true }))}>Restore</button>
-        )}
+        )}{" "}
+        <button className={`ghost ${open ? "on" : ""}`} onClick={() => setOpen(!open)}>Quotes</button>
       </td>
     </tr>
+    {open && <Quotes item={item} cols={FIELDS.length + 2} />}
+    </>
   );
 }
 

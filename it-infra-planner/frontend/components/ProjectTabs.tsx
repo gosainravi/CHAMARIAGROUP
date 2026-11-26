@@ -10,6 +10,8 @@ export const TABS = [
   { seg: "ports", label: "Port Matrix" },
   { seg: "boq", label: "BOQ" },
   { seg: "budget", label: "IT Budget" },
+  { seg: "vendors", label: "Vendors" },
+  { seg: "versions", label: "Versions" },
   { seg: "reports", label: "Reports" },
   { seg: "settings", label: "Settings" },
 ];

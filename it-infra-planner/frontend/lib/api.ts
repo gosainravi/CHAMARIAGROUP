@@ -156,3 +156,28 @@ export async function download(path: string) {
   const a = document.createElement("a"); a.href = url; a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
+
+// ---------------- Phase 5 ----------------
+export type RoomLabel = { text: string; x: number; y: number };
+export type Quote = { id: number; vendor: string; rate: number; quote_ref: string; quote_date: string };
+export type VendorCompare = {
+  vendors: string[]; lines_total: number; totals: Record<string, number>; covered: Record<string, number>;
+  current_total: number; best_total: number;
+  rows: { key: string; description: string; qty: number; uom: string; current_rate: number; rate_source: string; catalogue_item_id: number;
+    rates: Record<string, number>; best_vendor: string; best_rate: number }[];
+};
+export type VersionSummary = { placements: number; points: number; racks: number; switches: number; cat6_m: number; fiber_m: number;
+  boq_lines: number; material: number; total: number; by_category: Record<string, number>; errors: number };
+export type Version = { id: number; label: string; created_at: string; summary: VersionSummary };
+export const api3 = {
+  roomLabels: (lid: number) => req<{ labels: RoomLabel[]; note: string }>(`/api/layouts/${lid}/room-labels`),
+  quotes: (iid: number) => req<Quote[]>(`/api/catalogue/items/${iid}/quotes`),
+  addQuote: (iid: number, q: Partial<Quote>) => req<Quote[]>(`/api/catalogue/items/${iid}/quotes`, json("POST", q)),
+  deleteQuote: (qid: number) => req<Quote[]>(`/api/quotes/${qid}`, { method: "DELETE" }),
+  compare: (pid: number) => req<VendorCompare>(`/api/projects/${pid}/vendor-compare`),
+  apply: (pid: number, vendor: string) => req<VendorCompare & { updated_items: number }>(`/api/projects/${pid}/vendor-compare/apply`, json("POST", { vendor })),
+  versions: (pid: number) => req<{ current: VersionSummary; versions: Version[] }>(`/api/projects/${pid}/versions`),
+  saveVersion: (pid: number, label: string) => req<{ current: VersionSummary; versions: Version[] }>(`/api/projects/${pid}/versions`, json("POST", { label })),
+  deleteVersion: (vid: number) => req<{ current: VersionSummary; versions: Version[] }>(`/api/versions/${vid}`, { method: "DELETE" }),
+  restore: (vid: number) => req<{ restored: string; skipped_layouts: number; current: VersionSummary; versions: Version[] }>(`/api/versions/${vid}/restore`, { method: "POST" }),
+};

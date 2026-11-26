@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Stage, Layer, Image as KImage, Group, Rect, Text, Line, Circle, Wedge } from "react-konva";
 import type Konva from "konva";
 import useImage from "use-image";
-import { api, api2, AnnotationT, Category, Item, LayoutFull, PlacementT, Project, RouteT, RouteKind, ROUTE_KINDS, Suggestion } from "@/lib/api";
+import { api, api2, AnnotationT, Category, Item, LayoutFull, PlacementT, Project, RouteT, RouteKind, ROUTE_KINDS, Suggestion, api3, RoomLabel } from "@/lib/api";
 
 type Snap = { placements: PlacementT[]; annotations: AnnotationT[]; routes: RouteT[] };
 type Tool = "select" | "pan" | "text" | "scale" | "route";
@@ -42,6 +42,10 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   const [sugs, setSugs] = useState<(Suggestion & { key: string })[]>([]);
   const [sugBusy, setSugBusy] = useState(false);
   const [sugNote, setSugNote] = useState("");
+  const [heatmap, setHeatmap] = useState(false);
+  const [rooms, setRooms] = useState<RoomLabel[]>([]);
+  const [showRooms, setShowRooms] = useState(false);
+  const [roomNote, setRoomNote] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<Konva.Stage>(null);
   const [img] = useImage(layout ? api.imageUrl(layout.id) : "", "anonymous");
@@ -57,6 +61,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
       setPast([]); setFuture([]); setDirty(false); setSel([]);
       api.project(l.project.id).then((p) => live && setProject(p));
       api2.routes(layoutId).then((r) => live && setRoutes(r.map((x) => ({ ...x, key: newKey() }))));
+      api3.roomLabels(layoutId).then((r) => { if (live) { setRooms(r.labels); setRoomNote(r.note); } }).catch(() => {});
     }).catch((e) => setErr(e.message));
     return () => { live = false; };
   }, [layoutId]);
@@ -159,6 +164,20 @@ export default function Editor({ layoutId }: { layoutId: number }) {
     return Array.from(s);
   }, [layers, cats]);
 
+  const nearestRoom = (x: number, y: number) => {
+    if (!rooms.length || !layout) return "";
+    const lim = layout.scale_m_per_px ? 12 / layout.scale_m_per_px : Math.max(layout.width, layout.height) * 0.08;
+    let best = "", bd = lim;
+    rooms.forEach((r) => { const d = Math.hypot(r.x - x, r.y - y); if (d < bd) { bd = d; best = r.text; } });
+    return best;
+  };
+  const autofillRooms = () => {
+    let n = 0;
+    const next = placements.map((p) => { if (p.room) return p; const r = nearestRoom(p.x, p.y); if (r) n++; return r ? { ...p, room: r } : p; });
+    if (n) commit(next);
+    setRoomNote(n ? `Filled the room on ${n} item(s) from the nearest room name on the drawing — check them.` : "No empty rooms near a detected room name.");
+  };
+
   // ---------- actions ----------
   const place = (itemId: number, x: number, y: number) => {
     const info = itemMap.get(itemId);
@@ -166,7 +185,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
     if (locked(info.cat.layer)) { setErr(`Layer ${info.cat.layer} is locked`); return; }
     const p: PlacementT = {
       key: newKey(), catalogue_item_id: itemId, x: clamp(x, 0, layout.width), y: clamp(y, 0, layout.height),
-      rotation: 0, room: "", phase: "Phase 1", ports: info.cat.ports_required, remarks: "", source: "manual",
+      rotation: 0, room: nearestRoom(x, y), phase: "Phase 1", ports: info.cat.ports_required, remarks: "", source: "manual",
     };
     if (!visible(info.cat.layer)) setLayer(info.cat.layer, { visible: true });
     commit([...placements, p]); setSel([p.key]);
@@ -313,6 +332,30 @@ export default function Editor({ layoutId }: { layoutId: number }) {
     });
     return { byCat: Array.from(byCat.values()).sort((a, b) => a.cat.id - b.cat.id), byPoint: Array.from(byPoint.entries()) };
   }, [placements, itemMap]);
+  const heatCanvas = useMemo(() => {
+    if (!heatmap || !layout?.scale_m_per_px) return null;
+    const aps = placements.filter((p) => { const c = itemMap.get(p.catalogue_item_id)?.cat; return c?.point_type === "Wi-Fi" && visible(c.layer); });
+    if (!aps.length) return null;
+    const cols = 220, cell = layout.width / cols, rows = Math.ceil(layout.height / cell);
+    const cv = document.createElement("canvas"); cv.width = cols; cv.height = rows;
+    const ctx = cv.getContext("2d")!; const im = ctx.createImageData(cols, rows);
+    const sc = layout.scale_m_per_px;
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      const x = (i + 0.5) * cell, y = (j + 0.5) * cell;
+      let best = -200;
+      for (const a of aps) {
+        const d = Math.max(1, Math.hypot(a.x - x, a.y - y) * sc);
+        const outdoor = itemMap.get(a.catalogue_item_id)?.cat.symbol === "OAP";
+        const rssi = (outdoor ? -32 : -38) - 10 * (outdoor ? 2.4 : 3.0) * Math.log10(d); // 5 GHz log-distance model
+        if (rssi > best) best = rssi;
+      }
+      const k = (j * cols + i) * 4;
+      const [r, g, b, a] = best >= -60 ? [22, 163, 74, 150] : best >= -67 ? [132, 204, 22, 130] : best >= -72 ? [234, 179, 8, 120] : best >= -78 ? [234, 88, 12, 110] : [0, 0, 0, 0];
+      im.data[k] = r; im.data[k + 1] = g; im.data[k + 2] = b; im.data[k + 3] = a;
+    }
+    ctx.putImageData(im, 0, 0);
+    return cv;
+  }, [heatmap, layout?.scale_m_per_px, layout?.width, layout?.height, placements, itemMap]); // eslint-disable-line react-hooks/exhaustive-deps
   const selP = placements.filter((p) => sel.includes(p.key));
   const selA = annotations.filter((a) => sel.includes(a.key));
   const siblings = (project?.buildings || []).flatMap((b) => b.floors.flatMap((f) => f.layouts.map((l) => ({ b, f, l }))));
@@ -408,6 +451,9 @@ export default function Editor({ layoutId }: { layoutId: number }) {
             )}
             <button className={coverage ? "on" : ""} onClick={() => setCoverage(!coverage)}
               title="Show Wi-Fi (15 m) and camera (30 m, 90°) coverage — needs scale">Coverage</button>
+            <button className={heatmap ? "on" : ""} onClick={() => { if (!layout.scale_m_per_px) { setErr("Set the scale first — the heatmap needs real distances."); return; } setHeatmap(!heatmap); }}
+              title="Predicted 5 GHz Wi-Fi signal from placed APs (open-space model, walls not included)">Heatmap</button>
+            <button className={showRooms ? "on" : ""} onClick={() => setShowRooms(!showRooms)} title="Room names read from the drawing">Rooms{rooms.length ? ` (${rooms.length})` : ""}</button>
             <button onClick={() => runSuggest("auto")} disabled={sugBusy} title="Suggest equipment positions (AI if configured, else Wi-Fi grid)">
               {sugBusy ? "Thinking…" : "Suggest"}</button>
             <button onClick={() => zoomBy(1.25)} title="Zoom in">＋</button>
@@ -429,6 +475,10 @@ export default function Editor({ layoutId }: { layoutId: number }) {
             <Layer listening={true}>
               <Rect name="bg" x={0} y={0} width={layout.width} height={layout.height} fill="#fff" />
               {img && <KImage name="bg" image={img} width={layout.width} height={layout.height} />}
+              {heatCanvas && <KImage image={heatCanvas} width={layout.width} height={Math.ceil(layout.height / (layout.width / 220)) * (layout.width / 220)} listening={false} imageSmoothingEnabled />}
+              {showRooms && rooms.map((r, i) => (
+                <Text key={i} x={r.x} y={r.y} text={r.text} fontSize={S * 0.55} fill="#0f766e" fontStyle="bold" offsetX={r.text.length * S * 0.15} listening={false} />
+              ))}
             </Layer>
             <Layer>
               {visible("Routes") && routes.map((r) => {
@@ -577,6 +627,21 @@ export default function Editor({ layoutId }: { layoutId: number }) {
           )}
 
           <hr style={{ border: 0, borderTop: "1px solid var(--line)", margin: "14px 0" }} />
+          {heatmap && (
+            <div className="small" style={{ marginBottom: 10 }}>
+              <b>Wi-Fi heatmap (5 GHz, predicted)</b>
+              {[["#16a34a", "≥ −60 dBm excellent"], ["#84cc16", "−67 good (voice)"], ["#eab308", "−72 fair (data)"], ["#ea580c", "−78 weak"]].map(([c, t]) => (
+                <div key={t}><span style={{ display: "inline-block", width: 12, height: 10, background: c, marginRight: 6 }} />{t}</div>
+              ))}
+              <div className="muted">Open-space model; walls reduce signal further — use it to spot gaps, then confirm with a site survey.</div>
+            </div>
+          )}
+          {(showRooms || roomNote) && (
+            <div className="small" style={{ marginBottom: 10 }}>
+              <b>Room names</b> <span className="muted">{rooms.length ? `${rooms.length} read from the drawing.` : ""} {roomNote}</span>
+              {rooms.length > 0 && <div><button style={{ marginTop: 4 }} onClick={autofillRooms}>Fill empty rooms from drawing</button></div>}
+            </div>
+          )}
           <h3>Layers</h3>
           {layerNames.map((l) => (
             <div className="layer-row" key={l}>

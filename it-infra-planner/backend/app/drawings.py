@@ -1,5 +1,6 @@
 """Turn an uploaded drawing (PDF/JPG/PNG/DXF/DWG) into one PNG per page/sheet for the editor."""
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -115,3 +116,30 @@ def dwg_to_dxf(src: Path, out_dir: Path) -> Path:
         dst = out_dir / (src.stem + ".dxf")
         shutil.copy(dxfs[0], dst)
         return dst
+
+
+ROOM_WORDS = re.compile(r"[A-Za-z]{3,}")
+
+
+def pdf_room_labels(pdf_path: str, page_index: int, img_w: int) -> list[dict]:
+    """Room / area names from a PDF's text layer, in rendered-image pixels.
+
+    Keeps short text blocks that look like names (letters, not dimensions or notes)."""
+    import pymupdf
+    doc = pymupdf.open(pdf_path)
+    if page_index >= len(doc):
+        return []
+    page = doc[page_index]
+    z = img_w / page.rect.width
+    rot = page.rotation_matrix
+    out = []
+    for x0, y0, x1, y1, text, *_ in page.get_text("blocks"):
+        t = " ".join(text.split())
+        if not (3 <= len(t) <= 40) or not ROOM_WORDS.search(t):
+            continue
+        letters = sum(c.isalpha() for c in t)
+        if letters < len(t) * 0.6 or t.lower().startswith(("for ", "note", "refer", "drg", "detail")):
+            continue
+        c = pymupdf.Point((x0 + x1) / 2, (y0 + y1) / 2) * rot
+        out.append({"text": t, "x": round(c.x * z, 1), "y": round(c.y * z, 1)})
+    return out

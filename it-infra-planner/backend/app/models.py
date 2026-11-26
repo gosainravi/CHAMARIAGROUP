@@ -186,3 +186,24 @@ class BoqLine(Base):
     key: Mapped[str] = mapped_column(String(120))
     is_manual: Mapped[bool] = mapped_column(Boolean, default=False)
     data: Mapped[dict] = mapped_column(JSON)  # any of: section, description, specs, brand, model, uom, qty, phase1, rate, gst_pct, install_rate, remarks, hidden
+
+
+# ---------------- Phase 5 ----------------
+class VendorQuote(Base):
+    __tablename__ = "vendor_quote"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    catalogue_item_id: Mapped[int] = mapped_column(ForeignKey("catalogue_item.id", ondelete="CASCADE"))
+    vendor: Mapped[str] = mapped_column(String(120))
+    rate: Mapped[float] = mapped_column(Float)
+    quote_ref: Mapped[str] = mapped_column(String(120), default="")
+    quote_date: Mapped[str] = mapped_column(String(20), default="")
+
+
+class Snapshot(Base):
+    __tablename__ = "snapshot"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"))
+    label: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    summary: Mapped[dict] = mapped_column(JSON)
+    data: Mapped[dict] = mapped_column(JSON)

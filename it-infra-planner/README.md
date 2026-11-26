@@ -42,7 +42,10 @@ boq-pujaso layout (Full / Phase 1 / Phase 2 with live formulas); edit any cell, 
 import an existing Excel BOQ and compare; budget by category / building / floor / phase with GST once and
 contingency; deliverables: layout PDFs (final + routing), schedule, port matrix and BOQ Excel, printable report.
 
-**Phase 5 (partial):** coverage overlay and vendor-rate column are in; Wi-Fi heatmaps, advanced drawing recognition
-and project versioning are not.
+**Phase 5 – Advanced:** predicted 5 GHz Wi-Fi heatmap (open-space log-distance model, walls not modelled);
+Wi-Fi/CCTV coverage overlay; room names read from PDF text layers (shown on the drawing, auto-filled on new
+equipment, "fill empty rooms" button — scanned PDFs, images and DXF have no readable text); vendor quotes per model
+with a per-project comparison and "use cheapest / use vendor" rates; project versions with compare and restore
+(restore first saves the current state).
 
 Calculation rules (spare %, wastage, VLANs, CCTV storage, contingency …) are per project under **Settings**.

@@ -16,6 +16,7 @@ from .models import (Project, Building, Floor, Layout, CatalogueCategory, Catalo
 from .drawings import render, DrawingError, ALLOWED
 from .seed import seed_catalogue, seed_extras
 from .api2 import router as api2_router
+from .api3 import router as api3_router
 from sqlalchemy import text
 
 STORAGE = Path(__file__).resolve().parent.parent / "storage"
@@ -27,6 +28,7 @@ app = FastAPI(title="IT Infra Planner API")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                    allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
 app.include_router(api2_router)
+app.include_router(api3_router)
 
 MIGRATIONS = [
     "ALTER TABLE project ADD COLUMN IF NOT EXISTS settings JSON DEFAULT '{}'",
