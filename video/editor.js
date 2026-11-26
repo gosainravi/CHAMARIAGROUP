@@ -1934,6 +1934,59 @@ async function deleteProject(id) {
   if (curPid === id) { curPid = null; savedMedia = new Set(); lastSavedSig = ""; setSaveStatus("Not saved yet"); }
 }
 
+
+/* ---------- Backup files (.daftar) ----------
+   Layout: "DAFTAR1\n" · 4-byte little-endian header length · header JSON · file bytes back to back.
+   The header lists each media file / LUT with its offset and size, so opening a backup reads
+   only slices of the file and big projects never have to fit in memory. */
+const BK_MAGIC = "DAFTAR1\n";
+async function exportBackup(pid) {
+  if (pid === curPid) await saveProject(true);
+  const rec = await dbGet("projects", pid); if (!rec) return toast("That project couldn't be found");
+  const parts = [], entries = []; let off = 0;
+  for (const e of rec.data.media) {
+    const b = await dbGet("blobs", pid + ":" + e.id); if (!b) continue;
+    entries.push({id:e.id, off, size:b.size, type:b.type || ""}); parts.push(b); off += b.size;
+  }
+  const luts2 = (rec.data.luts || []).map(L => { const b = new Blob([L.rgb]); const x = {id:L.id, name:L.name, n:L.n, off, size:b.size}; parts.push(b); off += b.size; return x; });
+  const head = JSON.stringify({app:"Daftarbox Video Studio", v:1, saved:new Date().toISOString(), name:rec.name, thumb:rec.thumb, data:{...rec.data, luts:[]}, files:entries, luts:luts2});
+  const hb = new TextEncoder().encode(head), len = new Uint8Array(4); new DataView(len.buffer).setUint32(0, hb.length, true);
+  const blob = new Blob([BK_MAGIC, len, hb, ...parts], {type:"application/octet-stream"});
+  download(blob, (rec.name || "project").replace(/[\\/:*?"<>|]+/g, "-") + ".daftar");
+  toast(`Backup of "${rec.name}" downloaded (${fmtSize(blob.size)}). Open it with Projects → Open backup, on any computer.`);
+}
+async function importBackup(file) {
+  try {
+    const magic = await file.slice(0, 8).text();
+    if (magic !== BK_MAGIC) throw new Error("This isn't a Daftarbox project backup (.daftar) file.");
+    const hl = new DataView(await file.slice(8, 12).arrayBuffer()).getUint32(0, true);
+    if (!hl || hl > 200e6) throw new Error("The backup file looks damaged.");
+    const head = JSON.parse(await file.slice(12, 12 + hl).text()), base = 12 + hl;
+    if (!head.data || !Array.isArray(head.files)) throw new Error("The backup file looks damaged.");
+    const existing = (await dbAll("projects")).map(p => p.name);
+    let name = head.name || "Restored project"; if (existing.includes(name)) name += " (restored)";
+    const pid = "p" + Date.now().toString(36) + uid();
+    setSaveStatus("Restoring…");
+    let size = 0;
+    for (const f of head.files) {
+      if (base + f.off + f.size > file.size) throw new Error("The backup file is incomplete (it may not have finished downloading).");
+      const b = file.slice(base + f.off, base + f.off + f.size, f.type); size += f.size;
+      /* store a real copy, not a slice of the picked file, so it survives after the file dialog */
+      await dbPut("blobs", new Blob([await b.arrayBuffer()], {type:f.type}), pid + ":" + f.id);
+    }
+    const luts2 = [];
+    for (const L of head.luts || []) luts2.push({id:L.id, name:L.name, n:L.n, rgb:await file.slice(base + L.off, base + L.off + L.size).arrayBuffer()});
+    await dbPut("projects", {id:pid, name, updated:Date.now(), size, thumb:head.thumb || "", data:{...head.data, luts:luts2}});
+    await openProject(pid);
+    toast(`Restored "${name}" from the backup`);
+  } catch (e) {
+    console.error(e); setSaveStatus("Not saved", "err");
+    toast(/quota/i.test(String(e && (e.name + e.message))) ? "Not enough browser storage to restore this backup. Delete old projects first." : (e.message || "Couldn't open that backup file"));
+  }
+}
+const bkIn = document.createElement("input"); bkIn.type = "file"; bkIn.accept = ".daftar"; bkIn.hidden = true; document.body.appendChild(bkIn);
+bkIn.addEventListener("change", () => { const f = bkIn.files[0]; bkIn.value = ""; if (f) importBackup(f); });
+
 /* ---------- Projects screen ---------- */
 const projDlg = document.createElement("dialog"); projDlg.className = "projdlg"; document.body.appendChild(projDlg);
 const fmtSize = b => b < 1048576 ? Math.max(1, Math.round(b / 1024)) + " KB" : b < 1073741824 ? (b / 1048576).toFixed(1) + " MB" : (b / 1073741824).toFixed(2) + " GB";
@@ -1944,13 +1997,14 @@ async function showProjects(first) {
   let est = ""; try { const q = await navigator.storage.estimate(); est = `Using ${fmtSize(q.usage || 0)} of about ${fmtSize(q.quota || 0)} available in this browser.`; } catch (e) { /* estimate not supported */ }
   const when = t => { const d = new Date(t), now = new Date(); return d.toDateString() === now.toDateString() ? "Today " + d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : d.toLocaleDateString([], {day:"numeric", month:"short", year:"numeric"}); };
   projDlg.innerHTML = `<div class="pj-h"><h3>${first ? "Welcome back" : "Your projects"}</h3><button class="ib" data-pj="close" aria-label="Close">✕</button></div>
-    <p class="empty-note" style="margin:0 0 12px">Projects are saved automatically in this browser on this computer, including your video, audio and photo files. ${est}</p>
+    <p class="empty-note" style="margin:0 0 8px">Projects are saved automatically in this browser on this computer, including your video, audio and photo files. ${est}</p>
+    <div class="pj-bk"><button class="btn ghost small" data-pj="openbk">Open backup file (.daftar)…</button><span>To keep a project safe or move it to another computer, use <b>Backup</b> on it and keep the downloaded file.</span></div>
     <div class="pj-grid">
       <button class="pj-new" data-pj="new"><span>+</span>New project</button>
       ${list.map(p => `<div class="pj${p.id === curPid ? " cur" : ""}" data-pid="${p.id}">
         <button class="pj-open" data-pj="open" title="Open ${esc(p.name)}">${p.thumb ? `<img src="${p.thumb}" alt="">` : `<span class="pj-ph">▶</span>`}</button>
         <div class="pj-i"><b title="${esc(p.name)}">${esc(p.name)}</b><span>${when(p.updated)} · ${fmtSize(p.size || 0)}${p.id === curPid ? " · open now" : ""}</span></div>
-        <div class="pj-a"><button class="btn ghost small" data-pj="open">Open</button><button class="btn ghost small" data-pj="rename">Rename</button><button class="btn ghost small" data-pj="del">Delete</button></div></div>`).join("")}
+        <div class="pj-a"><button class="btn ghost small" data-pj="open">Open</button><button class="btn ghost small" data-pj="backup" title="Download this project as one file you can keep or open on another computer">Backup</button><button class="btn ghost small" data-pj="rename">Rename</button><button class="btn ghost small" data-pj="del">Delete</button></div></div>`).join("")}
     </div>
     ${list.length ? "" : `<p class="empty-note">No saved projects yet. Import a file and your work starts saving by itself.</p>`}`;
   if (!projDlg.open) projDlg.showModal();
@@ -1959,6 +2013,8 @@ projDlg.addEventListener("click", async e => {
   const b = e.target.closest("[data-pj]"); if (!b) return;
   const a = b.dataset.pj, card = b.closest("[data-pid]"), id = card && card.dataset.pid;
   if (a === "close") projDlg.close();
+  if (a === "openbk") bkIn.click();
+  if (a === "backup" && id) { b.disabled = true; b.textContent = "Preparing…"; try { await exportBackup(id); } finally { b.disabled = false; b.textContent = "Backup"; } }
   if (a === "new") newProject();
   if (a === "open" && id) { if (id === curPid) { projDlg.close(); return; } openProject(id); }
   if (a === "rename" && id) { const rec = await dbGet("projects", id); const nm = prompt("Project name", rec.name); if (nm && nm.trim()) { rec.name = nm.trim(); await dbPut("projects", rec); if (id === curPid) { $(".pname").value = rec.name; lastSavedSig = projSig(); } showProjects(); } }
