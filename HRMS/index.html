@@ -489,6 +489,25 @@
     white-space:nowrap;
   }
   .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+  .cbx-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .cbx-tabs button{padding:7px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink-soft);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+  .cbx-tabs button.active{background:#E8412C;border-color:#E8412C;color:#fff;}
+  .cbx-split{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start;}
+  @media (max-width:1000px){.cbx-split{grid-template-columns:minmax(0,1fr);}}
+  .cbx-post{margin-bottom:14px;} .cbx-post + .cbx-post{margin-top:0;}
+  .cbx-events{display:flex;flex-direction:column;gap:10px;}
+  .cbx-event{display:flex;align-items:center;gap:10px;}
+  .cbx-av{width:36px;height:36px;border-radius:50%;background:rgba(232,65,44,.12);color:#E8412C;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none;}
+  .cbx-kanban{display:grid;grid-template-columns:repeat(6,minmax(170px,1fr));gap:12px;overflow-x:auto;padding-bottom:8px;}
+  .cbx-col{background:var(--surface-2);border-radius:var(--r);padding:10px;min-height:120px;}
+  .cbx-col-h{font-weight:700;text-transform:capitalize;font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;}
+  .cbx-kcard{padding:10px !important;margin-bottom:8px;cursor:pointer;}
+  .btn-sm{padding:5px 10px !important;font-size:12px !important;}
+  .pill-open,.pill-applied,.pill-self_pending,.pill-manager_pending,.pill-not_started,.pill-on_hold{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line);}
+  .pill-in_progress,.pill-screening,.pill-interview,.pill-offer,.pill-draft,.pill-in_stock,.pill-repair{background:var(--info-bg);color:var(--info);border-color:var(--info-line);}
+  .pill-paid,.pill-completed,.pill-closed,.pill-hired,.pill-assigned,.pill-finalised{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line);}
+  .pill-retired{background:var(--bad-bg);color:var(--bad);border-color:var(--bad-line);}
+  .meter.bad span{background:var(--bad) !important;}
   .pill-pending{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line);}
   .pill-approved,.pill-resolved,.pill-active,.pill-done{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line);}
   .pill-rejected,.pill-inactive{background:var(--bad-bg);color:var(--bad);border-color:var(--bad-line);}
@@ -969,6 +988,26 @@ const ICONS = {
   companies:'<path d="M4 20.5V6.2a2 2 0 0 1 1.4-1.9l6-1.8A2 2 0 0 1 14 4.4v16.1"/><path d="M14 9.4h4.6a2 2 0 0 1 2 2v9.1M3 20.5h18"/><path d="M7.6 8.4h2.8M7.6 12h2.8M7.6 15.6h2.8"/>',
   "user-mode":'<circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c0-3.4 2.9-5.3 6.5-5.3s6.5 1.9 6.5 5.3"/>',
   "admin-mode":'<path d="M12 3.2l7 3v5.4c0 4.2-2.9 7.6-7 9.2-4.1-1.6-7-5-7-9.2V6.2z"/>',
+  "pulse":'<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>',
+  "culture-charter":'<circle cx="12" cy="12" r="8.6"/><path d="M15.6 8.4l-2 5.2-5.2 2 2-5.2z"/>',
+  "my-assets":'<path d="M20.5 8.6v6.8a2 2 0 0 1-1 1.7l-6.5 3.6a2 2 0 0 1-2 0L4.5 17.1a2 2 0 0 1-1-1.7V8.6a2 2 0 0 1 1-1.7L11 3.3a2 2 0 0 1 2 0l6.5 3.6a2 2 0 0 1 1 1.7z"/>',
+  "helpdesk":'<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.6"/><path d="M5.9 5.9l3.6 3.6M14.5 14.5l3.6 3.6M18.1 5.9l-3.6 3.6M9.5 14.5l-3.6 3.6"/>',
+  "lms":'<path d="M2.5 9.5 12 5l9.5 4.5L12 14z"/><path d="M6.5 11.5v4.2c0 1.4 2.5 2.8 5.5 2.8s5.5-1.4 5.5-2.8v-4.2"/>',
+  "recruitment":'<circle cx="10" cy="8" r="3.5"/><path d="M3.6 20c0-3.5 2.9-5.5 6.4-5.5"/><circle cx="17" cy="16" r="3"/><path d="M19.2 18.2l2 2"/>',
+  "goals":'<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2"/>',
+  "performance":'<path d="M12 3.4l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.7l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
+  "expenses":'<rect x="3" y="7" width="18" height="12.5" rx="2.4"/><path d="M8.5 7V5.4a1.6 1.6 0 0 1 1.6-1.6h3.8a1.6 1.6 0 0 1 1.6 1.6V7M3 12.4h18"/>',
+  "loans":'<path d="M4 20.5h16M5.5 17V10.5M9.8 17V10.5M14.2 17V10.5M18.5 17V10.5M3.5 8.5 12 3.5l8.5 5z"/>',
+  "payroll":'<rect x="3" y="6" width="18" height="13" rx="2.6"/><circle cx="12" cy="12.5" r="2.6"/><path d="M6.5 12.5h.01M17.5 12.5h.01"/>',
+  "hr-budget":'<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+  "rewards":'<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M10 17h4v3.5h-4z"/>',
+  "assets-admin":'<path d="M20.5 8.6v6.8a2 2 0 0 1-1 1.7l-6.5 3.6a2 2 0 0 1-2 0L4.5 17.1a2 2 0 0 1-1-1.7V8.6a2 2 0 0 1 1-1.7L11 3.3a2 2 0 0 1 2 0l6.5 3.6a2 2 0 0 1 1 1.7z"/>',
+  "helpdesk-admin":'<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.6"/><path d="M5.9 5.9l3.6 3.6M14.5 14.5l3.6 3.6M18.1 5.9l-3.6 3.6M9.5 14.5l-3.6 3.6"/>',
+  "lms-admin":'<path d="M2.5 9.5 12 5l9.5 4.5L12 14z"/><path d="M6.5 11.5v4.2c0 1.4 2.5 2.8 5.5 2.8s5.5-1.4 5.5-2.8v-4.2"/>',
+  "performance-admin":'<path d="M12 3.4l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.7l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
+  "expenses-admin":'<rect x="3" y="7" width="18" height="12.5" rx="2.4"/><path d="M8.5 7V5.4a1.6 1.6 0 0 1 1.6-1.6h3.8a1.6 1.6 0 0 1 1.6 1.6V7M3 12.4h18"/>',
+  "loans-admin":'<path d="M4 20.5h16M5.5 17V10.5M9.8 17V10.5M14.2 17V10.5M18.5 17V10.5M3.5 8.5 12 3.5l8.5 5z"/>',
+  "my-payroll":'<rect x="3" y="6" width="18" height="13" rx="2.6"/><circle cx="12" cy="12.5" r="2.6"/><path d="M6.5 12.5h.01M17.5 12.5h.01"/>',
   _default:'<circle cx="12" cy="12" r="8.4"/>',
 };
 function icon(id, cls){
@@ -998,6 +1037,17 @@ function renderNav(){
     { id:"my-salary", label:"My Salary", show:true },
     { id:"my-files", label:"My Documents", show:true },
     { id:"regularisation", label:"Regularisation", show:true },
+    { id:"pulse", label:"Pulse Social", show:true },
+    { id:"culture-charter", label:"Culture Charter", show:true },
+    { id:"goals", label:"My Goals", show:true },
+    { id:"performance", label:"Performance", show:true },
+    { id:"lms", label:"Learning (LMS)", show:true },
+    { id:"helpdesk", label:"Helpdesk", show:true },
+    { id:"my-assets", label:"My Assets", show:true },
+    { id:"expenses", label:"Travel & Expenses", show:true },
+    { id:"loans", label:"Loans & Advances", show:true },
+    { id:"my-payroll", label:"My Payslips", show:true },
+    { id:"rewards", label:"Rewards", show:true },
     { id:"requests", label:"Other Requests", show:true },
   ];
   const approverItems = [
@@ -1015,6 +1065,15 @@ function renderNav(){
     { id:"attendance-records", label:"Attendance Records", show: isHrOrAbove() },
     { id:"attendance-import", label:"Attendance Import", show: isHrOrAbove() },
     { id:"salary-import", label:"Salary Import", show: isHrOrAbove() },
+    { id:"payroll", label:"Payroll", show: isHrOrAbove() },
+    { id:"loans-admin", label:"Loans", show: isHrOrAbove() },
+    { id:"expenses-admin", label:"Expense Claims", show: isHrOrAbove() },
+    { id:"recruitment", label:"Recruitment", show: isHrOrAbove() },
+    { id:"performance-admin", label:"Performance Cycles", show: isHrOrAbove() },
+    { id:"lms-admin", label:"Learning Admin", show: isHrOrAbove() },
+    { id:"assets-admin", label:"Asset Register", show: isHrOrAbove() },
+    { id:"helpdesk-admin", label:"Helpdesk Tickets", show: isHrOrAbove() },
+    { id:"hr-budget", label:"HR Budgeting", show: isHrOrAbove() },
     { id:"companies", label:"Companies", show: isSuperAdmin() },
   ];
   const nav = document.getElementById("nav");
@@ -1087,6 +1146,26 @@ const VIEW_TITLES = {
   "hr-policy-booklet":"HR Policy Booklet", "chairman-message":"Chairman's Message", "resignation":"Resignation",
   "resignations-admin":"Resignations", "attendance-records":"Attendance Records",
   "salary-import":"Salary Import",
+  "pulse":"Pulse Social",
+  "culture-charter":"Culture Charter",
+  "my-assets":"My Assets",
+  "assets-admin":"Asset Register",
+  "helpdesk":"Helpdesk",
+  "helpdesk-admin":"Helpdesk Tickets",
+  "lms":"Learning",
+  "lms-admin":"Learning Admin",
+  "recruitment":"Recruitment",
+  "goals":"My Goals",
+  "performance":"Performance",
+  "performance-admin":"Performance Cycles",
+  "expenses":"Travel & Expenses",
+  "expenses-admin":"Expense Claims",
+  "loans":"Loans & Advances",
+  "loans-admin":"Loans",
+  "payroll":"Payroll",
+  "my-payroll":"My Payslips",
+  "hr-budget":"HR Budgeting",
+  "rewards":"Rewards",
 };
 
 const VIEW_CRUMBS = {
@@ -1118,6 +1197,26 @@ const VIEW_CRUMBS = {
   "resignations-admin":"All resignations across the group",
   "attendance-records":"Group-wide attendance register",
   "salary-import":"Bulk-load CTC structures",
+  "pulse":"Feed, kudos, surveys and celebrations",
+  "culture-charter":"Vision, mission and values",
+  "my-assets":"Company assets issued to you",
+  "assets-admin":"Track every company asset",
+  "helpdesk":"Raise and track HR / IT tickets",
+  "helpdesk-admin":"All employee tickets",
+  "lms":"Courses and training",
+  "lms-admin":"Course library and completion",
+  "recruitment":"Job openings and candidate pipeline",
+  "goals":"KRAs, targets and progress",
+  "performance":"Appraisals and reviews",
+  "performance-admin":"Launch and track review cycles",
+  "expenses":"Claims and reimbursements",
+  "expenses-admin":"Approve and reimburse claims",
+  "loans":"Apply and track repayments",
+  "loans-admin":"Approve loans and record repayments",
+  "payroll":"Monthly payroll run and payslips",
+  "my-payroll":"Monthly payslips",
+  "hr-budget":"Headcount and cost vs budget",
+  "rewards":"Points, awards and leaderboard",
 };
 function firstName(){
   const n = (S.me && (S.me.name || S.me.email) || "").trim();
@@ -1900,7 +1999,7 @@ window.openEditSiteContentModal = async function(id, title){
 window.saveSiteContent = async function(id){
   const text = document.getElementById("sc-text").value;
   await setDoc(doc(db,"siteContent",id), { text, updatedAt: serverTimestamp(), updatedBy: S.me.id });
-  toast("Saved","success"); closeModal(); navigateTo(id==="chairmanMessage" ? "chairman-message" : "hr-policy-booklet");
+  toast("Saved","success"); closeModal(); navigateTo(id==="chairmanMessage" ? "chairman-message" : id==="cultureCharter" ? "culture-charter" : "hr-policy-booklet");
 };
 
 // ==================== OTHER REQUESTS ====================
@@ -3281,7 +3380,690 @@ window.submitMyProfile = async function(){
   navigateTo("my-profile");
 };
 
+// ==================== CBX-PARITY MODULES ====================
+// Pulse Social, Culture Charter, Assets, Helpdesk, Learning, Recruitment,
+// Goals, Performance, Travel & Expenses, Loans, Payroll, HR Budgeting, Rewards.
+// All data is top-level collections with an employeeId field (see firestore.rules).
+
+const tsSec = r => (r && (r.createdAt && r.createdAt.seconds)) || 0;
+const byNewest = (a,b) => tsSec(b) - tsSec(a);
+const isAdminView = () => isHrOrAbove() && S.navMode === "admin";
+const myReports = () => S.employeesCache.filter(e => e.reportsTo === S.me.id).map(e => e.id);
+const activeEmployees = () => S.employeesCache.filter(e => e.status !== "inactive" && !e.dateOfExit);
+const empOptions = (sel) => '<option value="">— Select —</option>' + activeEmployees()
+  .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+  .map(e => `<option value="${e.id}"${e.id===sel?" selected":""}>${escapeHtml(e.name||e.email)}</option>`).join("");
+const pill = s => `<span class="pill pill-${escapeHtml(s||"pending")}">${escapeHtml(String(s||"pending").replace(/_/g," "))}</span>`;
+const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ""; };
+const num = id => Number(val(id)) || 0;
+const monthKey = (d) => { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); };
+const deptLabel = id => { const d = S.departmentsCache.find(x=>x.id===id); return d ? d.name : (id||"—"); };
+
+async function listMine(col, field){
+  const snap = await getDocs(query(collection(db,col), where(field||"employeeId","==",S.me.id)));
+  return snap.docs.map(d=>({id:d.id, ...d.data()})).sort(byNewest);
+}
+async function listAll(col){
+  const snap = await getDocs(collection(db,col));
+  return snap.docs.map(d=>({id:d.id, ...d.data()})).sort(byNewest);
+}
+async function listForApprover(col){
+  const snap = await getDocs(query(collection(db,col), where("approverId","==",S.me.id)));
+  return snap.docs.map(d=>({id:d.id, ...d.data()})).sort(byNewest);
+}
+function tableHtml(head, rows, empty){
+  return `<div class="table-wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${rows.length ? rows.join("") : `<tr><td colspan="${head.length}" class="empty-state">${empty||"Nothing here yet."}</td></tr>`}</tbody></table></div>`;
+}
+function panel(title, body, extra){
+  return `<div class="panel"><div class="panel-head"><h3>${title}</h3>${extra||""}</div>${body}</div>`;
+}
+function tabsBar(id, tabs, active){
+  return `<div class="cbx-tabs">${tabs.map(t=>`<button class="${t.id===active?"active":""}" onclick="window.__setTab('${id}','${t.id}')">${t.label}</button>`).join("")}</div>`;
+}
+const TAB_STATE = {};
+window.__setTab = (page, tab) => { TAB_STATE[page] = tab; navigateTo(S.view); };
+
+// Generic form modal. fields: [{k,label,type:'text'|'number'|'date'|'textarea'|'select'|'emp', options:[[v,l]], req}]
+function formModal(title, fields, data, onSave, opts){
+  data = data || {};
+  const html = fields.map(f => {
+    const v = data[f.k] != null ? data[f.k] : (f.def != null ? f.def : "");
+    let input;
+    if(f.type==="textarea") input = `<textarea id="ff-${f.k}" rows="${f.rows||3}">${escapeHtml(v)}</textarea>`;
+    else if(f.type==="select") input = `<select id="ff-${f.k}">${f.options.map(o=>{const [ov,ol]=Array.isArray(o)?o:[o,o];return `<option value="${escapeHtml(ov)}"${String(ov)===String(v)?" selected":""}>${escapeHtml(ol)}</option>`;}).join("")}</select>`;
+    else if(f.type==="emp") input = `<select id="ff-${f.k}">${empOptions(v)}</select>`;
+    else input = `<input id="ff-${f.k}" type="${f.type||"text"}" value="${escapeHtml(v)}"${f.min!=null?` min="${f.min}"`:""}${f.max!=null?` max="${f.max}"`:""}>`;
+    return `<div class="field"><label>${f.label}${f.req?" *":""}</label>${input}${f.hint?`<div class="muted" style="font-size:12px;margin-top:4px;">${f.hint}</div>`:""}</div>`;
+  }).join("");
+  window.__formSave = async () => {
+    const out = {};
+    for(const f of fields){
+      let v = val("ff-"+f.k);
+      if(f.req && !v){ toast(`${f.label} is required`, "error"); return; }
+      if(f.type==="number") v = Number(v) || 0;
+      out[f.k] = v;
+    }
+    try{ await onSave(out); closeModal(); }
+    catch(e){ console.error(e); toast(e.message && /permission/i.test(e.message) ? "Permission denied — Firestore rules need updating" : (e.message||"Save failed"), "error"); }
+  };
+  openModal(title, `${html}<div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="window.__formSave()">${(opts&&opts.saveLabel)||"Save"}</button></div>`, opts);
+}
+async function guarded(fn, okMsg){
+  try{ await fn(); if(okMsg) toast(okMsg,"success"); navigateTo(S.view); }
+  catch(e){ console.error(e); toast(/permission/i.test(e.message||"") ? "Permission denied — Firestore rules need updating" : (e.message||"Failed"), "error"); }
+}
+window.__del = (col, id) => { if(confirm("Delete this record?")) guarded(()=>deleteDoc(doc(db,col,id)), "Deleted"); };
+window.__setField = (col, id, field, value) => guarded(()=>updateDoc(doc(db,col,id), { [field]: value, updatedAt: serverTimestamp(), updatedBy: S.me.id }), "Updated");
+
+// -------------------- PULSE SOCIAL --------------------
+function upcomingEvents(days){
+  const now = new Date(); now.setHours(0,0,0,0);
+  const out = [];
+  activeEmployees().forEach(e => {
+    [["dob","Birthday"],["doj","Work Anniversary"]].forEach(([k,label]) => {
+      if(!e[k]) return;
+      const d = new Date(e[k]); if(isNaN(d)) return;
+      let next = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+      if(next < now) next.setFullYear(now.getFullYear()+1);
+      const diff = Math.round((next-now)/86400000);
+      if(diff > days) return;
+      const years = next.getFullYear() - d.getFullYear();
+      if(k==="doj" && years < 1) return;
+      out.push({ e, label: k==="doj" ? `${years} year${years>1?"s":""} work anniversary` : "Birthday", date: next, diff, kind:k });
+    });
+  });
+  return out.sort((a,b)=>a.diff-b.diff);
+}
+async function renderPulse(){
+  const tab = TAB_STATE.pulse || "feed";
+  const events = upcomingEvents(30);
+  const eventsHtml = panel("Upcoming events", `<div class="panel-body cbx-events">${events.length ? events.slice(0,12).map(ev=>`
+    <div class="cbx-event"><div class="cbx-av">${escapeHtml((ev.e.name||"?").split(/\s+/).map(p=>p[0]).slice(0,2).join("").toUpperCase())}</div>
+      <div style="flex:1;min-width:0;"><div style="font-weight:600;">${escapeHtml(ev.e.name)}</div><div class="muted" style="font-size:12px;">${ev.kind==="dob"?"🎂":"🎉"} ${ev.label}</div></div>
+      <span class="pill pill-role">${ev.diff===0?"Today":ev.date.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}</span></div>`).join("") : '<div class="muted">No birthdays or anniversaries in the next 30 days.</div>'}</div>`);
+
+  let main = "";
+  if(tab==="feed"){
+    document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="newPost()">Broadcast</button>';
+    const posts = (await listAll("posts")).slice(0,50);
+    main = posts.length ? posts.map(p => {
+      const liked = (p.likes||[]).includes(S.me.id);
+      return `<div class="panel cbx-post"><div class="panel-body">
+        <div style="display:flex;justify-content:space-between;gap:8px;"><div><b>${escapeHtml(employeeName(p.employeeId))}</b> <span class="muted" style="font-size:12px;">· ${fmtDate(p.createdAt)}</span></div>
+        ${(p.employeeId===S.me.id||isHrOrAbove())?`<button class="btn btn-ghost btn-sm" onclick="__del('posts','${p.id}')">Delete</button>`:""}</div>
+        <div style="white-space:pre-wrap;margin:10px 0;line-height:1.6;">${escapeHtml(p.text)}</div>
+        <button class="btn btn-ghost btn-sm" onclick="togglePostLike('${p.id}')">${liked?"❤️":"🤍"} ${(p.likes||[]).length}</button>
+      </div></div>`;
+    }).join("") : '<div class="card muted">No posts yet. Be the first to share!</div>';
+  } else if(tab==="kudos"){
+    document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="giveKudos()">Give kudos</button>';
+    const kudos = (await listAll("kudos")).slice(0,60);
+    main = kudos.length ? `<div class="grid grid-2">${kudos.map(k=>`<div class="card"><div style="font-size:13px;" class="muted">${escapeHtml(employeeName(k.employeeId))} → </div>
+      <div style="font-weight:700;font-size:16px;margin:2px 0 6px;">⭐ ${escapeHtml(employeeName(k.toId))}</div>
+      <span class="pill pill-role">${escapeHtml(k.badge||"Kudos")}</span> <span class="muted" style="font-size:12px;">+${k.points||0} pts · ${fmtDate(k.createdAt)}</span>
+      <div style="margin-top:8px;white-space:pre-wrap;">${escapeHtml(k.message)}</div></div>`).join("")}</div>` : '<div class="card muted">No kudos yet — recognise a colleague!</div>';
+  } else {
+    document.getElementById("page-actions").innerHTML = isHrOrAbove() ? '<button class="btn btn-primary" onclick="newSurvey()">New survey</button>' : "";
+    const surveys = await listAll("surveys");
+    main = surveys.length ? surveys.map(s => {
+      const resp = s.responses || {}; const total = Object.keys(resp).length; const mine = resp[S.me.id];
+      const opts = (s.options||[]);
+      return `<div class="panel cbx-post"><div class="panel-body">
+        <div style="display:flex;justify-content:space-between;gap:8px;"><b>${escapeHtml(s.question)}</b>${pill(s.status||"active")}</div>
+        <div class="muted" style="font-size:12px;margin:4px 0 10px;">${total} response${total===1?"":"s"}${s.anonymous?" · anonymous":""}</div>
+        ${opts.map((o,i)=>{const c=Object.values(resp).filter(v=>v===i).length; const pct=total?Math.round(c/total*100):0;
+          return `<div style="margin:6px 0;">${(mine==null && s.status!=="closed")?`<button class="btn btn-ghost btn-sm" style="width:100%;text-align:left;" onclick="voteSurvey('${s.id}',${i})">${escapeHtml(o)}</button>`
+            :`<div class="meter-head"><span class="mt-name">${escapeHtml(o)}${mine===i?" ✓":""}</span><span class="mt-val">${pct}%</span></div><div class="meter"><span style="width:${pct}%"></span></div>`}</div>`;}).join("")}
+        ${isHrOrAbove()?`<div style="margin-top:10px;display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="__setField('surveys','${s.id}','status','${s.status==="closed"?"active":"closed"}')">${s.status==="closed"?"Reopen":"Close"}</button><button class="btn btn-ghost btn-sm" onclick="__del('surveys','${s.id}')">Delete</button></div>`:""}
+      </div></div>`;
+    }).join("") : '<div class="card muted">No surveys yet.</div>';
+  }
+  return `${tabsBar("pulse",[{id:"feed",label:"Feed"},{id:"kudos",label:"Kudos"},{id:"surveys",label:"Surveys"}],tab)}
+    <div class="cbx-split"><div class="cbx-main">${main}</div><div class="cbx-side">${eventsHtml}</div></div>`;
+}
+window.newPost = () => formModal("Broadcast to everyone", [{k:"text",label:"What's happening?",type:"textarea",rows:5,req:true}], {}, async d => {
+  await addDoc(collection(db,"posts"), { text:d.text, employeeId:S.me.id, likes:[], createdAt:serverTimestamp() });
+  toast("Posted","success"); navigateTo("pulse");
+});
+window.togglePostLike = (id) => guarded(async () => {
+  const ref = doc(db,"posts",id); const snap = await getDoc(ref);
+  const likes = new Set(snap.data().likes||[]);
+  likes.has(S.me.id) ? likes.delete(S.me.id) : likes.add(S.me.id);
+  await updateDoc(ref, { likes:[...likes] });
+});
+const KUDOS_BADGES = [["Team Player",10],["Customer Hero",15],["Innovator",15],["Above & Beyond",20],["Thank You",5]];
+window.giveKudos = () => formModal("Give kudos", [
+  {k:"toId",label:"Colleague",type:"emp",req:true},
+  {k:"badge",label:"Badge",type:"select",options:KUDOS_BADGES.map(([b,p])=>[b,`${b} (+${p} pts)`])},
+  {k:"message",label:"Message",type:"textarea",req:true},
+], {}, async d => {
+  if(d.toId===S.me.id) throw new Error("You can't give kudos to yourself");
+  const points = (KUDOS_BADGES.find(b=>b[0]===d.badge)||[0,10])[1];
+  await addDoc(collection(db,"kudos"), { ...d, points, employeeId:S.me.id, createdAt:serverTimestamp() });
+  toast("Kudos sent","success"); navigateTo(S.view);
+});
+window.newSurvey = () => formModal("New survey / poll", [
+  {k:"question",label:"Question",req:true},
+  {k:"options",label:"Options (one per line)",type:"textarea",rows:4,req:true},
+  {k:"anonymous",label:"Anonymous results",type:"select",options:[["yes","Yes"],["no","No"]]},
+], {}, async d => {
+  const options = d.options.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(options.length<2) throw new Error("Add at least 2 options");
+  await addDoc(collection(db,"surveys"), { question:d.question, options, anonymous:d.anonymous==="yes", status:"active", responses:{}, employeeId:S.me.id, createdAt:serverTimestamp() });
+  toast("Survey published","success"); navigateTo("pulse");
+});
+window.voteSurvey = (id, i) => guarded(()=>updateDoc(doc(db,"surveys",id), { ["responses."+S.me.id]: i }), "Response recorded");
+
+// -------------------- CULTURE CHARTER --------------------
+async function renderCultureCharter(){
+  return renderSiteContentPage("cultureCharter", "Culture Charter", "Our vision, mission and core values will be published here by HR.");
+}
+
+// -------------------- ASSETS --------------------
+const ASSET_FIELDS = [
+  {k:"name",label:"Asset name",req:true},
+  {k:"category",label:"Category",type:"select",options:["Laptop","Desktop","Mobile","SIM","Monitor","Vehicle","Furniture","ID Card","Other"]},
+  {k:"serial",label:"Serial / tag no."},
+  {k:"employeeId",label:"Assigned to",type:"emp"},
+  {k:"status",label:"Status",type:"select",options:[["assigned","Assigned"],["in_stock","In stock"],["repair","Under repair"],["retired","Retired"]]},
+  {k:"value",label:"Value (₹)",type:"number"},
+  {k:"purchaseDate",label:"Purchase date",type:"date"},
+  {k:"notes",label:"Notes",type:"textarea"},
+];
+async function renderAssets(){
+  if(isAdminView()){
+    document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="editAsset()">Add asset</button>';
+    const rows = await listAll("assets");
+    const total = rows.reduce((s,r)=>s+(Number(r.value)||0),0);
+    return `<div class="grid grid-4" style="margin-bottom:20px;">
+      ${statCard("Total assets", rows.length, "", "offboarding")}
+      ${statCard("Assigned", rows.filter(r=>r.status==="assigned").length, "", "employees")}
+      ${statCard("In stock", rows.filter(r=>r.status==="in_stock").length, "", "my-files")}
+      ${statCard("Asset value", fmtInr(total), "", "my-salary")}</div>` +
+      panel("Asset register", tableHtml(["Asset","Category","Serial","Assigned to","Status","Value",""], rows.map(r=>`<tr><td><b>${escapeHtml(r.name)}</b></td><td>${escapeHtml(r.category||"")}</td><td class="muted">${escapeHtml(r.serial||"—")}</td><td>${r.employeeId?escapeHtml(employeeName(r.employeeId)):"—"}</td><td>${pill(r.status)}</td><td>${fmtInr(r.value)}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="editAsset('${r.id}')">Edit</button> <button class="btn btn-ghost btn-sm" onclick="__del('assets','${r.id}')">Delete</button></td></tr>`), "No assets registered yet."));
+  }
+  const rows = await listMine("assets");
+  return panel("Assets assigned to me", tableHtml(["Asset","Category","Serial","Since","Status"], rows.map(r=>`<tr><td><b>${escapeHtml(r.name)}</b></td><td>${escapeHtml(r.category||"")}</td><td class="muted">${escapeHtml(r.serial||"—")}</td><td>${fmtDate(r.assignedOn||r.createdAt)}</td><td>${pill(r.status)}</td></tr>`), "No company assets are assigned to you."));
+}
+window.editAsset = async (id) => {
+  const data = id ? (await getDoc(doc(db,"assets",id))).data() : {status:"in_stock"};
+  formModal(id?"Edit asset":"Add asset", ASSET_FIELDS, data, async d => {
+    if(d.employeeId && d.status==="in_stock") d.status = "assigned";
+    if(d.employeeId !== (data.employeeId||"")) d.assignedOn = new Date().toISOString().slice(0,10);
+    if(id) await updateDoc(doc(db,"assets",id), { ...d, updatedAt:serverTimestamp() });
+    else await addDoc(collection(db,"assets"), { ...d, createdAt:serverTimestamp() });
+    toast("Saved","success"); navigateTo(S.view);
+  });
+};
+
+// -------------------- HELPDESK --------------------
+async function renderHelpdesk(){
+  const admin = isAdminView();
+  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="newTicket()">Raise ticket</button>';
+  const rows = admin ? await listAll("tickets") : await listMine("tickets");
+  const filter = TAB_STATE.helpdesk || "open";
+  const shown = rows.filter(r => filter==="all" || (filter==="open" ? r.status!=="resolved" && r.status!=="closed" : r.status==="resolved" || r.status==="closed"));
+  return (admin ? `<div class="grid grid-4" style="margin-bottom:20px;">
+      ${statCard("Open", rows.filter(r=>r.status==="open").length, "", "requests")}
+      ${statCard("In progress", rows.filter(r=>r.status==="in_progress").length, "", "my-time")}
+      ${statCard("Resolved", rows.filter(r=>r.status==="resolved"||r.status==="closed").length, "", "approvals")}
+      ${statCard("High priority open", rows.filter(r=>r.priority==="High"&&r.status!=="resolved"&&r.status!=="closed").length, "", "policies")}</div>` : "")
+    + tabsBar("helpdesk",[{id:"open",label:"Open"},{id:"resolved",label:"Resolved"},{id:"all",label:"All"}],filter)
+    + panel(admin?"All tickets":"My tickets", tableHtml(["#","Raised",admin?"Employee":"Category","Subject","Priority","Status",""], shown.map(r=>`<tr>
+      <td class="muted">${r.id.slice(0,6).toUpperCase()}</td><td>${fmtDate(r.createdAt)}</td><td>${admin?escapeHtml(employeeName(r.employeeId))+`<div class="muted" style="font-size:12px;">${escapeHtml(r.category)}</div>`:escapeHtml(r.category)}</td>
+      <td><b>${escapeHtml(r.subject)}</b><div class="muted" style="font-size:12px;">${(r.replies||[]).length} repl${(r.replies||[]).length===1?"y":"ies"}</div></td><td>${pill(r.priority==="High"?"rejected":r.priority==="Low"?"approved":"pending").replace(/>[^<]+</,">"+escapeHtml(r.priority||"Medium")+"<")}</td><td>${pill(r.status)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openTicket('${r.id}')">Open</button></td></tr>`), "No tickets."));
+}
+window.newTicket = () => formModal("Raise a helpdesk ticket", [
+  {k:"category",label:"Category",type:"select",options:["HR / Policy","Payroll","Attendance & Leave","IT Support","Admin / Facilities","Reimbursement","Other"]},
+  {k:"priority",label:"Priority",type:"select",options:["Medium","High","Low"]},
+  {k:"subject",label:"Subject",req:true},
+  {k:"description",label:"Describe the issue",type:"textarea",rows:5,req:true},
+], {}, async d => {
+  await addDoc(collection(db,"tickets"), { ...d, employeeId:S.me.id, status:"open", replies:[], createdAt:serverTimestamp() });
+  toast("Ticket raised","success"); navigateTo(S.view);
+});
+window.openTicket = async (id) => {
+  const t = (await getDoc(doc(db,"tickets",id))).data();
+  const canManage = isHrOrAbove();
+  openModal(`Ticket · ${escapeHtml(t.subject)}`, `
+    <div class="muted" style="font-size:12px;margin-bottom:8px;">${escapeHtml(employeeName(t.employeeId))} · ${escapeHtml(t.category)} · ${fmtDate(t.createdAt)} · ${pill(t.status)}</div>
+    <div class="card" style="white-space:pre-wrap;margin-bottom:12px;">${escapeHtml(t.description)}</div>
+    ${(t.replies||[]).map(r=>`<div class="card" style="margin-bottom:8px;${r.by===t.employeeId?"":"border-left:3px solid var(--brand,#E8412C);"}"><div class="muted" style="font-size:12px;">${escapeHtml(employeeName(r.by))} · ${escapeHtml(r.at||"")}</div><div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(r.text)}</div></div>`).join("")}
+    <div class="field"><label>Reply</label><textarea id="tk-reply" rows="3"></textarea></div>
+    ${canManage?`<div class="field"><label>Status</label><select id="tk-status">${["open","in_progress","resolved","closed"].map(s=>`<option value="${s}"${s===t.status?" selected":""}>${s.replace("_"," ")}</option>`).join("")}</select></div>`:""}
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="replyTicket('${id}')">Send</button></div>`, {wide:true});
+};
+window.replyTicket = async (id) => {
+  const text = val("tk-reply"); const status = val("tk-status");
+  const ref = doc(db,"tickets",id); const t = (await getDoc(ref)).data();
+  const patch = { updatedAt:serverTimestamp() };
+  if(text) patch.replies = [...(t.replies||[]), { by:S.me.id, text, at:new Date().toLocaleString("en-IN") }];
+  if(status) patch.status = status;
+  else if(text && t.status==="resolved") patch.status = "open";
+  closeModal(); guarded(()=>updateDoc(ref, patch), "Ticket updated");
+};
+
+// -------------------- LEARNING (LMS) --------------------
+async function renderLms(){
+  const admin = isAdminView();
+  const courses = await listAll("courses");
+  if(admin){
+    document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="editCourse()">Add course</button>';
+    const prog = await listAll("courseProgress");
+    const n = activeEmployees().length || 1;
+    return panel("Course library", tableHtml(["Course","Category","Duration","Mandatory","Completed by",""], courses.map(c=>{
+      const done = prog.filter(p=>p.courseId===c.id && p.status==="completed").length;
+      return `<tr><td><b>${escapeHtml(c.title)}</b><div class="muted" style="font-size:12px;">${escapeHtml(c.description||"")}</div></td><td>${escapeHtml(c.category||"")}</td><td>${c.durationMins||0} min</td><td>${c.mandatory==="yes"?pill("pending").replace(/>[^<]+</,">mandatory<"):"—"}</td>
+      <td><div class="meter" style="min-width:90px;"><span style="width:${Math.round(done/n*100)}%"></span></div><span class="muted" style="font-size:12px;">${done} / ${n}</span></td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="editCourse('${c.id}')">Edit</button> <button class="btn btn-ghost btn-sm" onclick="__del('courses','${c.id}')">Delete</button></td></tr>`;}), "No courses yet."));
+  }
+  const prog = await listMine("courseProgress");
+  const st = id => (prog.find(p=>p.courseId===id)||{}).status || "not_started";
+  const done = courses.filter(c=>st(c.id)==="completed").length;
+  return `<div class="grid grid-3" style="margin-bottom:20px;">${statCard("Courses available", courses.length, "", "hr-policy-booklet")}${statCard("Completed", done, "", "approvals")}${statCard("Mandatory pending", courses.filter(c=>c.mandatory==="yes"&&st(c.id)!=="completed").length, "", "policies")}</div>
+    <div class="grid grid-3">${courses.length ? courses.map(c=>`<div class="card" style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;gap:6px;"><span class="pill pill-role">${escapeHtml(c.category||"General")}</span>${pill(st(c.id))}</div>
+      <div style="font-weight:700;font-size:15px;">${escapeHtml(c.title)}</div><div class="muted" style="font-size:13px;flex:1;">${escapeHtml(c.description||"")}</div>
+      <div class="muted" style="font-size:12px;">⏱ ${c.durationMins||0} min${c.mandatory==="yes"?" · Mandatory":""}</div>
+      <div style="display:flex;gap:6px;">${c.link?`<a class="btn btn-ghost btn-sm" href="${escapeHtml(c.link)}" target="_blank" rel="noopener" onclick="markCourse('${c.id}','in_progress',true)">Open</a>`:""}
+      ${st(c.id)!=="completed"?`<button class="btn btn-primary btn-sm" onclick="markCourse('${c.id}','completed')">Mark complete</button>`:""}</div></div>`).join("") : '<div class="card muted">No courses published yet.</div>'}</div>`;
+}
+window.editCourse = async (id) => {
+  const data = id ? (await getDoc(doc(db,"courses",id))).data() : {};
+  formModal(id?"Edit course":"Add course", [
+    {k:"title",label:"Title",req:true},{k:"category",label:"Category",type:"select",options:["Induction","Compliance","Safety","Technical","Soft Skills","Leadership","Product","General"]},
+    {k:"description",label:"Description",type:"textarea"},{k:"link",label:"Content link (YouTube, Drive, PDF…)",req:true},
+    {k:"durationMins",label:"Duration (minutes)",type:"number"},{k:"mandatory",label:"Mandatory",type:"select",options:[["no","No"],["yes","Yes"]]},
+  ], data, async d => {
+    if(id) await updateDoc(doc(db,"courses",id), d); else await addDoc(collection(db,"courses"), { ...d, createdAt:serverTimestamp() });
+    toast("Saved","success"); navigateTo(S.view);
+  });
+};
+window.markCourse = async (courseId, status, silent) => {
+  const ref = doc(db,"courseProgress",courseId+"_"+S.me.id);
+  const snap = await getDoc(ref).catch(()=>null);
+  if(silent && snap && snap.exists() && snap.data().status==="completed") return;
+  const fn = () => setDoc(ref, { courseId, employeeId:S.me.id, status, updatedAt:serverTimestamp(), ...(status==="completed"?{completedOn:new Date().toISOString().slice(0,10)}:{}) }, { merge:true });
+  if(silent) fn().catch(console.error); else guarded(fn, "Marked complete");
+};
+
+// -------------------- RECRUITMENT --------------------
+const STAGES = ["applied","screening","interview","offer","hired","rejected"];
+async function renderRecruitment(){
+  const tab = TAB_STATE.recruitment || "pipeline";
+  const jobs = await listAll("jobs"); const cands = await listAll("candidates");
+  const jobName = id => (jobs.find(j=>j.id===id)||{}).title || "—";
+  document.getElementById("page-actions").innerHTML = '<button class="btn btn-ghost" onclick="editJob()">New job opening</button> <button class="btn btn-primary" onclick="editCandidate()">Add candidate</button>';
+  const jf = TAB_STATE.recruitmentJob || "";
+  const shownC = cands.filter(c=>!jf || c.jobId===jf);
+  let body;
+  if(tab==="pipeline"){
+    body = `<div class="field" style="max-width:320px;"><select onchange="TAB_STATE_SET('recruitmentJob',this.value)"><option value="">All openings</option>${jobs.map(j=>`<option value="${j.id}"${j.id===jf?" selected":""}>${escapeHtml(j.title)}</option>`).join("")}</select></div>
+    <div class="cbx-kanban">${STAGES.map(s=>{const list=shownC.filter(c=>(c.stage||"applied")===s);return `<div class="cbx-col"><div class="cbx-col-h">${s} <span class="muted">${list.length}</span></div>
+      ${list.map(c=>`<div class="card cbx-kcard" onclick="editCandidate('${c.id}')"><b>${escapeHtml(c.name)}</b><div class="muted" style="font-size:12px;">${escapeHtml(jobName(c.jobId))}</div>
+      ${c.experience?`<div class="muted" style="font-size:12px;">${escapeHtml(c.experience)} yrs exp</div>`:""}
+      <div style="display:flex;gap:4px;margin-top:6px;">${STAGES.indexOf(s)>0&&s!=="rejected"?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();__setField('candidates','${c.id}','stage','${STAGES[STAGES.indexOf(s)-1]}')">‹</button>`:""}
+      ${STAGES.indexOf(s)<4?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();__setField('candidates','${c.id}','stage','${STAGES[STAGES.indexOf(s)+1]}')">›</button>`:""}</div></div>`).join("")}</div>`;}).join("")}</div>`;
+  } else {
+    body = panel("Job openings", tableHtml(["Title","Company","Department","Openings","Candidates","Hired","Status",""], jobs.map(j=>`<tr><td><b>${escapeHtml(j.title)}</b><div class="muted" style="font-size:12px;">${escapeHtml(j.location||"")}</div></td><td>${escapeHtml(companyName(j.companyId))}</td><td>${escapeHtml(deptLabel(j.departmentId))}</td><td>${j.openings||1}</td><td>${cands.filter(c=>c.jobId===j.id).length}</td><td>${cands.filter(c=>c.jobId===j.id&&c.stage==="hired").length}</td><td>${pill(j.status)}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="editJob('${j.id}')">Edit</button> <button class="btn btn-ghost btn-sm" onclick="__del('jobs','${j.id}')">Delete</button></td></tr>`), "No openings yet."));
+  }
+  return `<div class="grid grid-4" style="margin-bottom:20px;">${statCard("Open positions", jobs.filter(j=>j.status!=="closed").reduce((s,j)=>s+(Number(j.openings)||1),0), "", "onboarding")}${statCard("Candidates", cands.length, "", "employees")}${statCard("In interview", cands.filter(c=>c.stage==="interview").length, "", "approvals")}${statCard("Hired", cands.filter(c=>c.stage==="hired").length, "", "my-profile")}</div>`
+    + tabsBar("recruitment",[{id:"pipeline",label:"Pipeline"},{id:"jobs",label:"Job openings"}],tab) + body;
+}
+window.TAB_STATE_SET = (k,v) => { TAB_STATE[k]=v; navigateTo(S.view); };
+window.editJob = async (id) => {
+  const data = id ? (await getDoc(doc(db,"jobs",id))).data() : {status:"open",openings:1};
+  formModal(id?"Edit job opening":"New job opening", [
+    {k:"title",label:"Job title",req:true},
+    {k:"companyId",label:"Company",type:"select",options:S.companiesCache.map(c=>[c.id,c.name])},
+    {k:"departmentId",label:"Department",type:"select",options:[["","—"],...S.departmentsCache.map(d=>[d.id,d.name])]},
+    {k:"location",label:"Location"},{k:"openings",label:"No. of openings",type:"number"},
+    {k:"experience",label:"Experience required"},{k:"salaryRange",label:"Salary range"},
+    {k:"description",label:"Job description",type:"textarea",rows:5},
+    {k:"status",label:"Status",type:"select",options:[["open","Open"],["on_hold","On hold"],["closed","Closed"]]},
+  ], data, async d => {
+    if(id) await updateDoc(doc(db,"jobs",id), d); else await addDoc(collection(db,"jobs"), { ...d, createdAt:serverTimestamp() });
+    toast("Saved","success"); navigateTo(S.view);
+  }, {wide:true});
+};
+window.editCandidate = async (id) => {
+  const jobs = await listAll("jobs");
+  const data = id ? (await getDoc(doc(db,"candidates",id))).data() : {stage:"applied"};
+  formModal(id?"Candidate":"Add candidate", [
+    {k:"name",label:"Full name",req:true},{k:"email",label:"Email"},{k:"phone",label:"Phone"},
+    {k:"jobId",label:"Applied for",type:"select",options:[["","—"],...jobs.map(j=>[j.id,j.title])]},
+    {k:"experience",label:"Experience (years)"},{k:"currentCtc",label:"Current CTC"},{k:"expectedCtc",label:"Expected CTC"},
+    {k:"source",label:"Source",type:"select",options:["Referral","Naukri","LinkedIn","Indeed","Walk-in","Consultant","Website","Other"]},
+    {k:"resumeLink",label:"Resume link"},{k:"interviewDate",label:"Interview date",type:"date"},
+    {k:"stage",label:"Stage",type:"select",options:STAGES},{k:"notes",label:"Interview notes",type:"textarea",rows:4},
+  ], data, async d => {
+    if(id) await updateDoc(doc(db,"candidates",id), { ...d, updatedAt:serverTimestamp() }); else await addDoc(collection(db,"candidates"), { ...d, createdAt:serverTimestamp() });
+    toast("Saved","success"); navigateTo(S.view);
+  }, {wide:true});
+};
+
+// -------------------- MY GOALS --------------------
+async function renderGoals(){
+  const team = TAB_STATE.goals === "team";
+  const canTeam = myReports().length || isHrOrAbove();
+  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="editGoal()">Add goal</button>';
+  const rows = team ? (isHrOrAbove() ? await listAll("goals") : await listForApprover("goals")) : await listMine("goals");
+  const avg = rows.length ? Math.round(rows.reduce((s,r)=>s+(Number(r.progress)||0),0)/rows.length) : 0;
+  return (canTeam ? tabsBar("goals",[{id:"mine",label:"My goals"},{id:"team",label:"Team goals"}],team?"team":"mine") : "")
+    + `<div class="grid grid-3" style="margin-bottom:20px;">${statCard("Goals", rows.length, "", "approvals")}${statCard("Average progress", avg+"%", "", "my-time")}${statCard("Achieved", rows.filter(r=>Number(r.progress)>=100).length, "", "policies")}</div>`
+    + panel(team?"Team goals":"My goals / KRAs", tableHtml([...(team?["Employee"]:[]),"Goal","Target","Weight","Due","Progress","Status",""], rows.map(r=>`<tr>${team?`<td>${escapeHtml(employeeName(r.employeeId))}</td>`:""}
+      <td><b>${escapeHtml(r.title)}</b><div class="muted" style="font-size:12px;">${escapeHtml(r.category||"")}</div></td><td>${escapeHtml(r.target||"—")}</td><td>${r.weight||0}%</td><td>${fmtDate(r.dueDate)}</td>
+      <td style="min-width:120px;"><div class="meter"><span style="width:${Math.min(100,Number(r.progress)||0)}%"></span></div><span class="muted" style="font-size:12px;">${Number(r.progress)||0}%</span></td><td>${pill(r.status)}</td>
+      <td style="white-space:nowrap;">${team&&r.status==="pending"?`<button class="btn btn-ghost btn-sm" onclick="__setField('goals','${r.id}','status','approved')">Approve</button> `:""}<button class="btn btn-ghost btn-sm" onclick="editGoal('${r.id}')">Update</button></td></tr>`), "No goals set yet."));
+}
+window.editGoal = async (id) => {
+  const data = id ? (await getDoc(doc(db,"goals",id))).data() : {progress:0,weight:20};
+  formModal(id?"Update goal":"Add goal", [
+    {k:"title",label:"Goal / KRA",req:true},{k:"category",label:"Category",type:"select",options:["Business","Customer","Process","People","Learning"]},
+    {k:"target",label:"Target / KPI"},{k:"weight",label:"Weightage (%)",type:"number",min:0,max:100},
+    {k:"dueDate",label:"Due date",type:"date"},{k:"progress",label:"Progress (%)",type:"number",min:0,max:100},
+    {k:"comments",label:"Comments",type:"textarea"},
+  ], data, async d => {
+    d.progress = Math.max(0, Math.min(100, d.progress));
+    if(id) await updateDoc(doc(db,"goals",id), { ...d, updatedAt:serverTimestamp() });
+    else await addDoc(collection(db,"goals"), { ...d, employeeId:S.me.id, approverId:S.me.reportsTo||"", status:"pending", createdAt:serverTimestamp() });
+    toast("Saved","success"); navigateTo(S.view);
+  });
+};
+
+// -------------------- PERFORMANCE --------------------
+async function renderPerformance(){
+  const admin = isAdminView();
+  if(admin){
+    document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="launchCycle()">Launch review cycle</button>';
+    const rows = await listAll("reviews");
+    const cycles = [...new Set(rows.map(r=>r.cycle))];
+    const cyc = TAB_STATE.perfCycle || cycles[0] || "";
+    const shown = rows.filter(r=>r.cycle===cyc);
+    const dist = [1,2,3,4,5].map(n=>({name:"★".repeat(n), value: shown.filter(r=>Math.round(Number(r.finalRating||r.managerRating))===n).length}));
+    return `<div class="field" style="max-width:260px;"><select onchange="TAB_STATE_SET('perfCycle',this.value)">${cycles.map(c=>`<option${c===cyc?" selected":""}>${escapeHtml(c)}</option>`).join("")||"<option>No cycles yet</option>"}</select></div>
+      <div class="grid grid-2" style="margin-bottom:20px;">${panel("Review progress", `<div class="panel-body">${meterList([
+        {name:"Self appraisal done", used: shown.filter(r=>r.status!=="self_pending").length, total: shown.length||1},
+        {name:"Manager review done", used: shown.filter(r=>r.status==="completed").length, total: shown.length||1}])}</div>`)}
+      ${panel("Rating distribution (bell curve)", `<div class="panel-body">${barChart(dist)}</div>`)}</div>`
+      + panel(`Reviews · ${escapeHtml(cyc)}`, tableHtml(["Employee","Manager","Self","Manager","Final","Status",""], shown.map(r=>`<tr><td>${escapeHtml(employeeName(r.employeeId))}</td><td>${r.approverId?escapeHtml(employeeName(r.approverId)):"—"}</td><td>${r.selfRating||"—"}</td><td>${r.managerRating||"—"}</td><td><b>${r.finalRating||"—"}</b></td><td>${pill(r.status)}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="openReview('${r.id}')">Open</button> <button class="btn btn-ghost btn-sm" onclick="__del('reviews','${r.id}')">Delete</button></td></tr>`), "Launch a review cycle to get started."));
+  }
+  const mine = await listMine("reviews");
+  const team = myReports().length ? await listForApprover("reviews") : [];
+  return panel("My appraisals", tableHtml(["Cycle","Self rating","Manager rating","Final","Status",""], mine.map(r=>`<tr><td><b>${escapeHtml(r.cycle)}</b></td><td>${r.selfRating||"—"}</td><td>${r.status==="completed"?(r.managerRating||"—"):"—"}</td><td>${r.status==="completed"?(r.finalRating||"—"):"—"}</td><td>${pill(r.status)}</td>
+      <td><button class="btn btn-${r.status==="self_pending"?"primary":"ghost"} btn-sm" onclick="openReview('${r.id}')">${r.status==="self_pending"?"Fill self appraisal":"View"}</button></td></tr>`), "No appraisal cycle is open for you."))
+    + (team.length ? panel("Team appraisals (as manager)", tableHtml(["Employee","Cycle","Self","Status",""], team.map(r=>`<tr><td>${escapeHtml(employeeName(r.employeeId))}</td><td>${escapeHtml(r.cycle)}</td><td>${r.selfRating||"—"}</td><td>${pill(r.status)}</td>
+      <td><button class="btn btn-${r.status==="manager_pending"?"primary":"ghost"} btn-sm" onclick="openReview('${r.id}')">${r.status==="manager_pending"?"Review":"View"}</button></td></tr>`))) : "");
+}
+window.launchCycle = () => formModal("Launch performance review cycle", [
+  {k:"cycle",label:"Cycle name",req:true,def:`FY ${new Date().getFullYear()}-${String(new Date().getFullYear()+1).slice(2)} Annual`},
+  {k:"companyId",label:"Company",type:"select",options:[["","All companies"],...S.companiesCache.map(c=>[c.id,c.name])]},
+  {k:"dueDate",label:"Self appraisal due by",type:"date"},
+], {}, async d => {
+  const existing = (await listAll("reviews")).filter(r=>r.cycle===d.cycle).map(r=>r.employeeId);
+  const targets = activeEmployees().filter(e=>(!d.companyId||e.companyId===d.companyId) && !existing.includes(e.id));
+  for(const e of targets) await addDoc(collection(db,"reviews"), { cycle:d.cycle, dueDate:d.dueDate, employeeId:e.id, approverId:e.reportsTo||"", status:"self_pending", createdAt:serverTimestamp() });
+  toast(`Cycle launched for ${targets.length} employees`,"success"); TAB_STATE.perfCycle = d.cycle; navigateTo(S.view);
+});
+window.openReview = async (id) => {
+  const r = (await getDoc(doc(db,"reviews",id))).data();
+  const isSelf = r.employeeId===S.me.id, isMgr = r.approverId===S.me.id || isHrOrAbove();
+  const goals = (await getDocs(query(collection(db,"goals"), where(isSelf||isHrOrAbove()?"employeeId":"approverId","==",isSelf||isHrOrAbove()?r.employeeId:S.me.id))).catch(()=>({docs:[]}))).docs.map(d=>d.data()).filter(g=>g.employeeId===r.employeeId);
+  const ratingSel = (idv, v, dis) => `<select id="${idv}"${dis?" disabled":""}>${["","1","2","3","4","5"].map(n=>`<option value="${n}"${String(v||"")===n?" selected":""}>${n?n+" — "+["Needs improvement","Below expectations","Meets expectations","Exceeds expectations","Outstanding"][n-1]:"—"}</option>`).join("")}</select>`;
+  const selfEdit = isSelf && r.status==="self_pending";
+  const mgrEdit = isMgr && r.status==="manager_pending";
+  const showMgr = r.status==="completed" || isMgr;
+  window.__saveReview = async () => {
+    const patch = { updatedAt:serverTimestamp() };
+    if(selfEdit){ patch.selfRating=val("rv-sr"); patch.selfComments=val("rv-sc"); if(!patch.selfRating){toast("Pick a self rating","error");return;} patch.status = r.approverId ? "manager_pending" : "completed"; if(!r.approverId) patch.finalRating = patch.selfRating; }
+    if(mgrEdit){ patch.managerRating=val("rv-mr"); patch.managerComments=val("rv-mc"); patch.finalRating=val("rv-fr")||patch.managerRating; if(!patch.managerRating){toast("Pick a manager rating","error");return;} patch.status="completed"; }
+    closeModal(); guarded(()=>updateDoc(doc(db,"reviews",id), patch), "Appraisal saved");
+  };
+  openModal(`${escapeHtml(employeeName(r.employeeId))} · ${escapeHtml(r.cycle)}`, `
+    ${goals.length?`<div class="muted" style="font-size:12px;margin-bottom:6px;">Goals this period</div>${meterList(goals.map(g=>({name:g.title, used:Number(g.progress)||0, total:100})))}<hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">`:""}
+    <div class="field"><label>Self rating</label>${ratingSel("rv-sr", r.selfRating, !selfEdit)}</div>
+    <div class="field"><label>Self appraisal — achievements, challenges, development needs</label><textarea id="rv-sc" rows="4"${selfEdit?"":" disabled"}>${escapeHtml(r.selfComments||"")}</textarea></div>
+    ${showMgr?`<div class="field"><label>Manager rating</label>${ratingSel("rv-mr", r.managerRating, !mgrEdit)}</div>
+    <div class="field"><label>Manager comments</label><textarea id="rv-mc" rows="4"${mgrEdit?"":" disabled"}>${escapeHtml(r.managerComments||"")}</textarea></div>
+    <div class="field"><label>Final rating (after normalisation)</label>${ratingSel("rv-fr", r.finalRating, !mgrEdit)}</div>`:""}
+    <div class="actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button>${selfEdit||mgrEdit?`<button class="btn btn-primary" onclick="window.__saveReview()">Submit</button>`:""}</div>`, {wide:true});
+};
+
+// -------------------- TRAVEL & EXPENSES --------------------
+const EXP_CATS = ["Travel - Air","Travel - Train","Travel - Bus/Cab","Hotel / Lodging","Food / Meals","Local Conveyance","Fuel","Mobile / Internet","Client Entertainment","Other"];
+async function renderExpenses(){
+  const admin = isAdminView();
+  const tab = TAB_STATE.expenses || "mine";
+  const canTeam = myReports().length && !admin;
+  let rows, title;
+  if(admin){ rows = await listAll("expenses"); title = "All expense claims"; }
+  else if(tab==="team" && canTeam){ rows = await listForApprover("expenses"); title = "Team claims awaiting you"; }
+  else { rows = await listMine("expenses"); title = "My claims"; }
+  document.getElementById("page-actions").innerHTML = '<button class="btn btn-primary" onclick="newExpense()">New claim</button>';
+  const sum = st => fmtInr(rows.filter(r=>!st||r.status===st).reduce((s,r)=>s+(Number(r.amount)||0),0));
+  const showEmp = admin || tab==="team";
+  return (canTeam ? tabsBar("expenses",[{id:"mine",label:"My claims"},{id:"team",label:"Team approvals"}],tab) : "")
+    + `<div class="grid grid-4" style="margin-bottom:20px;">${statCard("Total claimed", sum(), "", "my-salary")}${statCard("Pending", sum("pending"), "", "my-time")}${statCard("Approved", sum("approved"), "", "approvals")}${statCard("Reimbursed", sum("paid"), "", "policies")}</div>`
+    + panel(title, tableHtml([...(showEmp?["Employee"]:[]),"Date","Category","Description","Amount","Bill","Status",""], rows.map(r=>`<tr>${showEmp?`<td>${escapeHtml(employeeName(r.employeeId))}</td>`:""}
+      <td>${fmtDate(r.date)}</td><td>${escapeHtml(r.category)}</td><td class="muted">${escapeHtml(r.description||"")}${r.trip?`<div style="font-size:12px;">Trip: ${escapeHtml(r.trip)}</div>`:""}</td><td><b>${fmtInr(r.amount)}</b></td>
+      <td>${r.receipt?`<a href="${r.receipt}" target="_blank" rel="noopener">View</a>`:"—"}</td><td>${pill(r.status)}${r.approverComment?`<div class="muted" style="font-size:12px;">${escapeHtml(r.approverComment)}</div>`:""}</td>
+      <td style="white-space:nowrap;">${(showEmp && r.status==="pending")?`<button class="btn btn-ghost btn-sm" onclick="decideExpense('${r.id}','approved')">Approve</button> <button class="btn btn-ghost btn-sm" onclick="decideExpense('${r.id}','rejected')">Reject</button>`:""}
+      ${(admin && r.status==="approved")?`<button class="btn btn-ghost btn-sm" onclick="__setField('expenses','${r.id}','status','paid')">Mark reimbursed</button>`:""}
+      ${(!showEmp && r.status==="pending")?`<button class="btn btn-ghost btn-sm" onclick="__del('expenses','${r.id}')">Withdraw</button>`:""}</td></tr>`), "No claims."));
+}
+window.newExpense = () => {
+  formModal("New expense claim", [
+    {k:"date",label:"Expense date",type:"date",req:true,def:new Date().toISOString().slice(0,10)},
+    {k:"category",label:"Category",type:"select",options:EXP_CATS},
+    {k:"trip",label:"Trip / purpose (e.g. Delhi client visit)"},
+    {k:"amount",label:"Amount (₹)",type:"number",req:true},
+    {k:"description",label:"Description",type:"textarea"},
+  ], {}, async d => {
+    if(d.amount<=0) throw new Error("Enter an amount");
+    const f = document.getElementById("ff-receipt").files[0];
+    const receipt = f ? await fileToDataUri(f, 700000) : "";
+    await addDoc(collection(db,"expenses"), { ...d, receipt, employeeId:S.me.id, approverId:S.me.reportsTo||"", status:"pending", createdAt:serverTimestamp() });
+    toast("Claim submitted","success"); navigateTo(S.view);
+  });
+  document.querySelector(".modal-body .actions").insertAdjacentHTML("beforebegin", '<div class="field"><label>Bill / receipt (image or PDF, max 700KB)</label><input id="ff-receipt" type="file" accept="image/*,.pdf"></div>');
+};
+window.decideExpense = (id, status) => {
+  const c = prompt(status==="approved"?"Comment (optional)":"Reason for rejection") ;
+  if(c===null) return;
+  guarded(()=>updateDoc(doc(db,"expenses",id), { status, approverComment:c, decidedBy:S.me.id, decidedAt:serverTimestamp() }), "Claim "+status);
+};
+
+// -------------------- LOANS & ADVANCES --------------------
+async function renderLoans(){
+  const admin = isAdminView();
+  const rows = admin ? await listAll("loans") : await listMine("loans");
+  document.getElementById("page-actions").innerHTML = admin ? "" : '<button class="btn btn-primary" onclick="applyLoan()">Apply for loan / advance</button>';
+  const outstanding = rows.filter(r=>r.status==="active").reduce((s,r)=>s+Math.max(0,(Number(r.amount)||0)-(Number(r.repaid)||0)),0);
+  return `<div class="grid grid-3" style="margin-bottom:20px;">${statCard("Active loans", rows.filter(r=>r.status==="active").length, "", "my-salary")}${statCard("Outstanding", fmtInr(outstanding), "", "my-time")}${statCard("Pending requests", rows.filter(r=>r.status==="pending").length, "", "approvals")}</div>`
+    + panel(admin?"All loans & advances":"My loans & advances", tableHtml([...(admin?["Employee"]:[]),"Applied","Type","Amount","EMI × months","Repaid","Balance","Status",""], rows.map(r=>{
+      const bal = Math.max(0,(Number(r.amount)||0)-(Number(r.repaid)||0));
+      return `<tr>${admin?`<td>${escapeHtml(employeeName(r.employeeId))}</td>`:""}<td>${fmtDate(r.createdAt)}</td><td>${escapeHtml(r.type)}<div class="muted" style="font-size:12px;">${escapeHtml(r.reason||"")}</div></td><td><b>${fmtInr(r.amount)}</b></td><td>${fmtInr(r.emi)} × ${r.months}</td><td>${fmtInr(r.repaid||0)}</td><td>${fmtInr(bal)}</td><td>${pill(r.status)}</td>
+      <td style="white-space:nowrap;">${admin&&r.status==="pending"?`<button class="btn btn-ghost btn-sm" onclick="__setField('loans','${r.id}','status','active')">Approve</button> <button class="btn btn-ghost btn-sm" onclick="__setField('loans','${r.id}','status','rejected')">Reject</button>`:""}
+      ${admin&&r.status==="active"?`<button class="btn btn-ghost btn-sm" onclick="recordRepayment('${r.id}')">Record repayment</button>`:""}
+      ${!admin&&r.status==="pending"?`<button class="btn btn-ghost btn-sm" onclick="__del('loans','${r.id}')">Withdraw</button>`:""}</td></tr>`;}), "No loans."))
+    + (admin ? "" : `<div class="card muted" style="margin-top:16px;font-size:13px;">Approved loan EMIs are deducted automatically in the monthly payroll run.</div>`);
+}
+window.applyLoan = () => formModal("Apply for loan / salary advance", [
+  {k:"type",label:"Type",type:"select",options:["Salary Advance","Personal Loan","Medical Loan","Education Loan","Vehicle Loan","Other"]},
+  {k:"amount",label:"Amount (₹)",type:"number",req:true},
+  {k:"months",label:"Repay over (months)",type:"number",req:true,def:6,min:1,max:60},
+  {k:"reason",label:"Reason",type:"textarea",req:true},
+], {}, async d => {
+  if(d.amount<=0 || d.months<=0) throw new Error("Enter amount and months");
+  await addDoc(collection(db,"loans"), { ...d, emi: Math.ceil(d.amount/d.months), repaid:0, employeeId:S.me.id, status:"pending", createdAt:serverTimestamp() });
+  toast("Loan request submitted","success"); navigateTo(S.view);
+});
+window.recordRepayment = async (id) => {
+  const ref = doc(db,"loans",id); const l = (await getDoc(ref)).data();
+  const amt = Number(prompt("Repayment amount (₹)", l.emi)); if(!amt) return;
+  const repaid = (Number(l.repaid)||0) + amt;
+  guarded(()=>updateDoc(ref, { repaid, status: repaid >= Number(l.amount) ? "closed" : "active" }), "Repayment recorded");
+};
+
+// -------------------- PAYROLL (admin run) + MY PAYROLL --------------------
+async function monthlyGross(uid){
+  const snap = await getDocs(collection(db,"employees",uid,"salaryComponents"));
+  const rows = snap.docs.map(d=>d.data());
+  const g = rows.find(r=>/GROSS/i.test(r.label||"") && r.section!=="flexi");
+  const pick = re => Number((rows.find(r=>re.test(r.label||""))||{}).pm)||0;
+  return { gross: Number(g && g.pm) || 0, pf: pick(/^\s*(employee'?s?\s*)?(PF|provident)/i), esi: pick(/^\s*(employee'?s?\s*)?ESI/i), pt: pick(/professional\s*tax|^PT$/i) };
+}
+async function renderPayroll(){
+  const month = TAB_STATE.payMonth || monthKey();
+  const runSnap = await getDoc(doc(db,"payrollRuns",month));
+  const run = runSnap.exists() ? runSnap.data() : null;
+  document.getElementById("page-actions").innerHTML = `<input type="month" value="${month}" onchange="TAB_STATE_SET('payMonth',this.value)" style="padding:7px 10px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);">
+    ${run && run.status==="finalised" ? "" : `<button class="btn btn-primary" onclick="computePayroll('${month}')">${run?"Recompute":"Run payroll"}</button>`}`;
+  if(!run) return `<div class="card muted">No payroll run for ${month} yet. Click <b>Run payroll</b> to compute salaries from each employee's CTC structure, LOP days and active loan EMIs.</div>`;
+  const rows = run.rows || [];
+  const tot = k => rows.reduce((s,r)=>s+(Number(r[k])||0),0);
+  return `<div class="grid grid-4" style="margin-bottom:20px;">${statCard("Employees", rows.length, "", "employees")}${statCard("Gross payout", fmtInr(tot("earned")), "", "my-salary")}${statCard("Deductions", fmtInr(tot("deductions")), "", "regularisation")}${statCard("Net pay", fmtInr(tot("net")), run.status, "approvals")}</div>`
+    + panel(`Payroll · ${month} ${pill(run.status)}`, tableHtml(["Employee","Monthly gross","Days","LOP","Earned","PF","ESI","PT","Loan EMI","Other ded.","Net pay"], rows.map((r,i)=>`<tr><td>${escapeHtml(employeeName(r.employeeId))}</td><td>${fmtInr(r.gross)}</td><td>${r.days}</td>
+      <td>${run.status==="finalised"?r.lop:`<input type="number" min="0" max="${r.days}" step="0.5" value="${r.lop}" style="width:64px;" onchange="editPayRow('${month}',${i},'lop',this.value)">`}</td><td>${fmtInr(r.earned)}</td><td>${fmtInr(r.pf)}</td><td>${fmtInr(r.esi)}</td><td>${fmtInr(r.pt)}</td><td>${fmtInr(r.loanEmi)}</td>
+      <td>${run.status==="finalised"?fmtInr(r.other):`<input type="number" min="0" value="${r.other||0}" style="width:84px;" onchange="editPayRow('${month}',${i},'other',this.value)">`}</td><td><b>${fmtInr(r.net)}</b></td></tr>`), "No employees with a salary structure."),
+      run.status==="finalised" ? `<button class="btn btn-ghost btn-sm" onclick="exportPayroll('${month}')">Export CSV</button>` : `<div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="exportPayroll('${month}')">Export CSV</button><button class="btn btn-primary btn-sm" onclick="finalisePayroll('${month}')">Finalise & publish payslips</button></div>`);
+}
+function calcPayRow(r){
+  r.earned = Math.round(r.gross * Math.max(0, r.days - (Number(r.lop)||0)) / r.days);
+  r.deductions = (r.pf||0) + (r.esi||0) + (r.pt||0) + (r.loanEmi||0) + (Number(r.other)||0);
+  r.net = Math.max(0, r.earned - r.deductions);
+  return r;
+}
+window.computePayroll = (month) => guarded(async () => {
+  const [y,m] = month.split("-").map(Number); const days = new Date(y, m, 0).getDate();
+  const loans = (await listAll("loans")).filter(l=>l.status==="active");
+  const prev = await getDoc(doc(db,"payrollRuns",month));
+  const prevRows = prev.exists() ? (prev.data().rows||[]) : [];
+  const rows = [];
+  for(const e of activeEmployees()){
+    const g = await monthlyGross(e.id); if(!g.gross) continue;
+    const old = prevRows.find(r=>r.employeeId===e.id) || {};
+    const loanEmi = loans.filter(l=>l.employeeId===e.id).reduce((s,l)=>s+Math.min(Number(l.emi)||0, (Number(l.amount)||0)-(Number(l.repaid)||0)),0);
+    rows.push(calcPayRow({ employeeId:e.id, companyId:e.companyId||"", gross:g.gross, pf:g.pf, esi:g.esi, pt:g.pt, days, lop:old.lop||0, other:old.other||0, loanEmi }));
+  }
+  await setDoc(doc(db,"payrollRuns",month), { month, rows, status:"draft", updatedAt:serverTimestamp(), updatedBy:S.me.id });
+}, "Payroll computed");
+window.editPayRow = (month, i, k, v) => guarded(async () => {
+  const ref = doc(db,"payrollRuns",month); const run = (await getDoc(ref)).data();
+  run.rows[i][k] = Number(v)||0; calcPayRow(run.rows[i]);
+  await updateDoc(ref, { rows: run.rows, updatedAt:serverTimestamp() });
+});
+window.finalisePayroll = (month) => {
+  if(!confirm(`Finalise payroll for ${month}? Payslips will be published to employees and loan EMIs recorded as repaid.`)) return;
+  guarded(async () => {
+    const ref = doc(db,"payrollRuns",month); const run = (await getDoc(ref)).data();
+    for(const r of run.rows){
+      await setDoc(doc(db,"payslips",month+"_"+r.employeeId), { ...r, month, createdAt:serverTimestamp() });
+      if(r.loanEmi){
+        let left = r.loanEmi;
+        const ls = (await getDocs(query(collection(db,"loans"), where("employeeId","==",r.employeeId)))).docs.filter(d=>d.data().status==="active");
+        for(const d of ls){ if(left<=0) break; const l = d.data(); const pay = Math.min(left, Number(l.emi)||0, (Number(l.amount)||0)-(Number(l.repaid)||0)); left -= pay;
+          const repaid = (Number(l.repaid)||0)+pay; await updateDoc(d.ref, { repaid, status: repaid>=Number(l.amount)?"closed":"active" }); }
+      }
+    }
+    await updateDoc(ref, { status:"finalised", finalisedAt:serverTimestamp(), finalisedBy:S.me.id });
+  }, "Payroll finalised, payslips published");
+};
+window.exportPayroll = async (month) => {
+  const run = (await getDoc(doc(db,"payrollRuns",month))).data();
+  const head = ["Employee","Company","Monthly Gross","Days","LOP","Earned","PF","ESI","PT","Loan EMI","Other","Net"];
+  const lines = [head.join(",")].concat(run.rows.map(r=>[employeeName(r.employeeId),companyName(r.companyId),r.gross,r.days,r.lop,r.earned,r.pf,r.esi,r.pt,r.loanEmi,r.other||0,r.net].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")));
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([lines.join("\n")],{type:"text/csv"})); a.download = `payroll-${month}.csv`; a.click();
+};
+async function renderMyPayroll(){
+  const rows = (await listMine("payslips")).sort((a,b)=>(b.month||"").localeCompare(a.month||""));
+  return panel("My payslips", tableHtml(["Month","Gross","LOP days","Earned","Deductions","Net pay",""], rows.map(r=>`<tr><td><b>${escapeHtml(r.month)}</b></td><td>${fmtInr(r.gross)}</td><td>${r.lop}</td><td>${fmtInr(r.earned)}</td><td>${fmtInr(r.deductions)}</td><td><b>${fmtInr(r.net)}</b></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="printPayslip('${r.id}')">View / print</button></td></tr>`), "No payslips published yet."));
+}
+window.printPayslip = async (id) => {
+  const r = (await getDoc(doc(db,"payslips",id))).data();
+  const e = S.employeesCache.find(x=>x.id===r.employeeId) || S.me;
+  const line = (a,b) => `<tr><td style="padding:6px 10px;border:1px solid #ddd;">${a}</td><td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${b}</td></tr>`;
+  const w = window.open("", "_blank");
+  w.document.write(`<html><head><title>Payslip ${r.month}</title></head><body style="font-family:Arial,sans-serif;max-width:720px;margin:30px auto;color:#222;">
+    ${companyLetterheadHtml(companyById(r.companyId||e.companyId))}
+    <h2 style="text-align:center;margin:0 0 16px;">Payslip for ${r.month}</h2>
+    <p><b>${escapeHtml(e.name||"")}</b> · ${escapeHtml(e.employeeCode||e.email||"")} · ${escapeHtml(deptLabel(e.departmentId))}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">${line("Monthly gross",fmtInr(r.gross))}${line("Days in month / LOP",r.days+" / "+r.lop)}${line("<b>Earned gross</b>","<b>"+fmtInr(r.earned)+"</b>")}
+    ${line("Provident Fund",fmtInr(r.pf))}${line("ESI",fmtInr(r.esi))}${line("Professional Tax",fmtInr(r.pt))}${line("Loan EMI",fmtInr(r.loanEmi))}${line("Other deductions",fmtInr(r.other||0))}
+    ${line("<b>Total deductions</b>","<b>"+fmtInr(r.deductions)+"</b>")}${line("<b>NET PAY</b>","<b>"+fmtInr(r.net)+"</b>")}</table>
+    <p style="font-size:11px;color:#888;margin-top:30px;">This is a system-generated payslip and does not require a signature.</p>
+    <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+};
+
+// -------------------- HR BUDGETING --------------------
+async function renderHrBudget(){
+  const year = Number(TAB_STATE.budgetYear || new Date().getFullYear());
+  const rows = (await listAll("hrBudgets")).filter(r=>Number(r.year)===year);
+  document.getElementById("page-actions").innerHTML = `<select onchange="TAB_STATE_SET('budgetYear',this.value)" style="padding:7px 10px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);">${[year-1,year,year+1].map(y=>`<option${y===year?" selected":""}>${y}</option>`).join("")}</select>
+    <button class="btn btn-primary" onclick="editBudget()">Add budget line</button>`;
+  const actualHc = (r) => activeEmployees().filter(e=>(!r.companyId||e.companyId===r.companyId)&&(!r.departmentId||e.departmentId===r.departmentId)).length;
+  const planHc = rows.reduce((s,r)=>s+(Number(r.plannedHeadcount)||0),0);
+  const planCost = rows.reduce((s,r)=>s+(Number(r.plannedCost)||0),0);
+  const spent = rows.reduce((s,r)=>s+(Number(r.actualCost)||0),0);
+  return `<div class="grid grid-4" style="margin-bottom:20px;">${statCard("Planned headcount", planHc, "", "employees")}${statCard("Actual headcount", rows.reduce((s,r)=>s+actualHc(r),0), "", "my-profile")}${statCard("Budget (annual)", fmtInr(planCost), "", "my-salary")}${statCard("Spent YTD", fmtInr(spent), planCost?Math.round(spent/planCost*100)+"% used":"", "regularisation")}</div>`
+    + panel(`HR budget ${year}`, tableHtml(["Company","Department","Head","Planned HC","Actual HC","Variance","Budget","Spent","Utilisation",""], rows.map(r=>{
+      const a = actualHc(r); const v = a - (Number(r.plannedHeadcount)||0); const u = r.plannedCost ? Math.round((Number(r.actualCost)||0)/r.plannedCost*100) : 0;
+      return `<tr><td>${escapeHtml(r.companyId?companyName(r.companyId):"All")}</td><td>${escapeHtml(r.departmentId?deptLabel(r.departmentId):"All")}</td><td>${escapeHtml(r.head||"")}</td><td>${r.plannedHeadcount||0}</td><td>${a}</td><td style="color:${v>0?"var(--bad)":v<0?"var(--warn)":"inherit"};">${v>0?"+":""}${v}</td><td>${fmtInr(r.plannedCost)}</td><td>${fmtInr(r.actualCost||0)}</td>
+      <td style="min-width:110px;"><div class="meter${u>100?" bad":""}"><span style="width:${Math.min(100,u)}%"></span></div><span class="muted" style="font-size:12px;">${u}%</span></td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="editBudget('${r.id}')">Edit</button> <button class="btn btn-ghost btn-sm" onclick="__del('hrBudgets','${r.id}')">Delete</button></td></tr>`;}), "No budget lines for this year."));
+}
+window.editBudget = async (id) => {
+  const data = id ? (await getDoc(doc(db,"hrBudgets",id))).data() : { year: Number(TAB_STATE.budgetYear || new Date().getFullYear()) };
+  formModal(id?"Edit budget line":"Add budget line", [
+    {k:"year",label:"Year",type:"number",req:true},
+    {k:"companyId",label:"Company",type:"select",options:[["","All companies"],...S.companiesCache.map(c=>[c.id,c.name])]},
+    {k:"departmentId",label:"Department",type:"select",options:[["","All departments"],...S.departmentsCache.map(d=>[d.id,d.name])]},
+    {k:"head",label:"Budget head",type:"select",options:["Salaries","New Hiring","Training","Employee Engagement","Rewards & Recognition","Travel","Other"]},
+    {k:"plannedHeadcount",label:"Planned headcount",type:"number"},{k:"plannedCost",label:"Annual budget (₹)",type:"number"},{k:"actualCost",label:"Spent so far (₹)",type:"number"},
+  ], data, async d => {
+    if(id) await updateDoc(doc(db,"hrBudgets",id), d); else await addDoc(collection(db,"hrBudgets"), { ...d, createdAt:serverTimestamp() });
+    toast("Saved","success"); navigateTo(S.view);
+  });
+};
+
+// -------------------- REWARDS --------------------
+async function renderRewards(){
+  const kudos = await listAll("kudos"); const awards = await listAll("rewards");
+  const pts = {};
+  kudos.forEach(k=>{ pts[k.toId] = (pts[k.toId]||0) + (Number(k.points)||0); });
+  awards.forEach(a=>{ pts[a.employeeId] = (pts[a.employeeId]||0) + (Number(a.points)||0); });
+  const board = Object.entries(pts).filter(([id])=>S.employeesCache.some(e=>e.id===id)).sort((a,b)=>b[1]-a[1]);
+  const myRank = board.findIndex(b=>b[0]===S.me.id);
+  document.getElementById("page-actions").innerHTML = (isHrOrAbove() ? '<button class="btn btn-ghost" onclick="giveAward()">Award points</button> ' : "") + '<button class="btn btn-primary" onclick="giveKudos()">Give kudos</button>';
+  const mine = [...kudos.filter(k=>k.toId===S.me.id).map(k=>({at:k.createdAt, pts:k.points, why:`${k.badge||"Kudos"} from ${employeeName(k.employeeId)}`})),
+    ...awards.filter(a=>a.employeeId===S.me.id).map(a=>({at:a.createdAt, pts:a.points, why:`${a.award}: ${a.reason||""}`}))].sort((a,b)=>tsSec({createdAt:b.at})-tsSec({createdAt:a.at}));
+  return `<div class="grid grid-3" style="margin-bottom:20px;">${statCard("My points", pts[S.me.id]||0, "", "policies")}${statCard("My rank", myRank>-1?"#"+(myRank+1):"—", `of ${board.length}`, "approvals")}${statCard("Kudos received", kudos.filter(k=>k.toId===S.me.id).length, "", "my-profile")}</div>
+    <div class="grid grid-2">${panel("🏆 Leaderboard", tableHtml(["#","Employee","Company","Points"], board.slice(0,20).map(([id,p],i)=>{const e=S.employeesCache.find(x=>x.id===id)||{};
+      return `<tr${id===S.me.id?' style="background:rgba(232,65,44,.06);"':""}><td>${["🥇","🥈","🥉"][i]||i+1}</td><td><b>${escapeHtml(e.name||"")}</b></td><td class="muted">${escapeHtml(companyName(e.companyId))}</td><td><b>${p}</b></td></tr>`;}), "No points earned yet."))}
+    ${panel("My reward history", tableHtml(["Date","For","Points"], mine.map(m=>`<tr><td>${fmtDate(m.at)}</td><td>${escapeHtml(m.why)}</td><td>+${m.pts||0}</td></tr>`), "Nothing yet."))}</div>`;
+}
+window.giveAward = () => formModal("Award points", [
+  {k:"employeeId",label:"Employee",type:"emp",req:true},
+  {k:"award",label:"Award",type:"select",options:["Employee of the Month","Star Performer","Spot Award","Long Service","Best Team","Innovation Award"]},
+  {k:"points",label:"Points",type:"number",def:50,req:true},{k:"reason",label:"Citation",type:"textarea"},
+], {}, async d => {
+  await addDoc(collection(db,"rewards"), { ...d, awardedBy:S.me.id, createdAt:serverTimestamp() });
+  toast("Points awarded","success"); navigateTo(S.view);
+});
+
 const RENDERERS = {
+  "pulse": renderPulse, "culture-charter": renderCultureCharter, "my-assets": renderAssets, "assets-admin": renderAssets,
+  "helpdesk": renderHelpdesk, "helpdesk-admin": renderHelpdesk, "lms": renderLms, "lms-admin": renderLms,
+  "recruitment": renderRecruitment, "goals": renderGoals, "performance": renderPerformance, "performance-admin": renderPerformance,
+  "expenses": renderExpenses, "expenses-admin": renderExpenses, "loans": renderLoans, "loans-admin": renderLoans,
+  "payroll": renderPayroll, "my-payroll": renderMyPayroll, "hr-budget": renderHrBudget, "rewards": renderRewards,
   "dashboard": renderDashboard,
   "my-leave": renderMyLeave,
   "approvals": renderApprovals,
