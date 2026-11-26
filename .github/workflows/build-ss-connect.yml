@@ -1,0 +1,81 @@
+name: Build SS-Connect Agent (.exe & .dmg)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'daftarbox/remote/agent.py'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pyinstaller pyautogui websockets pywin32
+      - name: Build .exe
+        run: |
+          pyinstaller --onefile --noconsole `
+            --name "SS-Connect" `
+            daftarbox/remote/agent.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/SS-Connect.exe
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pyinstaller pyautogui websockets
+      - name: Build app
+        run: |
+          pyinstaller --onefile --windowed \
+            --name "SS-Connect" \
+            daftarbox/remote/agent.py
+      - name: Create .dmg
+        run: |
+          mkdir dmg-src
+          cp -r "dist/SS-Connect.app" dmg-src/ 2>/dev/null || cp dist/SS-Connect dmg-src/
+          hdiutil create -volname "SS-Connect" -srcfolder dmg-src -ov -format UDZO SS-Connect.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-dmg
+          path: SS-Connect.dmg
+
+  release:
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ss-connect-latest
+          name: SS-Connect v1.0
+          make_latest: true
+          body: |
+            ## SS-Connect – Remote Control Agent
+
+            Lets IT support control your PC via the Core Tools remote access portal.
+
+            | Platform | File |
+            |---|---|
+            | Windows 10/11 | `SS-Connect.exe` — just double-click, no install needed |
+            | macOS | `SS-Connect.dmg` — open and drag to Applications |
+
+            No Python required. Fully self-contained.
+          files: |
+            artifacts/windows-exe/SS-Connect.exe
+            artifacts/mac-dmg/SS-Connect.dmg

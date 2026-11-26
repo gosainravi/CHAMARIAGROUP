@@ -20,3 +20,4 @@ obj/
 node_modules/
 *.user
 .vs/
+dist/

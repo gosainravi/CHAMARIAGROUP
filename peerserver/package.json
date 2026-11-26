@@ -1,0 +1,16 @@
+{
+  "name": "ss-connect-peer-server",
+  "version": "1.0.0",
+  "description": "PeerJS signaling server for SS-Connect remote access",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "peer": "^1.0.2"
+  }
+}
