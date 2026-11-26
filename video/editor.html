@@ -141,6 +141,28 @@ dialog.srcmon{max-width:760px;width:calc(100% - 32px)}
 .sm-tc{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
 .sm-tc b{color:var(--ink)}.sm-cur{color:var(--accent);font-weight:700}
 .sm-ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}.sm-ctl .sp{flex:1}
+[hidden]{display:none!important} /* button styles must never un-hide a hidden element */
+.st-bar{flex-wrap:nowrap;min-width:0}
+.st-bar .crumb{white-space:nowrap}
+.st-bar .btn{white-space:nowrap}
+@media (max-width:1250px){.st-bar .crumb{display:none}.st-bar input.pname{width:140px}}
+@media (max-width:1050px){.savestat{display:none}.st-bar select.aspect{max-width:150px}}
+.savestat{font-size:.74rem;color:var(--muted);white-space:nowrap}
+.savestat.ok{color:#6ee7b0}.savestat.err{color:var(--danger)}
+dialog.projdlg{max-width:860px;width:calc(100% - 32px);max-height:86vh;overflow:auto}
+.pj-h{display:flex;align-items:center;justify-content:space-between}.pj-h h3{margin:0}
+.pj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.pj,.pj-new{border:1px solid var(--line);border-radius:10px;background:var(--bg);overflow:hidden;display:grid}
+.pj.cur{border-color:var(--accent)}
+.pj-new{place-items:center;align-content:center;gap:6px;min-height:200px;cursor:pointer;color:var(--accent);font:inherit;font-weight:700;border-style:dashed}
+.pj-new span{font-size:2rem;line-height:1}
+.pj-new:hover{background:var(--accent-soft)}
+.pj-open{border:0;padding:0;background:#000;cursor:pointer;aspect-ratio:16/9;display:grid;place-items:center}
+.pj-open img{width:100%;height:100%;object-fit:cover;display:block}
+.pj-ph{color:#fff8;font-size:1.6rem}
+.pj-i{padding:8px 10px 2px;display:grid;gap:2px;min-width:0}
+.pj-i b{font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pj-i span{font-size:.72rem;color:var(--muted)}
+.pj-a{display:flex;gap:4px;padding:6px 8px 10px;flex-wrap:wrap}.pj-a .btn{padding:4px 8px;font-size:.74rem}
 .tpl{display:grid;gap:8px}
 .tpl button{border:1px solid var(--line);background:var(--sunk);color:#fff;border-radius:8px;padding:12px;cursor:pointer;text-align:center;font-family:Archivo,sans-serif}
 .tpl button:hover{border-color:var(--accent)}
@@ -255,6 +277,8 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
   <a class="mark" href="../index.html">Daftarbox</a>
   <a class="crumb" href="index.html#/">/ Video editing /</a>
   <input class="pname" value="Untitled video" aria-label="Project name">
+  <span class="savestat" role="status" aria-live="polite">Not saved yet</span>
+  <button class="btn ghost small" data-act="projects" title="Your saved projects">Projects</button>
   <span class="sp"></span>
   <button class="ib" data-act="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled></button>
   <button class="ib" data-act="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled></button>
@@ -411,6 +435,6 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </dialog>
 <div class="toast" role="status" aria-live="polite"></div>
 <script src="fx.js?v=20261125c"></script>
-<script src="editor.js?v=20261126b"></script>
+<script src="editor.js?v=20261126d"></script>
 </body>
 </html>
