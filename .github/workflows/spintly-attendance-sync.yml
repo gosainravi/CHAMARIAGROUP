@@ -1,0 +1,38 @@
+name: Spintly attendance sync
+
+on:
+  schedule:
+    - cron: "30 4-15 * * *"   # every hour 10:00–21:00 IST
+    - cron: "30 20 * * *"     # 02:00 IST — final pass for yesterday
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Date to sync (YYYY-MM-DD, blank = today + yesterday)"
+        required: false
+      dry_run:
+        description: "Dry run (fetch + match only, no writes)"
+        type: boolean
+        default: false
+
+concurrency: spintly-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/spintly-sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - run: node sync.mjs
+        env:
+          SPINTLY_EMAIL: ${{ secrets.SPINTLY_EMAIL }}
+          SPINTLY_PASSWORD: ${{ secrets.SPINTLY_PASSWORD }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SYNC_DATE: ${{ inputs.date }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}

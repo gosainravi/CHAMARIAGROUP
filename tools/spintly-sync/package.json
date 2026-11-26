@@ -1,0 +1,10 @@
+{
+  "name": "spintly-hrms-sync",
+  "private": true,
+  "type": "module",
+  "scripts": { "sync": "node sync.mjs" },
+  "dependencies": {
+    "amazon-cognito-identity-js": "6.3.12",
+    "firebase-admin": "12.7.0"
+  }
+}

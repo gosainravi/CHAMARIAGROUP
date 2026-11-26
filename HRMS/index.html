@@ -2228,14 +2228,14 @@ async function renderEmployees(){
             ${S.employeesCache.map(e=>`
               <tr>
                 <td class="muted">${e.employeeId||"—"}</td>
-                <td>${e.name}</td><td>${e.email}</td><td class="muted">${e.phone||"—"}</td><td class="muted">${e.doj?fmtDate(e.doj):"—"}</td><td>${companyName(e.companyId)}</td>
+                <td>${e.name}${e.noLogin?' <span class="pill pill-pending" title="Added from Spintly, no HRMS login yet">no login</span>':""}</td><td>${e.email||"—"}</td><td class="muted">${e.phone||"—"}</td><td class="muted">${e.doj?fmtDate(e.doj):"—"}</td><td>${companyName(e.companyId)}</td>
                 <td class="muted">${e.departmentId?deptName(e.departmentId):"—"}</td>
                 <td class="muted">${e.designationId?desigName(e.designationId):"—"}</td>
                 <td><span class="pill pill-role">${ROLE_LABEL[e.role]||e.role}</span></td>
                 <td>${e.reportsTo ? employeeName(e.reportsTo) : "—"}</td>
                 <td class="muted">${e.shiftId ? shiftName(e.shiftId) : "—"}</td>
                 <td>${e.status||"active"}</td>
-                <td class="row-actions"><button class="small-btn" onclick="openViewProfileModal('${e.id}')">View</button><button class="small-btn" onclick="openEditEmployeeModal('${e.id}')">Edit</button><button class="small-btn" onclick="openDocsModal('${e.id}')">Docs</button></td>
+                <td class="row-actions"><button class="small-btn" onclick="openViewProfileModal('${e.id}')">View</button><button class="small-btn" onclick="openEditEmployeeModal('${e.id}')">Edit</button><button class="small-btn" onclick="openDocsModal('${e.id}')">Docs</button>${e.noLogin?`<button class="small-btn" title="Added automatically from Spintly — create their HRMS login" onclick="openAddEmployeeModal('${e.id}')">Create login</button>`:""}</td>
               </tr>`).join("")}
           </tbody>
         </table>
@@ -2281,11 +2281,14 @@ function computeYearsMonths(fromISO, toISO){
 function computeAge(dob){ return computeYearsMonths(dob); }
 function selOpt(value, label, current){ return `<option value="${value}"${(current||"")===value?" selected":""}>${label}</option>`; }
 
-window.openAddEmployeeModal = function(){
-  openModal("Add employee", `
-    <div class="field"><label>Full name</label><input id="ae-name"></div>
-    <div class="field"><label>Email</label><input id="ae-email" type="email"></div>
-    <div class="field"><label>Phone</label><input id="ae-phone" type="tel" placeholder="optional"></div>
+window.openAddEmployeeModal = function(fromPlaceholderId){
+  const ph = fromPlaceholderId ? (S.employeesCache.find(e=>e.id===fromPlaceholderId)||{}) : {};
+  window.__aePlaceholder = fromPlaceholderId || null;
+  openModal(fromPlaceholderId ? "Create HRMS login" : "Add employee", `
+    ${fromPlaceholderId?`<p class="muted" style="margin-top:0;">Added automatically from Spintly. Their attendance so far moves to the new login.</p>`:""}
+    <div class="field"><label>Full name</label><input id="ae-name" value="${escapeHtml(ph.name||"")}"></div>
+    <div class="field"><label>Email</label><input id="ae-email" type="email" value="${escapeHtml(ph.email||"")}"></div>
+    <div class="field"><label>Phone</label><input id="ae-phone" type="tel" placeholder="optional" value="${escapeHtml(ph.phone||"")}"></div>
     <div class="field"><label>Temporary password</label><input id="ae-password" type="text" placeholder="min. 6 characters"></div>
     <div class="field"><label>Date of Joining</label><input type="date" id="ae-doj" value="${new Date().toISOString().slice(0,10)}"></div>
     <div class="field"><label>Company (payroll)</label><select id="ae-company">${companyOptions()}</select></div>
@@ -2310,6 +2313,18 @@ function findEmployeeByName(name){
   return S.employeesCache.find(e=>e.name.trim().toLowerCase()===n) || null;
 }
 
+async function mergeSpintlyPlaceholder(phId, newUid){
+  const ph = S.employeesCache.find(e=>e.id===phId); if(!ph) return;
+  await updateDoc(doc(db,"employees",newUid), { employeeId: ph.employeeId||"", spintlyUserId: ph.spintlyUserId||null });
+  const att = await getDocs(query(collection(db,"attendance"), where("employeeId","==",phId)));
+  for(const d of att.docs){ const data = d.data(); await setDoc(doc(db,"attendance",`${newUid}_${data.date}`), { ...data, employeeId:newUid }, { merge:true }); await deleteDoc(d.ref); }
+  // only Super Admin may delete employees; for HR Admin mark it merged and the Spintly sync removes it
+  try{ await deleteDoc(doc(db,"employees",phId)); }
+  catch(e){ await updateDoc(doc(db,"employees",phId), { status:"inactive", mergedInto:newUid }); }
+  S.employeesCache = S.employeesCache.filter(e=>e.id!==phId);
+  const ne = S.employeesCache.find(e=>e.id===newUid); if(ne){ ne.employeeId = ph.employeeId||""; ne.spintlyUserId = ph.spintlyUserId||null; }
+  window.__aePlaceholder = null;
+}
 window.submitAddEmployee = async function(){
   const name = document.getElementById("ae-name").value.trim();
   const email = document.getElementById("ae-email").value.trim();
@@ -2321,7 +2336,8 @@ window.submitAddEmployee = async function(){
   const reportsTo = document.getElementById("ae-reportsto").value || null;
   if(!name || !email || password.length < 6){ toast("Fill in name, email, and a 6+ character password", "error"); return; }
   try{
-    await createOneEmployee({ name, email, phone, password, companyId, role, reportsTo, doj });
+    const newUid = await createOneEmployee({ name, email, phone, password, companyId, role, reportsTo, doj });
+    if(window.__aePlaceholder) await mergeSpintlyPlaceholder(window.__aePlaceholder, newUid);
     toast("Employee created", "success");
     closeModal();
     navigateTo("employees");
