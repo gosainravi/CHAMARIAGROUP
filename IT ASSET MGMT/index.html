@@ -1023,6 +1023,32 @@
     }
     .stat-card:hover{transform:none;}
   }
+
+  /* ---------- Checklists ---------- */
+  .cl-view-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent);}
+  .cl-bar{height:6px;border-radius:999px;background:var(--line);overflow:hidden;}
+  .cl-bar.big{height:9px;}
+  .cl-bar > span{display:block;height:100%;background:var(--accent);transition:width .2s ease;}
+  .cl-step{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);}
+  .cl-step:last-child{border-bottom:none;}
+  .cl-step-n{width:18px;flex-shrink:0;font-size:11px;color:var(--ink-faint);}
+  .cl-step-text{flex:1;min-width:0;}
+  .cl-step-req{font-size:10.5px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+  .cl-preview{font-size:12.5px;line-height:1.9;color:var(--ink-dim);}
+  .cl-item{
+    display:flex;align-items:flex-start;gap:11px;padding:11px 0;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .cl-item:last-child{border-bottom:none;}
+  .cl-item input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;}
+  .cl-item-main{flex:1;min-width:0;}
+  .cl-item-text{font-size:13.5px;}
+  .cl-item.done .cl-item-text{color:var(--ink-soft);text-decoration:line-through;}
+  .cl-item-sub{font-size:11px;color:var(--success);margin-top:3px;}
+  .cl-item-note{
+    width:100%;margin-top:6px;padding:5px 8px;font-size:12px;
+    background:var(--paper);border:1px solid var(--line);border-radius:9px;color:var(--ink);
+  }
 </style>
 </head>
 <body>
@@ -1101,6 +1127,7 @@
       <button class="tab-btn" data-tab="projects"><span class="nav-ic">📋</span><span class="nav-txt">IT Projects</span></button>
       <button class="tab-btn" data-tab="tickets"><span class="nav-ic">🎫</span><span class="nav-txt">Raise Ticket</span></button>
       <button class="tab-btn" data-tab="discovery"><span class="nav-ic">🔍</span><span class="nav-txt">Asset Discovery</span></button>
+      <button class="tab-btn" data-tab="checklists"><span class="nav-ic">☑</span><span class="nav-txt">Checklists</span></button>
       <button class="tab-btn" data-tab="netdevices"><span class="nav-ic">🖧</span><span class="nav-txt">Network Devices</span></button>
       <button class="tab-btn" data-tab="users"><span class="nav-ic">🔐</span><span class="nav-txt">Users &amp; Roles</span></button>
 
@@ -1759,6 +1786,156 @@
         <button class="btn btn-danger" id="dupDeleteBtn" disabled>🗑 Delete ticked (<span id="dupDelCount">0</span>)</button>
         <div style="flex:1;"></div>
         <button class="btn" id="dupCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CHECKLISTS ================= -->
+  <section id="tab-checklists" class="tab-panel section">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="btn cl-view-btn active" data-clview="runs">Checklists in progress</button>
+        <button class="btn cl-view-btn" data-clview="templates">Templates</button>
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="clSearch" type="text" placeholder="Search checklists...">
+        </div>
+        <select class="filter" id="clKindFilter">
+          <option value="">All kinds</option>
+          <option value="onboarding">Onboarding</option>
+          <option value="exit">Exit / clearance</option>
+          <option value="asset">Asset check</option>
+          <option value="maintenance">Maintenance</option>
+        </select>
+        <select class="filter" id="clStatusFilter">
+          <option value="open">Open</option>
+          <option value="overdue">Overdue</option>
+          <option value="done">Completed</option>
+          <option value="">All statuses</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" id="clNewTemplateBtn">+ New template</button>
+        <button class="btn btn-primary" id="clStartBtn">▶ Start checklist</button>
+      </div>
+    </div>
+
+    <div id="clStatsRow" class="card-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;"></div>
+
+    <div class="table-wrap"><div class="table-card"><div class="scroll-x">
+      <table>
+        <thead><tr id="clTableHead"></tr></thead>
+        <tbody id="clTableBody"><tr class="empty-row"><td colspan="7"><span class="empty-icon">☑</span>Loading…</td></tr></tbody>
+      </table>
+    </div></div></div>
+  </section>
+
+  <!-- Template editor -->
+  <div class="overlay" id="clTemplateOverlay">
+    <div class="panel">
+      <div class="panel-head" style="flex-shrink:0;">
+        <div><h2 id="clTplTitle">New template</h2><p id="clTplMeta" style="font-size:11px;font-family:var(--mono);color:var(--ink-soft);margin-top:2px;"></p></div>
+        <button class="panel-close" id="clTplClose">✕</button>
+      </div>
+      <div class="panel-body" style="overflow-y:auto;flex:1;">
+        <div class="field"><label>Name <span class="req">*</span></label><input id="clTplName" placeholder="e.g. New joiner — IT setup"></div>
+        <div class="grid2">
+          <div class="field">
+            <label>Used for <span class="req">*</span></label>
+            <select id="clTplKind">
+              <option value="onboarding">Onboarding — run against an employee</option>
+              <option value="exit">Exit / clearance — run against an employee</option>
+              <option value="asset">Asset check — run against an asset</option>
+              <option value="maintenance">Recurring maintenance</option>
+            </select>
+          </div>
+          <div class="field" id="clTplRecurWrap">
+            <label>Repeats</label>
+            <select id="clTplRecur">
+              <option value="none">Does not repeat</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="half-yearly">Half-yearly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Description</label><input id="clTplDesc" placeholder="What this checklist is for"></div>
+
+        <div class="section-label">Steps</div>
+        <div id="clTplItems" style="margin:10px 0;"></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="clTplNewItem" placeholder="Add a step and press Enter" style="flex:1;">
+          <button class="btn btn-sm" id="clTplAddItem">Add</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--ink-soft);margin:12px 0 0;line-height:1.6;">
+          Steps are copied into a checklist when it starts, so editing this template later never changes a checklist someone has already worked through.
+        </p>
+      </div>
+      <div class="panel-foot" style="flex-shrink:0;flex-wrap:wrap;">
+        <button class="btn btn-danger" id="clTplDelete">🗑 Delete</button>
+        <div style="flex:1;"></div>
+        <button class="btn" id="clTplCancel">Close</button>
+        <button class="btn btn-primary" id="clTplSave">Save template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start a checklist -->
+  <div class="overlay" id="clStartOverlay">
+    <div class="panel">
+      <div class="panel-head" style="flex-shrink:0;">
+        <div><h2>Start a checklist</h2><p id="clStartMeta" style="font-size:11px;font-family:var(--mono);color:var(--ink-soft);margin-top:2px;"></p></div>
+        <button class="panel-close" id="clStartClose">✕</button>
+      </div>
+      <div class="panel-body" style="overflow-y:auto;flex:1;">
+        <div class="field">
+          <label>Template <span class="req">*</span></label>
+          <select id="clStartTemplate"><option value="">Select a template…</option></select>
+        </div>
+        <div class="field" id="clStartEmployeeWrap">
+          <label>Employee <span class="req">*</span></label>
+          <select id="clStartEmployee"><option value="">Select employee…</option></select>
+        </div>
+        <div class="field" id="clStartAssetWrap">
+          <label>Asset <span class="req">*</span></label>
+          <select id="clStartAsset"><option value="">Select asset…</option></select>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Due date</label><input type="date" id="clStartDue"></div>
+          <div class="field"><label>Title</label><input id="clStartTitle" placeholder="Defaults to the template name"></div>
+        </div>
+        <div id="clStartPreview" style="margin-top:6px;"></div>
+        <div id="clStartMsg" style="font-size:12px;color:var(--ink-soft);margin-top:12px;min-height:16px;"></div>
+      </div>
+      <div class="panel-foot" style="flex-shrink:0;">
+        <div style="flex:1;"></div>
+        <button class="btn" id="clStartCancel">Cancel</button>
+        <button class="btn btn-primary" id="clStartConfirm">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Working through a checklist -->
+  <div class="overlay" id="clRunOverlay">
+    <div class="panel">
+      <div class="panel-head" style="flex-shrink:0;">
+        <div><h2 id="clRunTitle">Checklist</h2><p id="clRunMeta" style="font-size:11px;font-family:var(--mono);color:var(--ink-soft);margin-top:2px;"></p></div>
+        <button class="panel-close" id="clRunClose">✕</button>
+      </div>
+      <div class="panel-body" style="overflow-y:auto;flex:1;">
+        <div id="clRunProgress" style="margin-bottom:16px;"></div>
+        <div id="clRunItems"></div>
+        <div class="section-label">Notes</div>
+        <textarea id="clRunNotes" rows="3" placeholder="Anything worth recording about this run" style="width:100%;"></textarea>
+      </div>
+      <div class="panel-foot" style="flex-shrink:0;flex-wrap:wrap;">
+        <button class="btn btn-danger" id="clRunDelete">🗑 Delete</button>
+        <div style="flex:1;"></div>
+        <button class="btn" id="clRunCancelBtn">Close</button>
+        <button class="btn" id="clRunSave">Save</button>
+        <button class="btn btn-primary" id="clRunComplete">✓ Mark complete</button>
       </div>
     </div>
   </div>
@@ -3189,7 +3366,7 @@ async function logAssignmentHistory(assetId, eventType, employeeId, employeeName
   try{
     await insertHistoryEntry({
       assetId, eventType, employeeId: employeeId || null, employeeName: employeeName || '',
-      eventDate: eventDate || new Date().toISOString().slice(0,10), description: HISTORY_TYPE_LABEL[eventType] + (employeeName ? ' — ' + employeeName : ''),
+      eventDate: eventDate || isoLocalDate(new Date()), description: HISTORY_TYPE_LABEL[eventType] + (employeeName ? ' — ' + employeeName : ''),
       remarks: remarks || '', performedBy: (supa && window._currentUserEmail) ? window._currentUserEmail : ''
     });
   }catch(e){ console.warn('Could not log assignment history (run the asset_history migration?)', e); }
@@ -3686,6 +3863,7 @@ async function loadAll(){
     await loadProjects().catch(e => { console.warn('IT Projects skipped:', e.message); itProjects = []; });
     await loadTickets().catch(e => { console.warn('IT Tickets skipped:', e.message); tickets = []; });
     await loadDiscovery().catch(e => { console.warn('Discovery skipped:', e.message); discoveryItems = []; });
+    await loadChecklists().catch(e => { console.warn('Checklists skipped:', e.message); });
     await loadHealthTelemetry().catch(e => { console.warn('Health telemetry skipped:', e.message); healthTelemetry = []; });
     await loadLocalCounter();
 
@@ -4193,6 +4371,560 @@ function handleAssetInvoiceFile(file){
   showToast('Invoice ready to save');
 }
 
+
+/* ================= CHECKLISTS =================
+   A template is the reusable list; a run is one time someone actually worked
+   through it. A run copies the steps in at the moment it starts, so editing a
+   template afterwards cannot rewrite what was already ticked - a finished run
+   has to stand on its own as a record of what was done. */
+let clTemplates = [];
+let clRuns = [];
+let clView = 'runs';
+let clTplEditingId = null;
+let clRunCurrentId = null;
+let clTplDraftItems = [];
+
+const CL_KINDS = {
+  onboarding:  { label:'Onboarding',   icon:'➕', against:'employee' },
+  exit:        { label:'Exit',         icon:'➖', against:'employee' },
+  asset:       { label:'Asset check',  icon:'▮', against:'asset'    },
+  maintenance: { label:'Maintenance',  icon:'⚙', against:'none'     }
+};
+const CL_RECUR_MONTHS = { 'weekly':0, 'monthly':1, 'quarterly':3, 'half-yearly':6, 'yearly':12 };
+
+function clTplFromDb(r){
+  return { id:r.id, name:r.name||'', kind:r.kind||'onboarding', description:r.description||'',
+           items:Array.isArray(r.items)?r.items:[], recurrence:r.recurrence||'none',
+           active:r.active !== false, createdAt:r.created_at||'' };
+}
+function clRunFromDb(r){
+  return { id:r.id, templateId:r.template_id||'', templateName:r.template_name||'',
+           kind:r.kind||'onboarding', title:r.title||'', employeeId:r.employee_id||'',
+           assetId:r.asset_id||'', companyId:r.company_id||'', dueDate:r.due_date||'',
+           status:r.status||'open', items:Array.isArray(r.items)?r.items:[], notes:r.notes||'',
+           startedAt:r.started_at||'', completedAt:r.completed_at||'' };
+}
+
+async function loadChecklists(){
+  if(!supa){ clTemplates = []; clRuns = []; renderChecklists(); return; }
+  try{
+    const [t, r] = await Promise.all([
+      supa.from('checklist_templates').select('*').order('created_at',{ascending:false}),
+      supa.from('checklist_runs').select('*').order('created_at',{ascending:false})
+    ]);
+    if(t.error) throw t.error;
+    if(r.error) throw r.error;
+    clTemplates = (t.data||[]).map(clTplFromDb);
+    clRuns = (r.data||[]).map(clRunFromDb);
+  }catch(e){
+    console.warn('Checklists unavailable', e);
+    clTemplates = []; clRuns = [];
+  }
+  renderChecklists();
+}
+
+function clDone(run){ return (run.items||[]).filter(i=>i.done).length; }
+function clTotal(run){ return (run.items||[]).length; }
+function clPct(run){ const t=clTotal(run); return t ? Math.round(clDone(run)/t*100) : 0; }
+function clDaysLeft(due){
+  if(!due) return null;
+  const d = new Date(due + 'T00:00:00'); if(isNaN(d.getTime())) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((d - today) / 86400000);
+}
+function clIsOverdue(run){
+  return run.status === 'open' && clDaysLeft(run.dueDate) !== null && clDaysLeft(run.dueDate) < 0;
+}
+function clRunFor(run){
+  if(run.employeeId){
+    const e = (employees||[]).find(x=>x.id===run.employeeId);
+    return e ? (e.name || e.employeeName || 'employee') : 'employee removed';
+  }
+  if(run.assetId){
+    const a = (assets||[]).find(x=>x.id===run.assetId);
+    return a ? ((a.assetCode||'') + ' ' + (a.model||a.category||'')).trim() : 'asset removed';
+  }
+  return '—';
+}
+
+// Advance a recurring maintenance date. Weekly is the one that is not months.
+function clNextDue(fromStr, recurrence){
+  const today = new Date(); today.setHours(0,0,0,0);
+  let base = fromStr ? new Date(fromStr + 'T00:00:00') : today;
+  if(isNaN(base.getTime())) base = today;
+  const d = new Date(base);
+  if(recurrence === 'weekly') d.setDate(d.getDate() + 7);
+  else d.setMonth(d.getMonth() + (CL_RECUR_MONTHS[recurrence] || 1));
+  // never schedule the next one into the past
+  if(d < today) return isoLocalDate(new Date(today.getTime() + 86400000));
+  return isoLocalDate(d);
+}
+
+function clFiltered(){
+  const q = ($('clSearch').value || '').trim().toLowerCase();
+  const kind = $('clKindFilter').value;
+  const status = $('clStatusFilter').value;
+  const terms = q.split(/\s+/).filter(Boolean);
+
+  if(clView === 'templates'){
+    return clTemplates.filter(t => {
+      if(kind && t.kind !== kind) return false;
+      if(!terms.length) return true;
+      const hay = [t.name, t.description, CL_KINDS[t.kind] && CL_KINDS[t.kind].label,
+                   (t.items||[]).map(i=>i.text).join(' ')].filter(Boolean).join(' ').toLowerCase();
+      return terms.every(x => hay.includes(x));
+    });
+  }
+  return clRuns.filter(r => {
+    if(kind && r.kind !== kind) return false;
+    if(status === 'open'    && r.status !== 'open') return false;
+    if(status === 'done'    && r.status !== 'done') return false;
+    if(status === 'overdue' && !clIsOverdue(r)) return false;
+    if(!terms.length) return true;
+    const hay = [r.title, r.templateName, clRunFor(r), CL_KINDS[r.kind] && CL_KINDS[r.kind].label,
+                 (r.items||[]).map(i=>i.text).join(' ')].filter(Boolean).join(' ').toLowerCase();
+    return terms.every(x => hay.includes(x));
+  });
+}
+
+function renderChecklists(){
+  document.querySelectorAll('.cl-view-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.clview === clView));
+  $('clStatusFilter').style.display = clView === 'runs' ? '' : 'none';
+
+  const open    = clRuns.filter(r => r.status === 'open');
+  const overdue = clRuns.filter(clIsOverdue);
+  const dueSoon = open.filter(r => { const d = clDaysLeft(r.dueDate); return d !== null && d >= 0 && d <= 7; });
+  const doneRuns= clRuns.filter(r => r.status === 'done');
+
+  $('clStatsRow').innerHTML =
+    '<div class="stat-card"><div class="sc-num">' + open.length + '</div><div class="sc-label">In progress</div></div>' +
+    '<div class="stat-card" style="border-color:' + (overdue.length ? 'var(--danger)' : 'var(--line)') + ';"><div class="sc-num"' +
+      (overdue.length ? ' style="color:var(--danger);"' : '') + '>' + overdue.length + '</div><div class="sc-label">Overdue</div></div>' +
+    '<div class="stat-card"><div class="sc-num">' + dueSoon.length + '</div><div class="sc-label">Due within 7 days</div></div>' +
+    '<div class="stat-card"><div class="sc-num">' + doneRuns.length + '</div><div class="sc-label">Completed</div></div>';
+
+  const rows = clFiltered();
+  const head = $('clTableHead');
+  const body = $('clTableBody');
+
+  if(clView === 'templates'){
+    head.innerHTML = '<th>Template</th><th>Used for</th><th>Steps</th><th>Repeats</th><th>Runs</th><th>Actions</th>';
+    if(!rows.length){
+      body.innerHTML = '<tr class="empty-row"><td colspan="6"><span class="empty-icon">☑</span>' +
+        (clTemplates.length ? 'No template matches that search.'
+                            : 'No templates yet — create one to start running checklists.') + '</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(t => {
+      const used = clRuns.filter(r => r.templateId === t.id).length;
+      const k = CL_KINDS[t.kind] || CL_KINDS.onboarding;
+      return '<tr style="cursor:pointer;" data-cltpl="' + t.id + '">' +
+        '<td><strong>' + escapeHtml(t.name || '—') + '</strong>' +
+          (t.description ? '<br><span style="font-size:11px;color:var(--ink-soft);">' + escapeHtml(t.description) + '</span>' : '') + '</td>' +
+        '<td>' + k.icon + ' ' + k.label + '</td>' +
+        '<td class="mono">' + (t.items||[]).length + '</td>' +
+        '<td>' + (t.recurrence === 'none' ? '—' : escapeHtml(t.recurrence)) + '</td>' +
+        '<td class="mono">' + used + '</td>' +
+        '<td><div class="row-actions">' +
+          '<button class="btn btn-sm" data-cltpledit="' + t.id + '">Edit</button>' +
+          '<button class="btn btn-sm btn-primary" data-cltplrun="' + t.id + '" style="font-size:11px;">▶ Start</button>' +
+        '</div></td></tr>';
+    }).join('');
+    body.querySelectorAll('[data-cltpledit]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openTemplateEditor(b.dataset.cltpledit); }));
+    body.querySelectorAll('[data-cltplrun]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openStartDialog(b.dataset.cltplrun); }));
+    body.querySelectorAll('[data-cltpl]').forEach(tr => tr.addEventListener('click', () => openTemplateEditor(tr.dataset.cltpl)));
+    return;
+  }
+
+  head.innerHTML = '<th>Checklist</th><th>For</th><th>Kind</th><th>Progress</th><th>Due</th><th>Status</th><th>Actions</th>';
+  if(!rows.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="7"><span class="empty-icon">☑</span>' +
+      (clRuns.length ? 'Nothing matches those filters.'
+                     : 'No checklists running — start one from a template.') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(r => {
+    const k = CL_KINDS[r.kind] || CL_KINDS.onboarding;
+    const pct = clPct(r), done = clDone(r), total = clTotal(r);
+    const over = clIsOverdue(r);
+    const days = clDaysLeft(r.dueDate);
+    const dueTxt = !r.dueDate ? '—'
+      : over ? Math.abs(days) + 'd late'
+      : (days === 0 ? 'today' : days + 'd');
+    const statusChip = r.status === 'done'
+      ? '<span class="tkt-badge" style="background:#d1fae5;color:#065f46;">done</span>'
+      : over ? '<span class="tkt-badge" style="background:#fee2e2;color:#991b1b;">overdue</span>'
+      : '<span class="tkt-badge" style="background:#fef3c7;color:#92400e;">open</span>';
+    return '<tr style="cursor:pointer;" data-clrun="' + r.id + '">' +
+      '<td><strong>' + escapeHtml(r.title || r.templateName || '—') + '</strong></td>' +
+      '<td>' + escapeHtml(clRunFor(r)) + '</td>' +
+      '<td style="font-size:12px;">' + k.icon + ' ' + k.label + '</td>' +
+      '<td style="min-width:130px;">' +
+        '<div class="cl-bar"><span style="width:' + pct + '%;' +
+          (r.status === 'done' ? 'background:var(--success);' : over ? 'background:var(--danger);' : '') + '"></span></div>' +
+        '<span style="font-size:10.5px;color:var(--ink-soft);">' + done + ' of ' + total + '</span>' +
+      '</td>' +
+      '<td class="mono" style="font-size:11.5px;' + (over ? 'color:var(--danger);font-weight:700;' : '') + '">' + dueTxt + '</td>' +
+      '<td>' + statusChip + '</td>' +
+      '<td><div class="row-actions">' +
+        '<button class="btn btn-sm" data-clopen="' + r.id + '">Open</button>' +
+        '<button class="btn btn-sm btn-danger" data-cldel="' + r.id + '" title="Delete">🗑</button>' +
+      '</div></td></tr>';
+  }).join('');
+  body.querySelectorAll('[data-clopen]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openRun(b.dataset.clopen); }));
+  body.querySelectorAll('[data-cldel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); deleteRun(b.dataset.cldel); }));
+  body.querySelectorAll('[data-clrun]').forEach(tr => tr.addEventListener('click', () => openRun(tr.dataset.clrun)));
+}
+
+/* ---------- template editor ---------- */
+function openTemplateEditor(id){
+  clTplEditingId = id || null;
+  const t = id ? clTemplates.find(x => x.id === id) : null;
+  $('clTplTitle').textContent = t ? 'Edit template' : 'New template';
+  $('clTplMeta').textContent = t ? ((t.items||[]).length + ' steps · used by ' +
+      clRuns.filter(r => r.templateId === t.id).length + ' checklist(s)') : '';
+  $('clTplName').value = t ? t.name : '';
+  $('clTplKind').value = t ? t.kind : 'onboarding';
+  $('clTplRecur').value = t ? t.recurrence : 'none';
+  $('clTplDesc').value = t ? t.description : '';
+  clTplDraftItems = t ? (t.items||[]).map(i => ({ text:i.text, required:i.required !== false })) : [];
+  $('clTplDelete').style.display = t ? '' : 'none';
+  clRenderTplItems();
+  clSyncRecurVisibility();
+  $('clTemplateOverlay').classList.add('open');
+  setTimeout(()=> $('clTplName').focus(), 50);
+}
+function clSyncRecurVisibility(){
+  // Only a maintenance list repeats; the others are run when the event happens.
+  $('clTplRecurWrap').style.display = $('clTplKind').value === 'maintenance' ? '' : 'none';
+  if($('clTplKind').value !== 'maintenance') $('clTplRecur').value = 'none';
+}
+function clRenderTplItems(){
+  const box = $('clTplItems');
+  if(!clTplDraftItems.length){
+    box.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);padding:6px 0;">No steps yet.</div>';
+    return;
+  }
+  box.innerHTML = clTplDraftItems.map((it, i) =>
+    '<div class="cl-step">' +
+      '<span class="cl-step-n mono">' + (i+1) + '</span>' +
+      '<input class="cl-step-text" data-cltext="' + i + '" value="' + escapeHtml(it.text) + '">' +
+      '<label class="cl-step-req" title="Must be ticked before the checklist can be completed">' +
+        '<input type="checkbox" data-clreq="' + i + '" ' + (it.required !== false ? 'checked' : '') + '> required' +
+      '</label>' +
+      '<button class="btn btn-sm" data-clup="' + i + '" ' + (i===0?'disabled':'') + ' title="Move up">↑</button>' +
+      '<button class="btn btn-sm" data-cldown="' + i + '" ' + (i===clTplDraftItems.length-1?'disabled':'') + ' title="Move down">↓</button>' +
+      '<button class="btn btn-sm btn-danger" data-clrm="' + i + '" title="Remove">✕</button>' +
+    '</div>').join('');
+  box.querySelectorAll('[data-cltext]').forEach(inp =>
+    inp.addEventListener('input', () => { clTplDraftItems[+inp.dataset.cltext].text = inp.value; }));
+  box.querySelectorAll('[data-clreq]').forEach(cb =>
+    cb.addEventListener('change', () => { clTplDraftItems[+cb.dataset.clreq].required = cb.checked; }));
+  box.querySelectorAll('[data-clrm]').forEach(b =>
+    b.addEventListener('click', () => { clTplDraftItems.splice(+b.dataset.clrm, 1); clRenderTplItems(); }));
+  box.querySelectorAll('[data-clup]').forEach(b =>
+    b.addEventListener('click', () => { const i=+b.dataset.clup; if(i<1) return;
+      const a=clTplDraftItems; [a[i-1],a[i]]=[a[i],a[i-1]]; clRenderTplItems(); }));
+  box.querySelectorAll('[data-cldown]').forEach(b =>
+    b.addEventListener('click', () => { const i=+b.dataset.cldown; const a=clTplDraftItems;
+      if(i>=a.length-1) return; [a[i+1],a[i]]=[a[i],a[i+1]]; clRenderTplItems(); }));
+}
+function clAddDraftItem(){
+  const inp = $('clTplNewItem');
+  const text = inp.value.trim();
+  if(!text) return;
+  clTplDraftItems.push({ text, required:true });
+  inp.value = '';
+  clRenderTplItems();
+  inp.focus();
+}
+function closeTemplateEditor(){ $('clTemplateOverlay').classList.remove('open'); clTplEditingId = null; }
+
+async function saveTemplate(){
+  const name = $('clTplName').value.trim();
+  if(!name){ showToast('Give the template a name', true); $('clTplName').focus(); return; }
+  const items = clTplDraftItems.map(i => ({ text:(i.text||'').trim(), required:i.required !== false }))
+                               .filter(i => i.text);
+  if(!items.length){ showToast('Add at least one step', true); $('clTplNewItem').focus(); return; }
+  const payload = {
+    name, kind:$('clTplKind').value, description:$('clTplDesc').value.trim() || null,
+    items, recurrence:$('clTplKind').value === 'maintenance' ? $('clTplRecur').value : 'none'
+  };
+  try{
+    if(supa){
+      if(clTplEditingId){
+        const { error } = await supa.from('checklist_templates').update(payload).eq('id', clTplEditingId);
+        if(error) throw error;
+      } else {
+        const { error } = await supa.from('checklist_templates').insert(payload);
+        if(error) throw error;
+      }
+    }
+    closeTemplateEditor();
+    await loadChecklists();
+    showToast('Template saved');
+  }catch(e){ showToast('Could not save — ' + (e.message||'error'), true); }
+}
+
+async function deleteTemplate(){
+  if(!clTplEditingId) return;
+  const t = clTemplates.find(x => x.id === clTplEditingId);
+  const used = clRuns.filter(r => r.templateId === clTplEditingId).length;
+  const ok = await passwordConfirmDelete(
+    'Delete the template "' + (t?t.name:'this template') + '"?' +
+    (used ? ' ' + used + ' checklist(s) already run from it keep their own copy of the steps and are not affected.' : ''));
+  if(!ok) return;
+  try{
+    if(supa){ const { error } = await supa.from('checklist_templates').delete().eq('id', clTplEditingId); if(error) throw error; }
+    closeTemplateEditor();
+    await loadChecklists();
+    showToast('Template deleted');
+  }catch(e){ showToast('Could not delete — ' + (e.message||'error'), true); }
+}
+
+/* ---------- starting a checklist ---------- */
+function openStartDialog(templateId){
+  const usable = clTemplates.filter(t => t.active);
+  if(!usable.length){ showToast('Create a template first', true); return; }
+  $('clStartTemplate').innerHTML = '<option value="">Select a template…</option>' +
+    usable.map(t => '<option value="' + t.id + '">' + escapeHtml(t.name) + '</option>').join('');
+  if(templateId) $('clStartTemplate').value = templateId;
+
+  $('clStartEmployee').innerHTML = '<option value="">Select employee…</option>' +
+    (employees||[]).map(e => '<option value="' + e.id + '">' +
+      escapeHtml(e.name || e.employeeName || 'unnamed') + '</option>').join('');
+  $('clStartAsset').innerHTML = '<option value="">Select asset…</option>' +
+    (assets||[]).map(a => '<option value="' + a.id + '">' +
+      escapeHtml(((a.assetCode||'') + ' — ' + (a.model || a.category || '')).trim()) + '</option>').join('');
+
+  $('clStartTitle').value = '';
+  $('clStartDue').value = '';
+  $('clStartMsg').textContent = '';
+  clSyncStartDialog();
+  $('clStartOverlay').classList.add('open');
+}
+function clSyncStartDialog(){
+  const t = clTemplates.find(x => x.id === $('clStartTemplate').value);
+  const against = t ? (CL_KINDS[t.kind]||{}).against : null;
+  $('clStartEmployeeWrap').style.display = against === 'employee' ? '' : 'none';
+  $('clStartAssetWrap').style.display    = against === 'asset'    ? '' : 'none';
+  $('clStartMeta').textContent = t ? ((t.items||[]).length + ' steps') : '';
+  $('clStartPreview').innerHTML = t
+    ? '<div class="section-label">Steps</div><div class="cl-preview">' +
+      (t.items||[]).map((i,n) => '<div><span class="mono" style="color:var(--ink-faint);">' + (n+1) + '.</span> ' +
+        escapeHtml(i.text) + (i.required === false ? ' <span style="color:var(--ink-faint);font-size:11px;">(optional)</span>' : '') +
+        '</div>').join('') + '</div>'
+    : '';
+  if(t && t.recurrence && t.recurrence !== 'none' && !$('clStartDue').value){
+    $('clStartDue').value = clNextDue(isoLocalDate(new Date()), t.recurrence);
+  }
+}
+function closeStartDialog(){ $('clStartOverlay').classList.remove('open'); }
+
+async function confirmStart(){
+  const t = clTemplates.find(x => x.id === $('clStartTemplate').value);
+  if(!t){ $('clStartMsg').textContent = 'Pick a template first.'; return; }
+  const against = (CL_KINDS[t.kind]||{}).against;
+  const employeeId = against === 'employee' ? $('clStartEmployee').value : '';
+  const assetId    = against === 'asset'    ? $('clStartAsset').value    : '';
+  if(against === 'employee' && !employeeId){ $('clStartMsg').textContent = 'Pick the employee this is for.'; return; }
+  if(against === 'asset'    && !assetId){    $('clStartMsg').textContent = 'Pick the asset this is for.';    return; }
+
+  const asset = assetId ? (assets||[]).find(a => a.id === assetId) : null;
+  const payload = {
+    template_id: t.id,
+    template_name: t.name,
+    kind: t.kind,
+    title: $('clStartTitle').value.trim() || t.name,
+    employee_id: employeeId || null,
+    asset_id: assetId || null,
+    company_id: (asset && asset.companyId) || null,
+    due_date: $('clStartDue').value || null,
+    status: 'open',
+    // the steps are copied, not referenced - see the note at the top
+    items: (t.items||[]).map(i => ({ text:i.text, required:i.required !== false,
+                                     done:false, doneBy:null, doneAt:null, note:'' }))
+  };
+  try{
+    if(supa){ const { error } = await supa.from('checklist_runs').insert(payload); if(error) throw error; }
+    closeStartDialog();
+    await loadChecklists();
+    clView = 'runs';
+    renderChecklists();
+    showToast('Checklist started');
+  }catch(e){ $('clStartMsg').textContent = 'Could not start: ' + (e.message||'error'); }
+}
+
+/* ---------- working through a checklist ---------- */
+function openRun(id){
+  const r = clRuns.find(x => x.id === id);
+  if(!r) return;
+  clRunCurrentId = id;
+  $('clRunTitle').textContent = r.title || r.templateName || 'Checklist';
+  const k = CL_KINDS[r.kind] || CL_KINDS.onboarding;
+  $('clRunMeta').textContent = k.label + ' · ' + clRunFor(r) +
+    (r.dueDate ? ' · due ' + new Date(r.dueDate+'T00:00:00').toLocaleDateString('en-IN') : '') +
+    (r.status === 'done' && r.completedAt ? ' · completed ' + new Date(r.completedAt).toLocaleString('en-IN') : '');
+  $('clRunNotes').value = r.notes || '';
+  const locked = r.status === 'done';
+  $('clRunNotes').disabled = locked;
+  $('clRunComplete').style.display = locked ? 'none' : '';
+  $('clRunSave').style.display = locked ? 'none' : '';
+  clRenderRunItems();
+  $('clRunOverlay').classList.add('open');
+}
+function clRenderRunItems(){
+  const r = clRuns.find(x => x.id === clRunCurrentId);
+  if(!r) return;
+  const locked = r.status === 'done';
+  const pct = clPct(r);
+  $('clRunProgress').innerHTML =
+    '<div class="cl-bar big"><span style="width:' + pct + '%;' + (pct===100?'background:var(--success);':'') + '"></span></div>' +
+    '<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;">' +
+      clDone(r) + ' of ' + clTotal(r) + ' done' +
+      (clIsOverdue(r) ? ' · <span style="color:var(--danger);font-weight:700;">' + Math.abs(clDaysLeft(r.dueDate)) + ' days late</span>' : '') +
+    '</div>';
+
+  $('clRunItems').innerHTML = (r.items||[]).map((it, i) =>
+    '<div class="cl-item' + (it.done ? ' done' : '') + '">' +
+      '<input type="checkbox" data-clitem="' + i + '" ' + (it.done?'checked':'') + (locked?' disabled':'') + '>' +
+      '<div class="cl-item-main">' +
+        '<div class="cl-item-text">' + escapeHtml(it.text) +
+          (it.required === false ? ' <span style="color:var(--ink-faint);font-size:11px;">(optional)</span>' : '') + '</div>' +
+        (it.done && it.doneAt
+          ? '<div class="cl-item-sub">✓ ' + escapeHtml(it.doneBy || 'someone') + ' · ' +
+            new Date(it.doneAt).toLocaleString('en-IN') + '</div>'
+          : '') +
+        '<input class="cl-item-note" data-clnote="' + i + '" placeholder="Note (optional)" value="' +
+          escapeHtml(it.note||'') + '"' + (locked?' disabled':'') + '>' +
+      '</div>' +
+    '</div>').join('');
+
+  $('clRunItems').querySelectorAll('[data-clitem]').forEach(cb =>
+    cb.addEventListener('change', () => {
+      const i = +cb.dataset.clitem;
+      const item = r.items[i];
+      item.done = cb.checked;
+      // record who and when, so a finished list says who did each step
+      item.doneAt = cb.checked ? new Date().toISOString() : null;
+      item.doneBy = cb.checked ? (currentUserLabel() || null) : null;
+      clRenderRunItems();
+    }));
+  $('clRunItems').querySelectorAll('[data-clnote]').forEach(inp =>
+    inp.addEventListener('input', () => { r.items[+inp.dataset.clnote].note = inp.value; }));
+}
+// Same source the asset history log already stamps its entries with.
+function currentUserLabel(){
+  return (supa && window._currentUserEmail) ? window._currentUserEmail : 'IT';
+}
+function closeRun(){ $('clRunOverlay').classList.remove('open'); clRunCurrentId = null; }
+
+async function saveRun(quiet){
+  const r = clRuns.find(x => x.id === clRunCurrentId);
+  if(!r || r.status === 'done') return r;
+  r.notes = $('clRunNotes').value;
+  try{
+    if(supa){
+      const { error } = await supa.from('checklist_runs')
+        .update({ items:r.items, notes:r.notes || null }).eq('id', r.id);
+      if(error) throw error;
+    }
+    renderChecklists();
+    if(!quiet) showToast('Saved');
+    return r;
+  }catch(e){ showToast('Could not save — ' + (e.message||'error'), true); return null; }
+}
+
+async function completeRun(){
+  const r = clRuns.find(x => x.id === clRunCurrentId);
+  if(!r) return;
+  // A required step left unticked means the job is not actually done, so say
+  // which one rather than quietly closing it.
+  const missing = (r.items||[]).filter(i => i.required !== false && !i.done);
+  if(missing.length){
+    showToast(missing.length + ' required step' + (missing.length>1?'s':'') +
+              ' still unticked — first: "' + missing[0].text + '"', true);
+    return;
+  }
+  if(!(await saveRun(true))) return;
+  const completedAt = new Date().toISOString();
+  try{
+    if(supa){
+      const { error } = await supa.from('checklist_runs')
+        .update({ status:'done', completed_at:completedAt }).eq('id', r.id);
+      if(error) throw error;
+    }
+    r.status = 'done'; r.completedAt = completedAt;
+
+    // A recurring maintenance list books its next run straight away, so the
+    // schedule cannot quietly lapse once someone finishes this one.
+    const tpl = clTemplates.find(t => t.id === r.templateId);
+    let repeated = false;
+    if(tpl && tpl.recurrence && tpl.recurrence !== 'none'){
+      const next = {
+        template_id: tpl.id, template_name: tpl.name, kind: tpl.kind,
+        title: tpl.name, employee_id: r.employeeId || null, asset_id: r.assetId || null,
+        company_id: r.companyId || null, due_date: clNextDue(r.dueDate, tpl.recurrence),
+        status: 'open',
+        items: (tpl.items||[]).map(i => ({ text:i.text, required:i.required !== false,
+                                           done:false, doneBy:null, doneAt:null, note:'' }))
+      };
+      if(supa){ const { error } = await supa.from('checklist_runs').insert(next); if(error) throw error; }
+      repeated = true;
+    }
+    closeRun();
+    await loadChecklists();
+    showToast(repeated ? 'Completed — next one scheduled' : 'Checklist completed');
+  }catch(e){ showToast('Could not complete — ' + (e.message||'error'), true); }
+}
+
+async function deleteRun(id){
+  const r = clRuns.find(x => x.id === id);
+  const ok = await passwordConfirmDelete('Delete the checklist "' +
+    (r ? (r.title || r.templateName) : 'this one') + '"? This cannot be undone.');
+  if(!ok) return;
+  try{
+    if(supa){ const { error } = await supa.from('checklist_runs').delete().eq('id', id); if(error) throw error; }
+    if(clRunCurrentId === id) closeRun();
+    await loadChecklists();
+    showToast('Checklist deleted');
+  }catch(e){ showToast('Could not delete — ' + (e.message||'error'), true); }
+}
+
+/* ---------- wiring ---------- */
+document.querySelectorAll('.cl-view-btn').forEach(b =>
+  b.addEventListener('click', () => { clView = b.dataset.clview; renderChecklists(); }));
+$('clSearch').addEventListener('input', renderChecklists);
+$('clKindFilter').addEventListener('change', renderChecklists);
+$('clStatusFilter').addEventListener('change', renderChecklists);
+$('clNewTemplateBtn').addEventListener('click', () => openTemplateEditor(null));
+$('clStartBtn').addEventListener('click', () => openStartDialog(null));
+
+$('clTplClose').addEventListener('click', closeTemplateEditor);
+$('clTplCancel').addEventListener('click', closeTemplateEditor);
+$('clTemplateOverlay').addEventListener('click', e => { if(e.target.id==='clTemplateOverlay') closeTemplateEditor(); });
+$('clTplSave').addEventListener('click', saveTemplate);
+$('clTplDelete').addEventListener('click', deleteTemplate);
+$('clTplKind').addEventListener('change', clSyncRecurVisibility);
+$('clTplAddItem').addEventListener('click', clAddDraftItem);
+$('clTplNewItem').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); clAddDraftItem(); } });
+
+$('clStartClose').addEventListener('click', closeStartDialog);
+$('clStartCancel').addEventListener('click', closeStartDialog);
+$('clStartOverlay').addEventListener('click', e => { if(e.target.id==='clStartOverlay') closeStartDialog(); });
+$('clStartTemplate').addEventListener('change', clSyncStartDialog);
+$('clStartConfirm').addEventListener('click', confirmStart);
+
+$('clRunClose').addEventListener('click', closeRun);
+$('clRunCancelBtn').addEventListener('click', closeRun);
+$('clRunOverlay').addEventListener('click', e => { if(e.target.id==='clRunOverlay') closeRun(); });
+$('clRunSave').addEventListener('click', () => saveRun(false));
+$('clRunComplete').addEventListener('click', completeRun);
+$('clRunDelete').addEventListener('click', () => { if(clRunCurrentId) deleteRun(clRunCurrentId); });
+
+/* ================= END CHECKLISTS ================= */
+
 /* ================= ASSET DISCOVERY ================= */
 let discoveryItems = [];
 let discoveryCurrentId = null;
@@ -4364,7 +5096,7 @@ function exportDiscoveryExcel(){
   ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(Math.max(k.length, 12), 40) }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Asset Discovery');
-  XLSX.writeFile(wb, 'asset-discovery-' + new Date().toISOString().slice(0,10) + '.xlsx');
+  XLSX.writeFile(wb, 'asset-discovery-' + isoLocalDate(new Date()) + '.xlsx');
 }
 
 async function deleteSelectedDiscovery(){
@@ -6537,11 +7269,11 @@ async function saveAsset(){
     if(holderChanged){
       if(prevHolderKey){
         const prevName = prevEmployeeId ? ((employees.find(e=>e.id===prevEmployeeId)||{}).name || prevAssignedUserName) : prevAssignedUserName;
-        await logAssignmentHistory(asset.id, 'returned', prevEmployeeId, prevName, new Date().toISOString().slice(0,10));
+        await logAssignmentHistory(asset.id, 'returned', prevEmployeeId, prevName, isoLocalDate(new Date()));
       }
       if(newHolderKey){
         const newName = data.employeeId ? ((employees.find(e=>e.id===data.employeeId)||{}).name || data.assignedUserName) : data.assignedUserName;
-        await logAssignmentHistory(asset.id, 'issued', data.employeeId, newName, data.dateAssigned || new Date().toISOString().slice(0,10));
+        await logAssignmentHistory(asset.id, 'issued', data.employeeId, newName, data.dateAssigned || isoLocalDate(new Date()));
       }
     }
 
@@ -6758,7 +7490,7 @@ async function recoverAssetFromUser(asset){
     } else {
       await assetsTable.update(asset.id, { employeeId:'', assignedUserName:'', dateAssigned:'' });
     }
-    await logAssignmentHistory(asset.id, 'returned', asset.employeeId, prevName, new Date().toISOString().slice(0,10), 'Recovered via Asset Details');
+    await logAssignmentHistory(asset.id, 'returned', asset.employeeId, prevName, isoLocalDate(new Date()), 'Recovered via Asset Details');
     assets = await assetsTable.list();
     decorateAssets();
     renderAssets();
@@ -6775,7 +7507,7 @@ function openHistoryEntryPanel(assetId){
   historyEntryContext.assetId = assetId;
   pendingHistoryBillFile = null;
   $('he_eventType').value = 'repair';
-  $('he_eventDate').value = new Date().toISOString().slice(0,10);
+  $('he_eventDate').value = isoLocalDate(new Date());
   $('he_description').value = '';
   $('he_amount').value = '';
   $('he_vendor').value = '';
@@ -6811,7 +7543,7 @@ async function saveHistoryEntry(){
   const data = {
     assetId: historyEntryContext.assetId,
     eventType: $('he_eventType').value,
-    eventDate: $('he_eventDate').value || new Date().toISOString().slice(0,10),
+    eventDate: $('he_eventDate').value || isoLocalDate(new Date()),
     description, amount: $('he_amount').value,
     vendor: $('he_vendor').value.trim(),
     employeeId, employeeName,
@@ -6909,6 +7641,15 @@ function openImportPanel(){
 }
 function closeImportPanel(){ $('importOverlay').classList.remove('open'); }
 
+// A date-only value has to be written from its LOCAL parts. toISOString()
+// converts to UTC first, so anywhere east of Greenwich it reports the previous
+// day: at IST (+5:30) a date picked as 26 Nov was being stored as 25 Nov, and
+// every renewal pushed the expiry one day earlier than the term bought.
+function isoLocalDate(d){
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
 function excelSerialToIso(n){
   // Excel date serial (days since 1899-12-30) -> YYYY-MM-DD
   const d = new Date(Math.round((n - 25569) * 86400 * 1000));
@@ -6923,7 +7664,7 @@ function normalizeDateValue(v){
   const m1 = s.match(/^(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{4})$/);
   if(m1){ return m1[3] + '-' + m1[2].padStart(2,'0') + '-' + m1[1].padStart(2,'0'); }
   const d = new Date(s);
-  if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+  if(!isNaN(d.getTime())) return isoLocalDate(d);
   return '';
 }
 
@@ -9081,7 +9822,7 @@ function exAddTerm(fromStr, term){
   if(isNaN(base.getTime()) || base < today) base = today;
   const d = new Date(base);
   d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
+  return isoLocalDate(d);
 }
 
 /* A subscription and a warranty are the same thing to this dialog: a dated
@@ -9250,7 +9991,7 @@ function exportExpiryCSV(){
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'expiry-' + exTab + '-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.href = url; a.download = 'expiry-' + exTab + '-' + isoLocalDate(new Date()) + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   showToast('Exported');
 }
@@ -9703,7 +10444,7 @@ function exportHealthCSV(){
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = url; link.download = 'it-health-report-' + new Date().toISOString().slice(0,10) + '.csv';
+  link.href = url; link.download = 'it-health-report-' + isoLocalDate(new Date()) + '.csv';
   document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
   showToast('Health report exported');
 }
@@ -9729,6 +10470,7 @@ function switchTab(tabName){
   if(tabName === 'projects') renderProjects();
   if(tabName === 'tickets') { renderTickets(); updateTicketBadge(); }
   if(tabName === 'discovery') renderDiscovery();
+  if(tabName === 'checklists') renderChecklists();
   if(tabName === 'netdevices') loadNetworkDevices();
   if(tabName === 'users') loadUsers();
   if(window.innerWidth <= 900) $('sidebar').classList.remove('expanded');
