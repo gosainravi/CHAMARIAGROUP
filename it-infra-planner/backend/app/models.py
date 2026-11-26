@@ -19,6 +19,7 @@ class Project(Base):
     num_floors: Mapped[int] = mapped_column(Integer, default=1)
     phase: Mapped[str] = mapped_column(String(50), default="Planning")
     status: Mapped[str] = mapped_column(String(50), default="Draft")
+    settings: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="project", cascade="all, delete-orphan", order_by="Building.sort"
@@ -83,6 +84,7 @@ class CatalogueCategory(Base):
     point_type: Mapped[str] = mapped_column(String(30), default="")  # Data/Voice/CCTV/Wi-Fi/...
     ports_required: Mapped[int] = mapped_column(Integer, default=0)
     sort: Mapped[int] = mapped_column(Integer, default=0)
+    placeable: Mapped[bool] = mapped_column(Boolean, default=True)
     items: Mapped[list["CatalogueItem"]] = relationship(back_populates="category", order_by="CatalogueItem.id")
 
 
@@ -102,6 +104,7 @@ class CatalogueItem(Base):
     datasheet_url: Mapped[str] = mapped_column(String(500), default="")
     install_rate: Mapped[float] = mapped_column(Float, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    code: Mapped[str | None] = mapped_column(String(60), nullable=True, index=True)  # stable key for BOQ rules
     category: Mapped[CatalogueCategory] = relationship(back_populates="items")
 
 
@@ -129,6 +132,7 @@ class Placement(Base):
     ports: Mapped[int] = mapped_column(Integer, default=0)
     remarks: Mapped[str] = mapped_column(Text, default="")
     source: Mapped[str] = mapped_column(String(20), default="manual")
+    serving_rack_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # placement id of a rack
     layout: Mapped[Layout] = relationship(back_populates="placements")
     item: Mapped[CatalogueItem] = relationship()
 
@@ -140,3 +144,45 @@ class Annotation(Base):
     x: Mapped[float] = mapped_column(Float)
     y: Mapped[float] = mapped_column(Float)
     text: Mapped[str] = mapped_column(Text)
+
+
+# ---------------- Phase 2-4 ----------------
+class Route(Base):
+    """A drawn cable route / tray / conduit polyline on a layout (image px)."""
+    __tablename__ = "route"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    layout_id: Mapped[int] = mapped_column(ForeignKey("layout.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(20))  # cat6, cat6a, fiber, tray, conduit
+    points: Mapped[list] = mapped_column(JSON)  # [x1,y1,x2,y2,...]
+    vertical_m: Mapped[float] = mapped_column(Float, default=0)
+    label: Mapped[str] = mapped_column(String(100), default="")
+
+
+class QuantityOverride(Base):
+    __tablename__ = "quantity_override"
+    __table_args__ = (UniqueConstraint("project_id", "key"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(String(80))
+    value: Mapped[float] = mapped_column(Float)
+    reason: Mapped[str] = mapped_column(Text, default="")
+
+
+class PortOverride(Base):
+    __tablename__ = "port_override"
+    __table_args__ = (UniqueConstraint("project_id", "placement_id", "point_index"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"))
+    placement_id: Mapped[int] = mapped_column(ForeignKey("placement.id", ondelete="CASCADE"))
+    point_index: Mapped[int] = mapped_column(Integer)
+    data: Mapped[dict] = mapped_column(JSON)  # rack_id, switch_no, switch_port, pp_no, pp_port, vlan, destination, remarks
+
+
+class BoqLine(Base):
+    """User edits to generated BOQ lines (is_manual=False, keyed) or manual extra lines (is_manual=True)."""
+    __tablename__ = "boq_line"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(String(120))
+    is_manual: Mapped[bool] = mapped_column(Boolean, default=False)
+    data: Mapped[dict] = mapped_column(JSON)  # any of: section, description, specs, brand, model, uom, qty, phase1, rate, gst_pct, install_rate, remarks, hidden

@@ -22,15 +22,27 @@ npm install; npm run dev
 Tables and the equipment catalogue are created and seeded automatically on first API start.
 Tests: `cd backend; .venv\Scripts\python -m pytest -q` (needs the database running).
 
-## Phase 1 scope (done)
-- Projects with client, location, description, buildings, floors, phase, status; buildings/floors auto-created and editable (codes feed equipment IDs).
-- Layout upload per floor: PDF (one layout per page), JPG, PNG, DXF (rendered with ezdxf). DWG uses the free
-  ODA File Converter if installed (or `ODA_CONVERTER` env var); otherwise the upload says to export DXF/PDF.
-- Editor (Konva): drag-drop or click-to-place from the library, move, multi-select, delete, duplicate, rotate,
-  change type/model/room/phase/points/remarks, text annotations, layers (show/lock, saved), zoom/pan/fit,
-  undo/redo, save, scale calibration, PNG export, per-layout totals.
-- Equipment IDs `B1-GF-CAM-001`, unique per project and never reused after delete.
-- Equipment catalogue (33 categories, 43 models seeded from the Chhata workbooks) with indicative vs vendor rate,
-  GST, install rate, warranty, datasheet; add/edit/delete (items in use are hidden, not deleted).
+## What is built
 
-Not yet: cable routes & AI suggestions (Phase 2), port matrix (3), BOQ/budget/reports (4), users/login.
+**Phase 1 – Core:** projects → buildings → floors → layouts (PDF/JPG/PNG/DXF, DWG via ODA converter); editor with
+drag-drop placement, move/rotate/duplicate/delete, layers, annotations, undo/redo, scale calibration; equipment IDs
+(`B1-GF-CAM-001`, never reused); equipment catalogue with indicative vs vendor rates.
+
+**Phase 2 – Planning:** cable routes in the editor (Cat6, Cat6A, fibre, tray, conduit) with lengths from the scale;
+Wi-Fi/CCTV coverage overlay; suggestions (Claude vision when `ANTHROPIC_API_KEY` is set on the API, otherwise a
+rule-based Wi-Fi grid) that the user accepts or rejects; live quantity engine with manual overrides (shown as adjusted).
+
+**Phase 3 – Port Matrix:** points auto-assigned to the nearest rack (or a chosen rack), switches/patch panels sized
+per rack with spare %, 1:1 PP→switch mapping, cable IDs, VLAN by point type; manual edits per cell; validation
+(duplicate ports, capacity, unassigned, missing ID/room/destination, >90 m runs, PoE budget); views: summary
+(PORT MATIRX layout), project, building, floor, rack, switch; Excel export.
+
+**Phase 4 – BOQ & Budget:** BOQ generated from placements + port matrix (materials, accessories, services) in the
+boq-pujaso layout (Full / Phase 1 / Phase 2 with live formulas); edit any cell, hide lines, add manual items;
+import an existing Excel BOQ and compare; budget by category / building / floor / phase with GST once and
+contingency; deliverables: layout PDFs (final + routing), schedule, port matrix and BOQ Excel, printable report.
+
+**Phase 5 (partial):** coverage overlay and vendor-rate column are in; Wi-Fi heatmaps, advanced drawing recognition
+and project versioning are not.
+
+Calculation rules (spare %, wastage, VLANs, CCTV storage, contingency …) are per project under **Settings**.

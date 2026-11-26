@@ -14,7 +14,9 @@ from .db import Base, engine, get_db, SessionLocal
 from .models import (Project, Building, Floor, Layout, CatalogueCategory, CatalogueItem,
                      Placement, Annotation, IdCounter)
 from .drawings import render, DrawingError, ALLOWED
-from .seed import seed_catalogue
+from .seed import seed_catalogue, seed_extras
+from .api2 import router as api2_router
+from sqlalchemy import text
 
 STORAGE = Path(__file__).resolve().parent.parent / "storage"
 MAX_UPLOAD = 80 * 1024 * 1024
@@ -23,14 +25,26 @@ DEFAULT_LAYERS = ["Network", "Fiber", "Cabling", "Wireless", "CCTV", "Telephony"
 
 app = FastAPI(title="IT Infra Planner API")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-                   allow_methods=["*"], allow_headers=["*"])
+                   allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
+app.include_router(api2_router)
+
+MIGRATIONS = [
+    "ALTER TABLE project ADD COLUMN IF NOT EXISTS settings JSON DEFAULT '{}'",
+    "ALTER TABLE catalogue_category ADD COLUMN IF NOT EXISTS placeable BOOLEAN DEFAULT TRUE",
+    "ALTER TABLE catalogue_item ADD COLUMN IF NOT EXISTS code VARCHAR(60)",
+    "ALTER TABLE placement ADD COLUMN IF NOT EXISTS serving_rack_id INTEGER",
+]
 
 
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(engine)
+    with engine.begin() as con:
+        for sql in MIGRATIONS:
+            con.execute(text(sql))
     with SessionLocal() as db:
         seed_catalogue(db)
+        seed_extras(db)
 
 
 # ---------------- schemas ----------------
@@ -79,6 +93,7 @@ class PlacementIn(BaseModel):
     ports: int | None = None
     remarks: str = ""
     source: str = "manual"
+    serving_rack_id: int | None = None
 
 
 class AnnotationIn(BaseModel):
@@ -120,6 +135,7 @@ class ItemPatch(BaseModel):
     datasheet_url: str | None = None
     install_rate: float | None = None
     is_active: bool | None = None
+    category_id: int | None = None
 
 
 # ---------------- helpers ----------------
@@ -350,7 +366,8 @@ def _layout_full(l: Layout):
             "placements": [{
                 "id": p.id, "equip_code": p.equip_code, "catalogue_item_id": p.catalogue_item_id,
                 "x": p.x, "y": p.y, "rotation": p.rotation, "room": p.room, "phase": p.phase,
-                "ports": p.ports, "remarks": p.remarks, "source": p.source} for p in l.placements],
+                "ports": p.ports, "remarks": p.remarks, "source": p.source,
+                "serving_rack_id": p.serving_rack_id} for p in l.placements],
             "annotations": [{"x": a.x, "y": a.y, "text": a.text}
                             for a in sorted(_annotations(l), key=lambda a: a.id)]}
 
@@ -416,7 +433,8 @@ def save_content(lid: int, body: ContentIn, db: Session = Depends(get_db)):
             raise HTTPException(422, f"Catalogue item {pin.catalogue_item_id} not found")
         ports = pin.ports if pin.ports is not None else item.category.ports_required
         fields = dict(catalogue_item_id=item.id, x=pin.x, y=pin.y, rotation=pin.rotation % 360,
-                      room=pin.room, phase=pin.phase, ports=max(0, ports), remarks=pin.remarks, source=pin.source)
+                      room=pin.room, phase=pin.phase, ports=max(0, ports), remarks=pin.remarks, source=pin.source,
+                      serving_rack_id=pin.serving_rack_id)
         if pin.id and pin.id in existing:
             p = existing[pin.id]
             old_sym = p.item.category.symbol
@@ -459,14 +477,14 @@ def _next_code(db: Session, b: Building, f: Floor, symbol: str) -> str:
 def _item_dict(i: CatalogueItem):
     return {k: getattr(i, k) for k in ("id", "category_id", "manufacturer", "model", "description", "specs", "uom",
                                        "indicative_rate", "vendor_rate", "gst_pct", "warranty", "datasheet_url",
-                                       "install_rate", "is_active")}
+                                       "install_rate", "is_active", "code")}
 
 
 @app.get("/api/catalogue")
 def catalogue(db: Session = Depends(get_db)):
     cats = db.scalars(select(CatalogueCategory).order_by(CatalogueCategory.sort)).all()
     return [{"id": c.id, "group": c.group, "name": c.name, "layer": c.layer, "symbol": c.symbol, "color": c.color,
-             "point_type": c.point_type, "ports_required": c.ports_required,
+             "point_type": c.point_type, "ports_required": c.ports_required, "placeable": c.placeable,
              "items": [_item_dict(i) for i in c.items]} for c in cats]
 
 

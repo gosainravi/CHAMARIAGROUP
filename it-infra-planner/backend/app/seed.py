@@ -97,3 +97,66 @@ def seed_catalogue(db: Session) -> None:
             cat.items.append(CatalogueItem(manufacturer=man, model=model, description=desc, specs=specs,
                                            uom=uom, indicative_rate=rate, install_rate=inst))
     db.commit()
+
+
+# Non-placeable items the BOQ engine derives from the port matrix. code = rule key.
+# (code, description, specs, uom, rate, install_rate)
+MATERIALS = [
+    ("cat6_io", "Cat6 I/O (RJ45 keystone jack)", "Commscope Cat6 UTP", "Nos.", 250, 0),
+    ("faceplate_dual", "Face Plate Dual", "2 port, with shutter", "Nos.", 80, 0),
+    ("faceplate_quad", "Face Plate Quad", "4 port", "Nos.", 120, 0),
+    ("gang_box", "Gang box for user-end points (CCTV, Wi-Fi, user)", "GI / PVC", "Nos.", 40, 0),
+    ("patch_cord_1m", "Patch Cord 1M (panel end) - Commscope", "Cat6 1 m", "Nos.", 150, 0),
+    ("patch_cord_2m", "Patch Cord 2M (user end) - Commscope", "Cat6 2 m", "Nos.", 180, 0),
+    ("cat6_cable", "Cat6 Cable Roll Commscope 24AWG (305 m)", "Cat6 UTP 23/24 AWG", "Roll", 13000, 0),
+    ("cat6a_cable", "Cat6A Cable Roll (305 m)", "Cat6A U/FTP", "Roll", 26000, 0),
+    ("cat6a_patch", "Cat6A Patch Cord", "Cat6A 2 m", "Nos.", 250, 0),
+    ("fiber_cable", "6 Core SM Fiber Cable Armoured - Commscope", "Single mode, armoured", "Mtrs.", 80, 0),
+    ("fiber_patch", "Fiber Patch Cord (3 meter) - Commscope", "LC-LC SM duplex", "Nos.", 1000, 0),
+    ("pdu", "PDU for rack", "6 socket", "Nos.", 2300, 0),
+    ("cable_manager", "Cable Manager 1U", "1U horizontal", "Nos.", 600, 0),
+    ("hdd", "WD 8TB Surveillance HDD", "8 TB", "Nos.", 18000, 0),
+    ("camera_box", "Accessories for Camera PVC/MS Box", "", "Nos.", 150, 0),
+    ("ip65_box", "IP65 junction box - outdoor cameras", "", "Nos.", 150, 0),
+    ("conduit_25", "PVC rigid conduit 25 mm, ISI medium duty", "", "Mtrs.", 30, 0),
+    ("hdpe_pipe", "HDPE Pipe / Conduit pipe for Fiber Cables", "", "Mtrs.", 45, 0),
+    ("tray", "Perforated cable tray 100 mm", "GI", "Mtrs.", 450, 0),
+    ("saddle", "Saddles / spacer clamps with screws & rawl plugs", "", "Nos.", 3, 0),
+    ("bend", "PVC bends / elbows (mixed sizes)", "", "Nos.", 10, 0),
+    ("coupler", "PVC couplers (mixed sizes)", "", "Nos.", 6, 0),
+    ("misc", "Cable ties, Velcro, labels & markers", "", "Lot", 5000, 0),
+]
+SERVICES = [
+    ("svc_fiber_laying", "Fiber Cable Laying Charges", "Mtrs.", 40),
+    ("svc_hdpe_laying", "HDPE / Conduit Pipe 1\" Laying Charges fiber cable", "Mtrs.", 25),
+    ("svc_splicing", "Splicing of Fiber Cable", "Core", 150),
+    ("svc_io_punching", "Cat6 I/O Punching at Single End", "Nos.", 50),
+    ("svc_cat6_laying", "Cat6 Cable Laying Charges", "Mtrs.", 15),
+    ("svc_conduit_laying", "PVC Conduit Laying Charges", "Mtrs.", 20),
+    ("svc_tray_install", "Cable Tray Installation Charges", "Mtrs.", 120),
+    ("svc_testing", "Cat6 Cable Testing & Ferruling", "Nos.", 50),
+]
+
+
+def seed_extras(db: Session) -> None:
+    def cat(name, group, sym):
+        c = db.query(CatalogueCategory).filter_by(name=name).first()
+        if not c:
+            c = CatalogueCategory(group=group, name=name, layer="Other", symbol=sym, color="#94a3b8",
+                                  point_type="", ports_required=0, sort=900, placeable=False)
+            db.add(c)
+            db.flush()
+        return c
+    have = {c for (c,) in db.query(CatalogueItem.code).filter(CatalogueItem.code.isnot(None))}
+    mat = cat("Passive Material", "Materials", "MAT")
+    for code, desc, specs, uom, rate, inst in MATERIALS:
+        if code not in have:
+            db.add(CatalogueItem(category_id=mat.id, manufacturer="Commscope" if "Commscope" in desc else "Generic",
+                                 model=code, description=desc, specs=specs, uom=uom, indicative_rate=rate,
+                                 install_rate=inst, code=code))
+    svc = cat("Services", "Services", "SVC")
+    for code, desc, uom, rate in SERVICES:
+        if code not in have:
+            db.add(CatalogueItem(category_id=svc.id, manufacturer="Installer", model=code, description=desc,
+                                 uom=uom, indicative_rate=rate, gst_pct=18, code=code))
+    db.commit()

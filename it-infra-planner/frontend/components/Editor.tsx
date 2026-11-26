@@ -2,13 +2,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Stage, Layer, Image as KImage, Group, Rect, Text, Line, Circle } from "react-konva";
+import { Stage, Layer, Image as KImage, Group, Rect, Text, Line, Circle, Wedge } from "react-konva";
 import type Konva from "konva";
 import useImage from "use-image";
-import { api, AnnotationT, Category, Item, LayoutFull, PlacementT, Project } from "@/lib/api";
+import { api, api2, AnnotationT, Category, Item, LayoutFull, PlacementT, Project, RouteT, RouteKind, ROUTE_KINDS, Suggestion } from "@/lib/api";
 
-type Snap = { placements: PlacementT[]; annotations: AnnotationT[] };
-type Tool = "select" | "pan" | "text" | "scale";
+type Snap = { placements: PlacementT[]; annotations: AnnotationT[]; routes: RouteT[] };
+type Tool = "select" | "pan" | "text" | "scale" | "route";
 let seq = 0;
 const newKey = () => `n${Date.now().toString(36)}${(seq++).toString(36)}`;
 const PHASES = ["Phase 1", "Phase 2", "Phase 3"];
@@ -35,6 +35,13 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   const [scalePts, setScalePts] = useState<{ x: number; y: number }[]>([]);
   const [space, setSpace] = useState(false);
   const [libQ, setLibQ] = useState("");
+  const [routes, setRoutes] = useState<RouteT[]>([]);
+  const [routeKind, setRouteKind] = useState<RouteKind>("cat6");
+  const [drawPts, setDrawPts] = useState<number[]>([]);
+  const [coverage, setCoverage] = useState(false);
+  const [sugs, setSugs] = useState<(Suggestion & { key: string })[]>([]);
+  const [sugBusy, setSugBusy] = useState(false);
+  const [sugNote, setSugNote] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<Konva.Stage>(null);
   const [img] = useImage(layout ? api.imageUrl(layout.id) : "", "anonymous");
@@ -49,6 +56,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
       setAnnotations(l.annotations.map((a) => ({ ...a, key: newKey() })));
       setPast([]); setFuture([]); setDirty(false); setSel([]);
       api.project(l.project.id).then((p) => live && setProject(p));
+      api2.routes(layoutId).then((r) => live && setRoutes(r.map((x) => ({ ...x, key: newKey() }))));
     }).catch((e) => setErr(e.message));
     return () => { live = false; };
   }, [layoutId]);
@@ -65,7 +73,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   // ---------- canvas size + fit ----------
   useEffect(() => {
     if (!box.current) return;
-    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
+    const ro = new ResizeObserver(([e]) => { if (e.contentRect.width > 0 && e.contentRect.height > 0) setSize({ w: e.contentRect.width, h: e.contentRect.height }); });
     ro.observe(box.current);
     return () => ro.disconnect();
   }, [layout]);
@@ -79,23 +87,24 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   useEffect(() => { fitted.current = false; }, [layoutId]);
 
   // ---------- history ----------
-  const commit = useCallback((p: PlacementT[], a: AnnotationT[] = annotations) => {
-    setPast((h) => [...h.slice(-199), { placements, annotations }]);
+  const commit = useCallback((p: PlacementT[], a: AnnotationT[] = annotations, r: RouteT[] = routes) => {
+    setPast((h) => [...h.slice(-199), { placements, annotations, routes }]);
     setFuture([]);
-    setPlacements(p); setAnnotations(a); setDirty(true);
-  }, [placements, annotations]);
+    setPlacements(p); setAnnotations(a); setRoutes(r); setDirty(true);
+  }, [placements, annotations, routes]);
+  const restore = (s: Snap) => { setPlacements(s.placements); setAnnotations(s.annotations); setRoutes(s.routes); setDirty(true); };
   const undo = useCallback(() => {
     if (!past.length) return;
-    setFuture((f) => [{ placements, annotations }, ...f]);
+    setFuture((f) => [{ placements, annotations, routes }, ...f]);
     const s = past[past.length - 1];
-    setPast(past.slice(0, -1)); setPlacements(s.placements); setAnnotations(s.annotations); setDirty(true);
-  }, [past, placements, annotations]);
+    setPast(past.slice(0, -1)); restore(s);
+  }, [past, placements, annotations, routes]);
   const redo = useCallback(() => {
     if (!future.length) return;
-    setPast((h) => [...h, { placements, annotations }]);
+    setPast((h) => [...h, { placements, annotations, routes }]);
     const s = future[0];
-    setFuture(future.slice(1)); setPlacements(s.placements); setAnnotations(s.annotations); setDirty(true);
-  }, [future, placements, annotations]);
+    setFuture(future.slice(1)); restore(s);
+  }, [future, placements, annotations, routes]);
 
   // ---------- save ----------
   const save = useCallback(async () => {
@@ -104,6 +113,8 @@ export default function Editor({ layoutId }: { layoutId: number }) {
     try {
       const sentIds = new Set(placements.filter((p) => p.id).map((p) => p.id));
       const res = await api.saveContent(layout.id, placements, annotations);
+      const savedRoutes = await api2.saveRoutes(layout.id, routes);
+      setRoutes((cur) => cur.map((r, i) => ({ ...r, id: savedRoutes[i]?.id, length_m: savedRoutes[i]?.length_m })));
       const fresh = res.placements.filter((p) => !sentIds.has(p.id!)).sort((a, b) => a.id! - b.id!);
       const newKeys = placements.filter((p) => !p.id).map((p) => p.key);
       const keyToSaved = new Map<string, (typeof res.placements)[number]>();
@@ -120,7 +131,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
       setDirty(false);
     } catch (e) { setErr(`Save failed: ${(e as Error).message}`); }
     finally { setSaving(false); }
-  }, [layout, placements, annotations, saving]);
+  }, [layout, placements, annotations, routes, saving]);
 
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); } };
@@ -144,7 +155,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   };
   const layerNames = useMemo(() => {
     const s = new Set(Object.keys(layers));
-    cats.forEach((c) => s.add(c.layer)); s.add("Annotations");
+    cats.filter((c) => c.placeable !== false).forEach((c) => s.add(c.layer)); s.add("Routes"); s.add("Annotations");
     return Array.from(s);
   }, [layers, cats]);
 
@@ -162,7 +173,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   };
   const removeSel = () => {
     if (!sel.length) return;
-    commit(placements.filter((p) => !sel.includes(p.key)), annotations.filter((a) => !sel.includes(a.key)));
+    commit(placements.filter((p) => !sel.includes(p.key)), annotations.filter((a) => !sel.includes(a.key)), routes.filter((r) => !sel.includes(r.key)));
     setSel([]);
   };
   const duplicateSel = () => {
@@ -179,6 +190,38 @@ export default function Editor({ layoutId }: { layoutId: number }) {
     commit(placements.map((p) => (sel.includes(p.key) ? { ...p, x: p.x + dx, y: p.y + dy } : p)),
       annotations.map((a) => (sel.includes(a.key) ? { ...a, x: a.x + dx, y: a.y + dy } : a)));
 
+  const finishRoute = (pts = drawPts) => {
+    if (pts.length >= 4) {
+      const r: RouteT = { key: newKey(), kind: routeKind, points: pts, vertical_m: 0, label: "" };
+      if (!visible("Routes")) setLayer("Routes", { visible: true });
+      commit(placements, annotations, [...routes, r]); setSel([r.key]);
+    }
+    setDrawPts([]);
+  };
+  const routeLen = (r: { points: number[]; vertical_m: number }) => {
+    let px = 0;
+    for (let i = 0; i + 3 < r.points.length; i += 2) px += Math.hypot(r.points[i + 2] - r.points[i], r.points[i + 3] - r.points[i + 1]);
+    return layout?.scale_m_per_px ? px * layout.scale_m_per_px + (r.vertical_m || 0) : null;
+  };
+  const runSuggest = async (mode: string) => {
+    if (!layout) return;
+    setSugBusy(true); setSugNote("");
+    try {
+      const r = await api2.suggest(layout.id, mode, "");
+      setSugs(r.suggestions.map((s) => ({ ...s, key: newKey() })));
+      setSugNote(r.note || `${r.suggestions.length} suggestions from ${r.engine === "ai" ? "AI" : "rules"} — review, then accept or reject.`);
+    } catch (e) { setSugNote((e as Error).message); }
+    finally { setSugBusy(false); }
+  };
+  const acceptSugs = (keys: string[]) => {
+    const add = sugs.filter((s) => keys.includes(s.key)).map((s): PlacementT => ({
+      key: newKey(), catalogue_item_id: s.catalogue_item_id, x: s.x, y: s.y, rotation: 0, room: s.room, phase: "Phase 1",
+      ports: s.ports, remarks: s.reason, source: "ai_accepted",
+    }));
+    if (add.length) commit([...placements, ...add]);
+    setSugs(sugs.filter((s) => !keys.includes(s.key)));
+  };
+
   // ---------- keyboard ----------
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -193,7 +236,8 @@ export default function Editor({ layoutId }: { layoutId: number }) {
       else if (mod && k === "a") { e.preventDefault(); setSel(placements.filter((p) => visible(layerOf(p)) && !locked(layerOf(p))).map((p) => p.key)); }
       else if (k === "delete" || k === "backspace") { e.preventDefault(); removeSel(); }
       else if (k === "r" && sel.length) rotateSel(e.shiftKey ? -15 : 15);
-      else if (k === "escape") { setSel([]); setArmed(null); setScalePts([]); setTool("select"); }
+      else if (k === "enter" && tool === "route") { e.preventDefault(); finishRoute(); }
+      else if (k === "escape") { if (drawPts.length) { setDrawPts([]); return; } setSel([]); setArmed(null); setScalePts([]); setTool("select"); }
       else if (k === " ") { e.preventDefault(); setSpace(true); }
       else if (k.startsWith("arrow") && sel.length) {
         e.preventDefault();
@@ -238,6 +282,10 @@ export default function Editor({ layoutId }: { layoutId: number }) {
       }, 10);
       return;
     }
+    if (tool === "route") {
+      setDrawPts([...drawPts, Math.round(pos.x), Math.round(pos.y)]);
+      return;
+    }
     if (tool === "text" && onBg) {
       const text = prompt("Annotation text"); if (!text?.trim()) return;
       if (!visible("Annotations")) setLayer("Annotations", { visible: true });
@@ -273,7 +321,10 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   if (!layout) return <div className="main muted">Loading layout…</div>;
 
   const draggable = tool === "pan" || space;
-  const cursor = draggable ? "grab" : tool === "scale" || armed ? "crosshair" : tool === "text" ? "text" : "default";
+  const cursor = draggable ? "grab" : tool === "scale" || tool === "route" || armed ? "crosshair" : tool === "text" ? "text" : "default";
+  const selR = routes.filter((r) => sel.includes(r.key));
+  const racksHere = placements.filter((p) => p.id && itemMap.get(p.catalogue_item_id)?.cat.symbol === "RK");
+  const scale = layout.scale_m_per_px;
 
   return (
     <div className="ed">
@@ -311,7 +362,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
           <h3>Equipment library</h3>
           <input placeholder="Search" value={libQ} onChange={(e) => setLibQ(e.target.value)} style={{ marginBottom: 8 }} />
           <div className="muted small" style={{ marginBottom: 8 }}>Drag onto the drawing, or click a model then click the drawing to place several. Esc stops.</div>
-          {Array.from(new Set(cats.map((c) => c.group))).map((g) => (
+          {Array.from(new Set(cats.filter((c) => c.placeable !== false).map((c) => c.group))).map((g) => (
             <details className="lib-group" key={g} open>
               <summary>{g}</summary>
               {cats.filter((c) => c.group === g).flatMap((c) => c.items.filter((i) => i.is_active).map((i) => ({ c, i })))
@@ -342,12 +393,23 @@ export default function Editor({ layoutId }: { layoutId: number }) {
             const p = pointer(); place(id, p.x, p.y);
           }}>
           <div className="ed-tools">
-            {(["select", "pan", "text", "scale"] as Tool[]).map((t) => (
+            {(["select", "pan", "text", "scale"] as const).map((t) => (
               <button key={t} className={tool === t ? "on" : ""} onClick={() => { setTool(t); setArmed(null); setScalePts([]); }}
                 title={{ select: "Select & move (Esc)", pan: "Pan (or hold Space)", text: "Add annotation", scale: "Set scale: click two points of a known distance" }[t]}>
                 {{ select: "Select", pan: "Pan", text: "Text", scale: "Set scale" }[t]}
               </button>
             ))}
+            <button className={tool === "route" ? "on" : ""} onClick={() => { setTool("route"); setArmed(null); setDrawPts([]); }}
+              title="Draw a cable route: click points, double-click or Enter to finish">Route</button>
+            {tool === "route" && (
+              <select value={routeKind} onChange={(e) => setRouteKind(e.target.value as RouteKind)} style={{ width: "auto" }}>
+                {ROUTE_KINDS.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+              </select>
+            )}
+            <button className={coverage ? "on" : ""} onClick={() => setCoverage(!coverage)}
+              title="Show Wi-Fi (15 m) and camera (30 m, 90°) coverage — needs scale">Coverage</button>
+            <button onClick={() => runSuggest("auto")} disabled={sugBusy} title="Suggest equipment positions (AI if configured, else Wi-Fi grid)">
+              {sugBusy ? "Thinking…" : "Suggest"}</button>
             <button onClick={() => zoomBy(1.25)} title="Zoom in">＋</button>
             <button onClick={() => zoomBy(0.8)} title="Zoom out">－</button>
             <button onClick={fit} title="Fit drawing">Fit</button>
@@ -357,16 +419,38 @@ export default function Editor({ layoutId }: { layoutId: number }) {
             {tool === "scale" ? `Set scale: click point ${scalePts.length + 1} of 2` :
               armed ? `Placing ${itemMap.get(armed)?.cat.name} — click the drawing. Esc to stop.` :
               tool === "text" ? "Click the drawing to add a note" :
+              tool === "route" ? `Drawing ${ROUTE_KINDS.find((k) => k.kind === routeKind)?.label} route: click to add points (${drawPts.length / 2}), double-click or Enter to finish, Esc to cancel` :
               "Wheel = zoom · Space+drag = pan · Shift+click = multi-select · R = rotate · Ctrl+D = duplicate · Del = delete"}
           </div>
-          <Stage ref={stage} width={size.w} height={size.h} scaleX={view.scale} scaleY={view.scale} x={view.x} y={view.y}
+          <Stage ref={stage} width={Math.max(1, size.w)} height={Math.max(1, size.h)} scaleX={view.scale} scaleY={view.scale} x={view.x} y={view.y}
             draggable={draggable} onWheel={onWheel} onClick={onStageClick} onTap={onStageClick}
+            onDblClick={() => { if (tool === "route") finishRoute(drawPts.slice(0, -2).length >= 4 ? drawPts.slice(0, -2) : drawPts); }}
             onDragEnd={(e) => { if (e.target === stage.current) setView({ ...view, x: e.target.x(), y: e.target.y() }); }}>
             <Layer listening={true}>
               <Rect name="bg" x={0} y={0} width={layout.width} height={layout.height} fill="#fff" />
               {img && <KImage name="bg" image={img} width={layout.width} height={layout.height} />}
             </Layer>
             <Layer>
+              {visible("Routes") && routes.map((r) => {
+                const col = ROUTE_KINDS.find((k) => k.kind === r.kind)?.color || "#000";
+                const isSel = sel.includes(r.key);
+                return (
+                  <Line key={r.key} points={r.points} stroke={col} strokeWidth={S * (isSel ? 0.35 : 0.22)} lineCap="round" lineJoin="round"
+                    dash={r.kind === "tray" ? [S, S * 0.4] : r.kind === "conduit" ? [S * 0.3, S * 0.3] : undefined}
+                    hitStrokeWidth={S} {...(isSel ? { shadowColor: "#ffbf00", shadowBlur: S, shadowOpacity: 1 } : {})}
+                    onMouseDown={(e) => { if (tool === "select" && !locked("Routes")) pick(r.key, e); }} />
+                );
+              })}
+              {coverage && scale && placements.map((p) => {
+                const info = itemMap.get(p.catalogue_item_id); if (!info || !visible(info.cat.layer)) return null;
+                if (info.cat.point_type === "Wi-Fi")
+                  return <Circle key={"cv" + p.key} x={p.x} y={p.y} radius={(info.cat.symbol === "OAP" ? 40 : 15) / scale} fill="#7c3aed" opacity={0.12} stroke="#7c3aed" strokeWidth={S * 0.05} listening={false} />;
+                if (info.cat.point_type === "CCTV" && info.cat.symbol !== "NVR")
+                  return <Wedge key={"cv" + p.key} x={p.x} y={p.y} radius={(info.cat.symbol === "PTZ" ? 60 : info.cat.symbol === "ANPR" ? 15 : 30) / scale}
+                    angle={info.cat.symbol === "PTZ" ? 360 : info.cat.symbol === "ANPR" ? 30 : 90} rotation={p.rotation - (info.cat.symbol === "PTZ" ? 0 : info.cat.symbol === "ANPR" ? 15 : 45)}
+                    fill="#dc2626" opacity={0.12} listening={false} />;
+                return null;
+              })}
               {placements.map((p) => {
                 const info = itemMap.get(p.catalogue_item_id); if (!info) return null;
                 const lay = info.cat.layer;
@@ -386,7 +470,7 @@ export default function Editor({ layoutId }: { layoutId: number }) {
                     }}>
                     <Group rotation={p.rotation}>
                       <Rect x={-w / 2} y={-h / 2} width={w} height={h} cornerRadius={h / 2} fill={info.cat.color}
-                        stroke={isSel ? "#ffbf00" : "#fff"} strokeWidth={isSel ? S * 0.25 : S * 0.08} shadowBlur={isSel ? S * 0.4 : 0} shadowColor="#000" shadowOpacity={0.3} />
+                        stroke={isSel ? "#ffbf00" : "#fff"} strokeWidth={isSel ? S * 0.25 : S * 0.08} {...(isSel ? { shadowBlur: S * 0.4, shadowColor: "#000", shadowOpacity: 0.3 } : {})} />
                       <Line points={[w / 2 - S * 0.05, -S * 0.3, w / 2 + S * 0.35, 0, w / 2 - S * 0.05, S * 0.3]} closed fill={info.cat.color} />
                     </Group>
                     <Text text={info.cat.symbol} fontSize={S * 0.62} fontStyle="bold" fill="#fff" width={w} align="center" x={-w / 2} y={-S * 0.31} listening={false} />
@@ -407,6 +491,22 @@ export default function Editor({ layoutId }: { layoutId: number }) {
                   }}
                   onDragEnd={(e) => { e.cancelBubble = true; commit(placements, annotations.map((x) => (x.key === a.key ? { ...x, x: e.target.x(), y: e.target.y() } : x))); }} />
               ))}
+              {drawPts.length >= 2 && (
+                <>
+                  <Line points={drawPts} stroke={ROUTE_KINDS.find((k) => k.kind === routeKind)?.color} strokeWidth={S * 0.22} dash={[S * 0.6, S * 0.3]} listening={false} />
+                  {Array.from({ length: drawPts.length / 2 }, (_, i) => <Circle key={i} x={drawPts[i * 2]} y={drawPts[i * 2 + 1]} radius={S * 0.2} fill="#111" listening={false} />)}
+                </>
+              )}
+              {sugs.map((sg) => {
+                const info = itemMap.get(sg.catalogue_item_id); if (!info) return null;
+                const w = S * 2.4, h = S * 1.3;
+                return (
+                  <Group key={sg.key} x={sg.x} y={sg.y} opacity={0.55} onClick={(e) => { e.cancelBubble = true; acceptSugs([sg.key]); }}>
+                    <Rect x={-w / 2} y={-h / 2} width={w} height={h} cornerRadius={h / 2} fill={info.cat.color} stroke="#111" strokeWidth={S * 0.08} dash={[S * 0.3, S * 0.2]} />
+                    <Text text={info.cat.symbol + "?"} fontSize={S * 0.6} fontStyle="bold" fill="#fff" width={w} align="center" x={-w / 2} y={-S * 0.3} />
+                  </Group>
+                );
+              })}
               {scalePts.length > 0 && (
                 <>
                   {scalePts.map((pt, i) => <Circle key={i} x={pt.x} y={pt.y} radius={S * 0.3} fill="#e11d48" />)}
@@ -419,8 +519,42 @@ export default function Editor({ layoutId }: { layoutId: number }) {
 
         {/* properties */}
         <aside className="ed-right">
-          {selP.length === 1 && selA.length === 0 ? (
-            <Props p={selP[0]} cats={cats} itemMap={itemMap} scale={layout.scale_m_per_px}
+          {(sugs.length > 0 || sugNote) && (
+            <div className="card" style={{ marginBottom: 12, padding: 10 }}>
+              <h3>Suggestions</h3>
+              <div className="muted small" style={{ marginBottom: 6 }}>{sugNote}</div>
+              {sugs.length > 0 && (
+                <>
+                  <div className="row" style={{ marginBottom: 6 }}>
+                    <button className="primary" onClick={() => acceptSugs(sugs.map((s) => s.key))}>Accept all {sugs.length}</button>
+                    <button onClick={() => { setSugs([]); setSugNote(""); }}>Reject all</button>
+                  </div>
+                  <div className="muted small">Click a faded symbol on the drawing to accept just that one. Accepted items can then be moved or deleted.</div>
+                  <div style={{ maxHeight: 160, overflow: "auto", marginTop: 6 }}>
+                    {sugs.map((sg) => (
+                      <div key={sg.key} className="row small" style={{ justifyContent: "space-between" }}>
+                        <span><b>{sg.symbol}</b> {sg.room} <span className="muted">{sg.reason}</span></span>
+                        <span><button className="ghost" onClick={() => acceptSugs([sg.key])}>✓</button><button className="ghost" onClick={() => setSugs(sugs.filter((x) => x.key !== sg.key))}>✕</button></span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {!sugs.length && <button onClick={() => setSugNote("")}>Close</button>}
+            </div>
+          )}
+          {selR.length === 1 && selP.length === 0 && selA.length === 0 ? (
+            <div>
+              <h3>Cable route</h3>
+              <label>Type<select value={selR[0].kind} onChange={(e) => commit(placements, annotations, routes.map((r) => r.key === selR[0].key ? { ...r, kind: e.target.value as RouteKind } : r))}>
+                {ROUTE_KINDS.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}</select></label>
+              <label>Label<input value={selR[0].label} onChange={(e) => commit(placements, annotations, routes.map((r) => r.key === selR[0].key ? { ...r, label: e.target.value } : r))} placeholder="e.g. Backbone to FF rack" /></label>
+              <label>Vertical rise / drop (m)<input type="number" min={0} value={selR[0].vertical_m} onChange={(e) => commit(placements, annotations, routes.map((r) => r.key === selR[0].key ? { ...r, vertical_m: Math.max(0, Number(e.target.value)) } : r))} /></label>
+              <div className="small" style={{ marginBottom: 8 }}>Length: {routeLen(selR[0]) != null ? <b>{routeLen(selR[0])!.toFixed(1)} m</b> : <span className="badge warn">set scale to measure</span>} · {selR[0].points.length / 2} points</div>
+              <button className="danger" onClick={removeSel}>Delete route</button>
+            </div>
+          ) : selP.length === 1 && selA.length === 0 ? (
+            <Props p={selP[0]} cats={cats} itemMap={itemMap} scale={layout.scale_m_per_px} racks={racksHere}
               onChange={(patch) => update([selP[0].key], patch)} onDelete={removeSel} onDuplicate={duplicateSel} />
           ) : sel.length > 1 ? (
             <div>
@@ -459,6 +593,14 @@ export default function Editor({ layoutId }: { layoutId: number }) {
 
           <hr style={{ border: 0, borderTop: "1px solid var(--line)", margin: "14px 0" }} />
           <h3>This layout</h3>
+          {routes.length > 0 && (
+            <table className="totals" style={{ marginBottom: 6 }}><tbody>
+              {ROUTE_KINDS.filter((k) => routes.some((r) => r.kind === k.kind)).map((k) => {
+                const m = routes.filter((r) => r.kind === k.kind).reduce((a, r) => a + (routeLen(r) || 0), 0);
+                return <tr key={k.kind}><td><span style={{ display: "inline-block", width: 18, height: 3, background: k.color, verticalAlign: "middle" }} /></td><td>{k.label} route</td><td className="num">{scale ? `${m.toFixed(0)} m` : "–"}</td></tr>;
+              })}
+            </tbody></table>
+          )}
           {totals.byCat.length === 0 ? <div className="muted small">Nothing placed yet.</div> : (
             <table className="totals"><tbody>
               {totals.byCat.map(({ cat, n }) => (
@@ -481,7 +623,8 @@ export default function Editor({ layoutId }: { layoutId: number }) {
   );
 }
 
-function Props({ p, cats, itemMap, scale, onChange, onDelete, onDuplicate }: {
+function Props({ p, cats, itemMap, scale, racks, onChange, onDelete, onDuplicate }: {
+  racks: PlacementT[];
   p: PlacementT; cats: Category[]; itemMap: Map<number, { item: Item; cat: Category }>; scale: number | null;
   onChange: (patch: Partial<PlacementT>) => void; onDelete: () => void; onDuplicate: () => void;
 }) {
@@ -513,6 +656,12 @@ function Props({ p, cats, itemMap, scale, onChange, onDelete, onDuplicate }: {
         <label>Rotation °<input type="number" value={Math.round(p.rotation)} onChange={(e) => onChange({ rotation: ((Number(e.target.value) % 360) + 360) % 360 })} /></label>
         <label>Layer<input value={cat.layer} readOnly /></label>
       </div>
+      {cat.point_type && cat.symbol !== "RK" && (
+        <label>Serving rack<select value={p.serving_rack_id ?? ""} onChange={(e) => onChange({ serving_rack_id: e.target.value ? Number(e.target.value) : null })}>
+          <option value="">Auto (nearest rack)</option>
+          {racks.map((r) => <option key={r.id} value={r.id}>{r.equip_code}</option>)}
+        </select></label>
+      )}
       <label>Remarks<textarea rows={2} value={p.remarks} onChange={(e) => onChange({ remarks: e.target.value })} /></label>
       <div className="muted small" style={{ marginBottom: 8 }}>Position {Math.round(p.x)}, {Math.round(p.y)} px{scale ? ` (${(p.x * scale).toFixed(1)} m, ${(p.y * scale).toFixed(1)} m)` : ""}</div>
       <div className="row">

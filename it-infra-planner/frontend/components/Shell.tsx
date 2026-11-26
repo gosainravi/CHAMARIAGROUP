@@ -7,11 +7,12 @@ const NAV: { href?: string; label: string; phase?: number }[] = [
   { href: "/projects", label: "Projects" },
   { href: "/drawings", label: "Drawing Manager" },
   { href: "/catalogue", label: "Equipment Library" },
-  { label: "Port Matrix", phase: 3 },
-  { label: "BOQ", phase: 4 },
-  { label: "IT Budget", phase: 4 },
-  { label: "Reports", phase: 4 },
-  { label: "Settings", phase: 3 },
+  { href: "/go/quantities", label: "Quantities" },
+  { href: "/go/ports", label: "Port Matrix" },
+  { href: "/go/boq", label: "BOQ" },
+  { href: "/go/budget", label: "IT Budget" },
+  { href: "/go/reports", label: "Reports" },
+  { href: "/go/settings", label: "Settings" },
 ];
 
 export default function Shell({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           {NAV.map((n) =>
             n.href ? (
               <Link key={n.label} href={n.href}
-                className={(n.href === "/" ? path === "/" : path.startsWith(n.href)) ? "on" : ""}>
+                className={(n.href === "/" ? path === "/" : path.startsWith(n.href) || (n.href.startsWith("/go/") && path.endsWith("/" + n.href.slice(4)))) ? "on" : ""}>
                 {n.label}
               </Link>
             ) : (

@@ -101,3 +101,27 @@ table input { padding: 3px 6px; }
   .nav { display: flex; flex-wrap: wrap; }
   .ed-body { grid-template-columns: 1fr; grid-template-rows: auto 60vh auto; }
 }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs a { padding: 7px 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs a:hover { color: var(--text); text-decoration: none; }
+.tabs a.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.scroll { overflow: auto; max-height: calc(100vh - 230px); }
+.scroll table { font-size: 13px; }
+.scroll td, .scroll th { padding: 4px 6px; white-space: nowrap; }
+td.edited, input.edited { background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.cell-in { width: 70px; padding: 2px 4px; }
+.issue-err { color: var(--danger); }
+.issue-warn { color: var(--warn); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.bar { height: 8px; background: var(--accent); border-radius: 4px; }
+tr.sec td { background: var(--accent-weak); font-weight: 600; }
+tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media print {
+  .side, .tabs, .noprint, .head .row { display: none !important; }
+  .shell { display: block; } .main { padding: 0; } .card { box-shadow: none; border: 0; padding: 0; }
+  body { background: #fff; color: #000; } .scroll { max-height: none; overflow: visible; }
+  .pagebreak { break-before: page; }
+}

@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Shell from "@/components/Shell";
 import ProjectForm from "@/components/ProjectForm";
+import { TABS } from "@/components/ProjectTabs";
 import { api, FloorT, Project } from "@/lib/api";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.dxf,.dwg";
@@ -72,7 +73,10 @@ export default function ProjectPage() {
   const [p, setP] = useState<Project | null>(null);
   const [edit, setEdit] = useState(false);
   const [err, setErr] = useState("");
-  useEffect(() => { api.project(Number(id)).then(setP).catch((e) => setErr(e.message)); }, [id]);
+  useEffect(() => {
+    api.project(Number(id)).then(setP).catch((e) => setErr(e.message));
+    try { localStorage.setItem("lastProject", String(id)); } catch {}
+  }, [id]);
   if (!p) return <Shell>{err ? <div className="error">{err}</div> : <div className="muted">Loading…</div>}</Shell>;
   return (
     <Shell>
@@ -92,6 +96,9 @@ export default function ProjectPage() {
           }}>Add building</button>
         </div>
       </div>
+      <nav className="tabs" style={{ marginBottom: 14 }}>
+        {TABS.map((t) => <Link key={t.seg} href={`/projects/${p.id}${t.seg ? "/" + t.seg : ""}`} className={t.seg === "" ? "on" : ""}>{t.label}</Link>)}
+      </nav>
       {err && <div className="error" onClick={() => setErr("")}>{err} <span className="small">(click to dismiss)</span></div>}
       {edit && (
         <div className="card" style={{ marginBottom: 16 }}>
