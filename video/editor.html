@@ -126,6 +126,21 @@ body.picking .view{cursor:crosshair}
 .mixnote{font-size:.74rem;color:var(--muted);margin:8px 2px 0}
 .mixpre{display:flex;flex-wrap:wrap;gap:5px}
 .fxon{display:flex;gap:6px;align-items:center;font-size:.82rem;margin-bottom:6px}
+.clip.adj{background:repeating-linear-gradient(135deg,#3b2a5e 0 8px,#33244f 8px 16px);border-style:dashed;border-color:#b67cff88}
+.clip.adj.sel{border-color:#fff;border-style:solid}
+.bin .m .srcb{position:absolute;right:4px;bottom:24px;border:0;border-radius:4px;background:#000b;color:#fff;font:inherit;font-size:.62rem;font-weight:700;padding:2px 5px;cursor:pointer}
+.bin .m .srcb:hover{background:var(--accent)}
+dialog.srcmon{max-width:760px;width:calc(100% - 32px)}
+.sm-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.sm-h span{flex:1;color:var(--muted);font-size:.84rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sm-view{background:#000;border-radius:6px;display:grid;place-items:center;aspect-ratio:16/9;overflow:hidden}
+.sm-view video,.sm-view img,.sm-view canvas{max-width:100%;max-height:100%;display:block}
+.sm-bar{position:relative;margin:10px 0 4px;height:22px}
+.sm-range{position:absolute;top:4px;height:14px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:3px;pointer-events:none}
+.sm-scrub{position:absolute;inset:0;width:100%;accent-color:var(--accent);margin:0}
+.sm-tc{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.sm-tc b{color:var(--ink)}.sm-cur{color:var(--accent);font-weight:700}
+.sm-ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}.sm-ctl .sp{flex:1}
 .tpl{display:grid;gap:8px}
 .tpl button{border:1px solid var(--line);background:var(--sunk);color:#fff;border-radius:8px;padding:12px;cursor:pointer;text-align:center;font-family:Archivo,sans-serif}
 .tpl button:hover{border-color:var(--accent)}
@@ -207,6 +222,9 @@ kbd{font:inherit;font-size:.72rem;border:1px solid var(--line);border-bottom-wid
 .clip.dragging{opacity:.8;z-index:5;cursor:grabbing}
 .clip.bad{border-color:var(--danger)}
 body.razor .clip{cursor:crosshair}
+body.tool-slip .clip:not(.txt){cursor:ew-resize}
+body.tool-fwd .clip{cursor:e-resize}
+body.tool-ripple .clip .h{background:#ffd54a}
 body.razor .clip .h{display:none}
 .ph{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--danger);z-index:6;pointer-events:none}
 .ph::before{content:"";position:absolute;top:0;left:-6px;border:7px solid transparent;border-top:9px solid var(--danger)}
@@ -314,7 +332,11 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
         <kbd>Home End</kbd><span>Start / end</span>
         <kbd>V</kbd><span>Select tool</span>
         <kbd>C</kbd><span>Razor (blade) tool</span>
+        <kbd>R</kbd><span>Ripple edit tool</span>
+        <kbd>Y</kbd><span>Slip tool</span>
+        <kbd>A</kbd><span>Track select forward</span>
         <kbd>S</kbd><span>Split at playhead</span>
+        <kbd>I / O</kbd><span>Mark In / Out (source monitor)</span>
         <kbd>M</kbd><span>Add a marker</span>
         <kbd>Delete</kbd><span>Delete selected</span>
         <kbd>Shift Delete</kbd><span>Ripple delete (close the gap)</span>
@@ -350,12 +372,16 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
     <div class="tltools">
       <button class="ib" data-act="tool-select" aria-pressed="true" title="Select tool (V)" aria-label="Select tool"></button>
       <button class="ib" data-act="tool-razor" aria-pressed="false" title="Razor tool: click a clip to cut it (C)" aria-label="Razor tool"></button>
+      <button class="ib" data-act="tool-ripple" aria-pressed="false" title="Ripple edit (R): trim an edge and later clips follow" aria-label="Ripple edit tool"></button>
+      <button class="ib" data-act="tool-slip" aria-pressed="false" title="Slip (Y): drag inside a clip to change which part of the video shows" aria-label="Slip tool"></button>
+      <button class="ib" data-act="tool-fwd" aria-pressed="false" title="Track select forward (A): move a clip and everything after it" aria-label="Track select forward tool"></button>
       <span class="sep"></span>
       <button class="ib" data-act="split" title="Split at playhead (S)" aria-label="Split at playhead"></button>
       <button class="ib" data-act="del" title="Delete (Delete)" aria-label="Delete"></button>
       <button class="ib" data-act="ripple" title="Ripple delete (Shift+Delete)" aria-label="Ripple delete"></button>
       <button class="ib" data-act="dup" title="Duplicate (Ctrl+D)" aria-label="Duplicate"></button>
       <button class="ib" data-act="addtext" title="Add text (T)" aria-label="Add text"></button>
+      <button class="ib" data-act="adj" title="Add an adjustment layer: its effects and grade apply to everything below" aria-label="Add adjustment layer"></button>
       <button class="ib" data-act="marker" title="Add marker (M)" aria-label="Add marker"></button>
       <span class="sep"></span>
       <button class="ib" data-act="snap" aria-pressed="true" title="Snapping" aria-label="Snapping"></button>
@@ -385,6 +411,6 @@ dialog video{width:100%;border-radius:6px;background:#000;margin-top:8px}
 </dialog>
 <div class="toast" role="status" aria-live="polite"></div>
 <script src="fx.js?v=20261125c"></script>
-<script src="editor.js?v=20261125l"></script>
+<script src="editor.js?v=20261126b"></script>
 </body>
 </html>
