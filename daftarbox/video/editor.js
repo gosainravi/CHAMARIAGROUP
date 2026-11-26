@@ -716,7 +716,7 @@ async function addFilesNow(files) {
       f = out;
     }
     const kind = k === "v" && info.w ? "v" : "a";
-    const m = {id:uid(), name:f0.name, url:info.url, kind, dur:info.dur, w:info.w, h:info.h, thumbs:[], step:Math.max(.5, info.dur / 400), peaks:null};
+    const m = {id:uid(), name:f0.name, url:info.url, blob:f, kind, dur:info.dur, w:info.w, h:info.h, thumbs:[], step:Math.max(.5, info.dur / 400), peaks:null};
     media.set(m.id, m); renderBin();
     if (kind === "v") makeThumbs(m);
     makePeaks(m, f);
@@ -761,7 +761,7 @@ async function convertNow(f, k) {
 async function addImage(blob, name, insertAt = false) {
   const url = URL.createObjectURL(blob), img = new Image(); img.src = url;
   try { await img.decode(); } catch (e) { toast(`Can't open ${name}`); return null; }
-  const m = {id:uid(), name, url, kind:"i", dur:3600, still:5, w:img.naturalWidth || 640, h:img.naturalHeight || 360, thumbs:[], step:1e9, peaks:null};
+  const m = {id:uid(), name, url, blob, kind:"i", dur:3600, still:5, w:img.naturalWidth || 640, h:img.naturalHeight || 360, thumbs:[], step:1e9, peaks:null};
   const th = 50, tw = Math.max(1, Math.round(th * m.w / m.h)), c = document.createElement("canvas"); c.width = tw; c.height = th; c.getContext("2d").drawImage(img, 0, 0, tw, th); m.thumbs.push(c);
   media.set(m.id, m); renderBin();
   if (insertAt !== false) insertMedia(m.id);
@@ -1833,6 +1833,138 @@ $$("[data-act]").forEach(b => { const k = b.dataset.act; if (IC[k] && b.classLis
    The destination address lives in <meta name="report-to"> in editor.html. ---------- */
 const bugTo = () => (($('meta[name="report-to"]') || {}).content || "").trim();
 const bugDlg = $(".bugdlg"), bugForm = $(".bugform");
+
+/* ---------- Saved projects (IndexedDB, in this browser) ----------
+   projects: {id, name, updated, size, thumb, data}   data = timeline state + list of media
+   blobs:    "<projectId>:<mediaId>" -> the imported file itself (after any conversion)
+   Autosave runs every few seconds when something changed. */
+const DB_NAME = "daftarbox-studio";
+let dbP = null;
+function db() {
+  return dbP || (dbP = new Promise((res, rej) => {
+    if (!window.indexedDB) return rej(new Error("no indexedDB"));
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains("projects")) d.createObjectStore("projects", {keyPath:"id"}); if (!d.objectStoreNames.contains("blobs")) d.createObjectStore("blobs"); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+}
+const idb = (store, mode, fn) => db().then(d => new Promise((res, rej) => { const tx = d.transaction(store, mode), st = tx.objectStore(store); let out; const r = fn(st); if (r) r.onsuccess = () => { out = r.result; }; tx.oncomplete = () => res(out); tx.onerror = tx.onabort = () => rej(tx.error); }));
+const dbGet = (s, k) => idb(s, "readonly", st => st.get(k));
+const dbPut = (s, v, k) => idb(s, "readwrite", st => k === undefined ? st.put(v) : st.put(v, k));
+const dbDel = (s, k) => idb(s, "readwrite", st => st.delete(k));
+const dbAll = s => idb(s, "readonly", st => st.getAll());
+const dbKeys = s => idb(s, "readonly", st => st.getAllKeys());
+
+let curPid = null, lastSavedSig = "", savedMedia = new Set(), saving = false, saveErr = false;
+const projSig = () => snapshot() + "|" + $(".pname").value + "|" + FPS + "|" + $(".aspect").value + "|" + [...media.keys()].join(",") + "|" + [...luts.keys()].join(",");
+function setSaveStatus(t, cls = "") { const el = $(".savestat"); if (el) { el.textContent = t; el.className = "savestat " + cls; } }
+function projThumb() { try { const c = document.createElement("canvas"); c.width = 192; c.height = 108; const gg = c.getContext("2d"); gg.fillStyle = "#000"; gg.fillRect(0, 0, 192, 108); const k = Math.min(192 / cv.width, 108 / cv.height); gg.drawImage(cv, (192 - cv.width * k) / 2, (108 - cv.height * k) / 2, cv.width * k, cv.height * k); return c.toDataURL("image/jpeg", .7); } catch (e) { return ""; } }
+async function saveProject(force) {
+  if (saving) return;
+  const real = [...media.values()].filter(m => m.kind !== "adj");
+  if (!curPid && !real.length && !texts.length) return; /* nothing worth saving yet */
+  const sig = projSig(); if (!force && sig === lastSavedSig) return;
+  saving = true; setSaveStatus("Saving…");
+  try {
+    if (!curPid) { curPid = "p" + Date.now().toString(36) + uid(); savedMedia = new Set(); }
+    let size = 0;
+    for (const m of real) {
+      if (m.blob) size += m.blob.size || 0;
+      if (!savedMedia.has(m.id) && m.blob) { await dbPut("blobs", m.blob, curPid + ":" + m.id); savedMedia.add(m.id); }
+    }
+    const data = {v:1, tracks, clips, texts, textTrack, markers, master, FPS, aspect:$(".aspect").value, T,
+      media:real.map(m => ({id:m.id, name:m.name, kind:m.kind, dur:m.dur, w:m.w, h:m.h, still:m.still, srcIn:m.srcIn, srcOut:m.srcOut})),
+      luts:[...luts].map(([id, L]) => ({id, name:L.name, n:L.n, rgb:L.rgb.buffer.slice(0)}))};
+    const plain = JSON.parse(JSON.stringify({...data, luts:[]})); plain.luts = data.luts; /* timeline as plain data; LUT tables stay binary */
+    await dbPut("projects", {id:curPid, name:$(".pname").value.trim() || "Untitled video", updated:Date.now(), size, thumb:projThumb(), data:plain});
+    lastSavedSig = sig; saveErr = false;
+    setSaveStatus("Saved " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}), "ok");
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  } catch (e) {
+    console.error(e); saveErr = true;
+    setSaveStatus(/quota/i.test(String(e && (e.name + e.message))) ? "Not saved: browser storage full" : "Not saved", "err");
+    if (/quota/i.test(String(e && (e.name + e.message)))) toast("This browser is out of storage space. Delete old projects in Projects, or export your video.");
+  } finally { saving = false; }
+}
+setInterval(() => { if (!document.hidden) saveProject(); }, 4000);
+document.addEventListener("visibilitychange", () => { if (document.hidden) saveProject(); });
+
+async function resetProject() {
+  if (playing) pause();
+  pv.destroy();
+  for (const [id, m] of media) if (m.kind !== "adj" && m.url) URL.revokeObjectURL(m.url);
+  [...media.keys()].forEach(k => { if (k !== "__adj") media.delete(k); });
+  luts.clear(); decoded.clear();
+  tracks = [{id:"V2", kind:"v", hide:false, mute:false, lock:false}, {id:"V1", kind:"v", hide:false, mute:false, lock:false}, {id:"A1", kind:"a", hide:false, mute:false, lock:false}, {id:"A2", kind:"a", hide:false, mute:false, lock:false}];
+  clips = []; texts = []; textTrack = {hide:false, lock:false}; markers = []; master = {vol:0, limiter:true};
+  undoS.length = 0; redoS.length = 0; syncUndo(); sel = null; T = 0; fitted = false;
+  curPid = null; savedMedia = new Set(); lastSavedSig = "";
+  $(".pname").value = "Untitled video"; setSaveStatus("Not saved yet");
+  renderBin(); refresh();
+}
+async function newProject() { await saveProject(true); await resetProject(); projDlg.close(); toast("New project started. Your other projects are in Projects."); }
+async function openProject(id) {
+  await saveProject(true);
+  const rec = await dbGet("projects", id); if (!rec) return toast("That project couldn't be found");
+  setSaveStatus("Opening…");
+  await resetProject();
+  const d = rec.data; curPid = id;
+  let missing = 0;
+  for (const e of d.media) {
+    const blob = await dbGet("blobs", id + ":" + e.id);
+    if (!blob) { missing++; continue; }
+    const m = {...e, blob, url:URL.createObjectURL(blob), thumbs:[], step:e.kind === "i" ? 1e9 : Math.max(.5, e.dur / 400), peaks:null};
+    media.set(m.id, m); savedMedia.add(m.id);
+    if (m.kind === "i") { const img = new Image(); img.src = m.url; try { await img.decode(); const th = 50, tw = Math.max(1, Math.round(th * m.w / m.h)), c = document.createElement("canvas"); c.width = tw; c.height = th; c.getContext("2d").drawImage(img, 0, 0, tw, th); m.thumbs.push(c); } catch (err) { /* keeps working without a thumbnail */ } }
+    else { if (m.kind === "v") makeThumbs(m); makePeaks(m, blob); }
+  }
+  for (const L of d.luts || []) { const rgb = new Float32Array(L.rgb); luts.set(L.id, {name:L.name, n:L.n, rgb}); if (window.FX) FX.setLut(L.id, L.n, rgb); }
+  ({tracks, clips, texts, textTrack} = d); markers = d.markers || []; master = d.master || {vol:0, limiter:true};
+  FPS = d.FPS || 30; $(".fps").value = String(FPS); $(".aspect").value = d.aspect || "auto";
+  $(".pname").value = rec.name; T = d.T || 0;
+  texts.forEach(x => { if (x.font) ensureFont(x.font); });
+  if (missing) { clips = clips.filter(c => media.has(c.m)); toast(`${missing} file${missing > 1 ? "s were" : " was"} missing from this saved project, so ${missing > 1 ? "their" : "its"} clips were removed`); }
+  renderBin(); refresh(); fit(); if (pvMix) pvMix.update();
+  lastSavedSig = projSig(); setSaveStatus("Opened " + rec.name, "ok"); projDlg.close();
+}
+async function deleteProject(id) {
+  const keys = (await dbKeys("blobs")).filter(k => String(k).startsWith(id + ":"));
+  for (const k of keys) await dbDel("blobs", k);
+  await dbDel("projects", id);
+  if (curPid === id) { curPid = null; savedMedia = new Set(); lastSavedSig = ""; setSaveStatus("Not saved yet"); }
+}
+
+/* ---------- Projects screen ---------- */
+const projDlg = document.createElement("dialog"); projDlg.className = "projdlg"; document.body.appendChild(projDlg);
+const fmtSize = b => b < 1048576 ? Math.max(1, Math.round(b / 1024)) + " KB" : b < 1073741824 ? (b / 1048576).toFixed(1) + " MB" : (b / 1073741824).toFixed(2) + " GB";
+async function showProjects(first) {
+  let list = [];
+  try { list = (await dbAll("projects")).sort((a, b) => b.updated - a.updated); } catch (e) { toast("This browser can't save projects (storage is turned off, e.g. in a private window)"); return; }
+  if (first && !list.length) return;
+  let est = ""; try { const q = await navigator.storage.estimate(); est = `Using ${fmtSize(q.usage || 0)} of about ${fmtSize(q.quota || 0)} available in this browser.`; } catch (e) { /* estimate not supported */ }
+  const when = t => { const d = new Date(t), now = new Date(); return d.toDateString() === now.toDateString() ? "Today " + d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : d.toLocaleDateString([], {day:"numeric", month:"short", year:"numeric"}); };
+  projDlg.innerHTML = `<div class="pj-h"><h3>${first ? "Welcome back" : "Your projects"}</h3><button class="ib" data-pj="close" aria-label="Close">✕</button></div>
+    <p class="empty-note" style="margin:0 0 12px">Projects are saved automatically in this browser on this computer, including your video, audio and photo files. ${est}</p>
+    <div class="pj-grid">
+      <button class="pj-new" data-pj="new"><span>+</span>New project</button>
+      ${list.map(p => `<div class="pj${p.id === curPid ? " cur" : ""}" data-pid="${p.id}">
+        <button class="pj-open" data-pj="open" title="Open ${esc(p.name)}">${p.thumb ? `<img src="${p.thumb}" alt="">` : `<span class="pj-ph">▶</span>`}</button>
+        <div class="pj-i"><b title="${esc(p.name)}">${esc(p.name)}</b><span>${when(p.updated)} · ${fmtSize(p.size || 0)}${p.id === curPid ? " · open now" : ""}</span></div>
+        <div class="pj-a"><button class="btn ghost small" data-pj="open">Open</button><button class="btn ghost small" data-pj="rename">Rename</button><button class="btn ghost small" data-pj="del">Delete</button></div></div>`).join("")}
+    </div>
+    ${list.length ? "" : `<p class="empty-note">No saved projects yet. Import a file and your work starts saving by itself.</p>`}`;
+  if (!projDlg.open) projDlg.showModal();
+}
+projDlg.addEventListener("click", async e => {
+  const b = e.target.closest("[data-pj]"); if (!b) return;
+  const a = b.dataset.pj, card = b.closest("[data-pid]"), id = card && card.dataset.pid;
+  if (a === "close") projDlg.close();
+  if (a === "new") newProject();
+  if (a === "open" && id) { if (id === curPid) { projDlg.close(); return; } openProject(id); }
+  if (a === "rename" && id) { const rec = await dbGet("projects", id); const nm = prompt("Project name", rec.name); if (nm && nm.trim()) { rec.name = nm.trim(); await dbPut("projects", rec); if (id === curPid) { $(".pname").value = rec.name; lastSavedSig = projSig(); } showProjects(); } }
+  if (a === "del" && id) { const rec = await dbGet("projects", id); if (confirm(`Delete "${rec.name}" and its saved files from this browser? This can't be undone.`)) { await deleteProject(id); showProjects(); toast("Project deleted"); } }
+});
+
 if (!bugTo()) $('[data-act="bug"]').hidden = true; /* no destination set yet: don't show a button that can't send */
 function openBug() { if (playing) pause(); $(".bugmsg").textContent = ""; $(".bugmsg").className = "bugmsg"; bugDlg.showModal(); $("#bug-txt").focus(); }
 function bugDetails() {
@@ -1870,7 +2002,7 @@ const ACTS = {
   resetxf:() => { const o = findSel(); if (o) { commit(); Object.assign(o, {op:1, sc:1, x:0, y:0, rot:0}); if (o.kf) ["op", "sc", "x", "y", "rot"].forEach(k => delete o.kf[k]); refresh(); } },
   clearkf:() => { const o = findSel(); if (o && o.kf) { commit(); o.kf = null; refresh(); } },
   resetcol:() => { const o = findSel(); if (o) { commit(); o.col = null; refresh(); } },
-  freeze:freezeFrame, bug:openBug, trall:trAll, adj:addAdjustment,
+  freeze:freezeFrame, bug:openBug, trall:trAll, adj:addAdjustment, projects:() => showProjects(false),
   "view-tl":() => setView(false), "view-mix":() => setView(true),
   lutimport:() => { if (!window.FX || !FX.supported()) return toast("LUTs need WebGL (graphics card support)."); lutIn.click(); },
   gcopy:() => { const o = findSel(); if (!o || sel.type !== "clip") return; gradeClip = JSON.parse(JSON.stringify({...defGrade(), ...(o.gr || {})})); renderProps(); showSec("Colour grading"); toast("Grade copied"); },
@@ -1969,6 +2101,7 @@ window.addEventListener("resize", () => renderTimeline());
 /* The studio never scrolls sideways: undo any nudge from focus jumps or sideways trackpad swipes. */
 const noSideScroll = () => { if (scrollX) scrollTo(0, scrollY); if (document.body.scrollLeft) document.body.scrollLeft = 0; if (document.documentElement.scrollLeft) document.documentElement.scrollLeft = 0; };
 window.addEventListener("scroll", noSideScroll, {passive:true}); document.body.addEventListener("scroll", noSideScroll, {passive:true});
-window.addEventListener("beforeunload", e => { if (clips.length) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", e => { if (clips.length && (saveErr || projSig() !== lastSavedSig)) { saveProject(true); e.preventDefault(); e.returnValue = ""; } });
 { const rp0 = renderProps; renderProps = (...args) => { rp0(...args); drawWheels(); }; } /* colour wheels are canvases: redraw after the inspector changes */
 setPlayBtn(); setTool("select"); pps = ppsFromZoom(+zm.value); renderTimeline(); renderProps(); updateTime(); sizeViewer(); paint();
+showProjects(true); /* returning visitors land on their saved projects */
