@@ -18,17 +18,32 @@ const DRY = process.env.DRY_RUN === "1";
 
 function need(k){ const v = process.env[k]; if(!v){ console.error(`Missing env ${k}`); process.exit(2); } return v; }
 
-function login(email, password){
-  const user = new CognitoUser({ Username: email, Pool: new CognitoUserPool(POOL) });
+// The OptiSpaces dashboard signs in with Amplify "CUSTOM_WITH_SRP" (Cognito CUSTOM_AUTH that
+// starts with SRP). Try that first, then plain SRP, with the email trimmed and lower-cased.
+function loginOnce(username, password, flow){
+  const user = new CognitoUser({ Username: username, Pool: new CognitoUserPool(POOL) });
+  user.setAuthenticationFlowType(flow);
   return new Promise((resolve, reject) => user.authenticateUser(
-    new AuthenticationDetails({ Username: email, Password: password }),
+    new AuthenticationDetails({ Username: username, Password: password }),
     {
       onSuccess: s => resolve(s.getIdToken().getJwtToken()),
       onFailure: reject,
+      customChallenge: p => reject(new Error(`Spintly asked for an extra sign-in step (${JSON.stringify(p||{}).slice(0,120)}) — use a login without OTP`)),
       newPasswordRequired: () => reject(new Error("Spintly asks this user to set a new password — log in once on the dashboard first")),
       mfaRequired: () => reject(new Error("This Spintly user has OTP/MFA on — use a user without MFA")),
       totpRequired: () => reject(new Error("This Spintly user has OTP/MFA on — use a user without MFA")),
     }));
+}
+async function login(email, password){
+  const raw = String(email).trim(), lower = raw.toLowerCase();
+  const tries = [[lower,"CUSTOM_AUTH"],[lower,"USER_SRP_AUTH"]];
+  if(raw !== lower) tries.push([raw,"CUSTOM_AUTH"],[raw,"USER_SRP_AUTH"]);
+  let last;
+  for(const [u, flow] of tries){
+    try{ const t = await loginOnce(u, String(password).replace(/[\r\n]+$/,""), flow); console.log(`Spintly sign-in flow: ${flow}`); return t; }
+    catch(e){ last = e; console.log(`  sign-in via ${flow}${u===raw&&raw!==lower?" (original case)":""}: ${e.code||""} ${e.message}`); if(/MFA|OTP|new password|extra sign-in/.test(e.message)) break; }
+  }
+  throw last;
 }
 
 // READ-ONLY: Spintly must never be changed by this script. These are the only two
