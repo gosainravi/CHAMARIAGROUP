@@ -1064,6 +1064,23 @@
     font-family:var(--mono);font-size:11px;color:var(--ink-soft);
     min-width:90px;
   }
+
+  /* ---------- Asset category tabs ---------- */
+  .cat-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .cat-tab{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 15px;border:1px solid var(--line);border-radius:999px;
+    background:var(--paper);color:var(--ink-soft);
+    font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;
+    transition:background .14s ease, color .14s ease, border-color .14s ease;
+  }
+  .cat-tab:hover{color:var(--ink);border-color:var(--accent);}
+  .cat-tab.active{background:var(--accent-soft);color:var(--ink);border-color:var(--accent);}
+  .cat-tab .cat-count{
+    font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:999px;
+    background:var(--line);color:var(--ink-soft);
+  }
+  .cat-tab.active .cat-count{color:var(--ink);}
 </style>
 </head>
 <body>
@@ -1409,6 +1426,7 @@
 
   <!-- ================= ASSETS ================= -->
   <section id="tab-assets" class="tab-panel">
+    <div class="cat-tabs" id="assetCatTabs"></div>
     <div class="toolbar">
       <div class="toolbar-left">
         <div class="search-wrap">
@@ -3514,6 +3532,35 @@ let pendingHistoryBillFile = null;
 let assets = [];
 
 let assetCurrentPage = 1;
+let assetCatTab = 'all';
+// The requested grouping. "Server" matches the canonical "Servers" category
+// (and a stray singular), and "Other IT Assets" is everything that is not a
+// laptop, desktop or server - so nothing can fall through the tabs.
+const ASSET_CAT_TABS = [
+  { id:'all',     label:'All',             match:() => true },
+  { id:'laptop',  label:'Laptop',          match:a => (a.category||'') === 'Laptop' },
+  { id:'desktop', label:'Desktop',         match:a => (a.category||'') === 'Desktop' },
+  { id:'server',  label:'Server',          match:a => /^servers?$/i.test(a.category||'') },
+  { id:'other',   label:'Other IT Assets',
+    match:a => (a.category||'') !== 'Laptop' && (a.category||'') !== 'Desktop' && !/^servers?$/i.test(a.category||'') }
+];
+function assetCatTabDef(id){ return ASSET_CAT_TABS.find(t => t.id === id) || ASSET_CAT_TABS[0]; }
+
+function renderAssetCatTabs(){
+  const box = $('assetCatTabs');
+  if(!box) return;
+  box.innerHTML = ASSET_CAT_TABS.map(t => {
+    const n = (t.id === 'all') ? assets.length : assets.filter(t.match).length;
+    return '<button class="cat-tab' + (assetCatTab === t.id ? ' active' : '') + '" data-cattab="' + t.id + '">' +
+      t.label + '<span class="cat-count">' + n + '</span></button>';
+  }).join('');
+  box.querySelectorAll('[data-cattab]').forEach(b =>
+    b.addEventListener('click', () => {
+      assetCatTab = b.dataset.cattab;
+      assetCurrentPage = 1;
+      renderAssets();
+    }));
+}
 let assetSortField = null;
 let assetSortDir = 'asc';
 let assetEditingId = null;
@@ -4198,6 +4245,8 @@ function updateAssetSortHeaders(){
 
 function renderAssets(){
   decorateAssets();
+  renderAssetCatTabs();
+  const catTab = assetCatTabDef(assetCatTab);
   const q = ($('assetSearch').value || '').toLowerCase();
   const companyFilter = $('assetCompanyFilter').value;
   const categoryFilter = $('assetCategoryFilter').value;
@@ -4205,6 +4254,7 @@ function renderAssets(){
   const warrantyFilter = $('assetWarrantyFilter').value;
 
   let filtered = assets.filter(a=>{
+    if(!catTab.match(a)) return false;
     if(companyFilter && a.companyId !== companyFilter) return false;
     if(categoryFilter && a.category !== categoryFilter) return false;
     if(assignedFilter && (a.assignedDisplayName || a.assignedUserName || '') !== assignedFilter) return false;
