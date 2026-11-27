@@ -1092,6 +1092,11 @@
   .verify-btn.on{
     background:var(--success-soft);color:var(--success);border-color:var(--success);
   }
+
+  /* Verification sub-filter: lighter than the category tabs so the two rows
+     read as two separate dimensions, not one long group. */
+  .cat-tabs-sub{margin-top:-4px;margin-bottom:16px;}
+  .cat-tabs-sub .cat-tab{padding:6px 13px;font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -1438,6 +1443,7 @@
   <!-- ================= ASSETS ================= -->
   <section id="tab-assets" class="tab-panel">
     <div class="cat-tabs" id="assetCatTabs"></div>
+    <div class="cat-tabs cat-tabs-sub" id="assetVerifyTabs"></div>
     <div class="toolbar">
       <div class="toolbar-left">
         <div class="search-wrap">
@@ -3560,6 +3566,34 @@ const ASSET_CAT_TABS = [
 ];
 function assetCatTabDef(id){ return ASSET_CAT_TABS.find(t => t.id === id) || ASSET_CAT_TABS[0]; }
 
+let assetVerifyTab = 'all';
+// A second dimension, kept separate from the category tabs so the two compose:
+// "Laptop" + "Pending" is laptops still to check. Counts are taken within the
+// current category tab, so they always match what pressing one would show.
+const ASSET_VERIFY_TABS = [
+  { id:'all',      label:'All',          match:() => true },
+  { id:'verified', label:'✓ Verified', match:a => !!a.verified },
+  { id:'pending',  label:'Pending',      match:a => !a.verified }
+];
+function assetVerifyTabDef(id){ return ASSET_VERIFY_TABS.find(t => t.id === id) || ASSET_VERIFY_TABS[0]; }
+
+function renderAssetVerifyTabs(){
+  const box = $('assetVerifyTabs');
+  if(!box) return;
+  const inCat = assets.filter(assetCatTabDef(assetCatTab).match);
+  box.innerHTML = ASSET_VERIFY_TABS.map(t => {
+    const n = (t.id === 'all') ? inCat.length : inCat.filter(t.match).length;
+    return '<button class="cat-tab' + (assetVerifyTab === t.id ? ' active' : '') + '" data-vtab="' + t.id + '">' +
+      t.label + '<span class="cat-count">' + n + '</span></button>';
+  }).join('');
+  box.querySelectorAll('[data-vtab]').forEach(b =>
+    b.addEventListener('click', () => {
+      assetVerifyTab = b.dataset.vtab;
+      assetCurrentPage = 1;
+      renderAssets();
+    }));
+}
+
 function renderAssetCatTabs(){
   const box = $('assetCatTabs');
   if(!box) return;
@@ -4260,7 +4294,9 @@ function updateAssetSortHeaders(){
 function renderAssets(){
   decorateAssets();
   renderAssetCatTabs();
+  renderAssetVerifyTabs();
   const catTab = assetCatTabDef(assetCatTab);
+  const vTab = assetVerifyTabDef(assetVerifyTab);
   const q = ($('assetSearch').value || '').toLowerCase();
   const companyFilter = $('assetCompanyFilter').value;
   const categoryFilter = $('assetCategoryFilter').value;
@@ -4269,6 +4305,7 @@ function renderAssets(){
 
   let filtered = assets.filter(a=>{
     if(!catTab.match(a)) return false;
+    if(!vTab.match(a)) return false;
     if(companyFilter && a.companyId !== companyFilter) return false;
     if(categoryFilter && a.category !== categoryFilter) return false;
     if(assignedFilter && (a.assignedDisplayName || a.assignedUserName || '') !== assignedFilter) return false;
