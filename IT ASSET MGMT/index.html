@@ -3556,13 +3556,20 @@ let assetCatTab = 'all';
 // The requested grouping. "Server" matches the canonical "Servers" category
 // (and a stray singular), and "Other IT Assets" is everything that is not a
 // laptop, desktop or server - so nothing can fall through the tabs.
+const ASSET_CAT_MATCHERS = {
+  laptop:  a => (a.category||'') === 'Laptop',
+  desktop: a => (a.category||'') === 'Desktop',
+  server:  a => /^servers?$/i.test(a.category||''),
+  mobile:  a => (a.category||'') === 'Mobile Phone'
+};
 const ASSET_CAT_TABS = [
   { id:'all',     label:'All',             match:() => true },
-  { id:'laptop',  label:'Laptop',          match:a => (a.category||'') === 'Laptop' },
-  { id:'desktop', label:'Desktop',         match:a => (a.category||'') === 'Desktop' },
-  { id:'server',  label:'Server',          match:a => /^servers?$/i.test(a.category||'') },
+  { id:'laptop',  label:'Laptop',          match:ASSET_CAT_MATCHERS.laptop },
+  { id:'desktop', label:'Desktop',         match:ASSET_CAT_MATCHERS.desktop },
+  { id:'server',  label:'Server',          match:ASSET_CAT_MATCHERS.server },
+  { id:'mobile',  label:'Mobile',          match:ASSET_CAT_MATCHERS.mobile },
   { id:'other',   label:'Other IT Assets',
-    match:a => (a.category||'') !== 'Laptop' && (a.category||'') !== 'Desktop' && !/^servers?$/i.test(a.category||'') }
+    match:a => !Object.values(ASSET_CAT_MATCHERS).some(fn => fn(a)) }
 ];
 function assetCatTabDef(id){ return ASSET_CAT_TABS.find(t => t.id === id) || ASSET_CAT_TABS[0]; }
 
