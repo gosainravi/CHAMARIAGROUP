@@ -2658,6 +2658,7 @@
       <button class="btn" id="avRecoverBtn" style="display:none;">🔄 Recover from User</button>
       <div style="flex:1;"></div>
       <button class="btn" id="avVerifyBtn">✓ Mark verified</button>
+      <button class="btn" id="avCloneBtn">⧉ Clone</button>
       <button class="btn" id="avCloseBtn">Close</button>
       <button class="btn btn-primary" id="avEditBtn">Edit</button>
     </div>
@@ -4365,6 +4366,7 @@ function renderAssets(){
         '<td><div class="row-actions">'+
           '<button class="btn btn-sm verify-btn'+(a.verified?' on':'')+'" data-verify="'+a.id+'" title="'+(a.verified?'Verified - click to undo':'Mark as checked and verified')+'">'+(a.verified?'✓ Verified':'✓ Verify')+'</button>'+
           '<button class="btn btn-sm" data-edit="'+a.id+'">Edit</button>'+
+          '<button class="btn btn-sm" data-clone="'+a.id+'" title="Make a copy as a new asset">Clone</button>'+
           '<button class="btn btn-sm btn-danger" data-del="'+a.id+'">Del</button>'+
         '</div></td>'+
       '</tr>';
@@ -4386,6 +4388,9 @@ function renderAssets(){
   });
   body.querySelectorAll('[data-verify]').forEach(btn=>{
     btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleAssetVerified(btn.dataset.verify); });
+  });
+  body.querySelectorAll('[data-clone]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); cloneAsset(btn.dataset.clone); });
   });
   body.querySelectorAll('[data-dl]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ const a = assets.find(x=>x.id===btn.dataset.dl); if(a) downloadFile('invoices', a.invoiceStoragePath, a.id, a.invoiceFileName); });
@@ -4462,18 +4467,26 @@ function showAssetInvoiceAttached(name){
   $('af_invoiceFileName').textContent = name;
 }
 
-function openAssetPanel(asset){
-  assetEditingId = asset ? asset.id : null;
-  // Capture invoice state at panel-open time
+const CLONE_CLEAR = ['serialNo','serviceTag','computerName','loggedInUser',
+  'ipAddress','macAddress','employeeId','assignedUserName','dateAssigned'];
+
+// opts.clone opens the panel as a NEW asset pre-filled from `asset`: the shared
+// details (make, model, specs, purchase, warranty) carry over, the per-unit
+// identity fields are cleared, and it saves as a fresh record - not an edit.
+function openAssetPanel(asset, opts){
+  const cloning = !!(opts && opts.clone);
+  const editing = asset && !cloning;
+  assetEditingId = editing ? asset.id : null;
+  // A clone starts with no invoice - the file belongs to the original unit.
+  const invSrc = editing ? asset : null;
   _assetOpenInvoiceState = {
-    hasInvoice:         asset ? (asset.hasInvoice        || false) : false,
-    invoiceFileName:    asset ? (asset.invoiceFileName    || '')    : '',
-    invoiceStoragePath: asset ? (asset.invoiceStoragePath || '')    : ''
+    hasInvoice:         invSrc ? (invSrc.hasInvoice        || false) : false,
+    invoiceFileName:    invSrc ? (invSrc.invoiceFileName    || '')    : '',
+    invoiceStoragePath: invSrc ? (invSrc.invoiceStoragePath || '')    : ''
   };
-  // Store invoice info so it can be restored if dropdowns get rebuilt
-  window._editingAssetInvoice = asset ? { hasInvoice: asset.hasInvoice, invoiceFileName: asset.invoiceFileName, invoiceStoragePath: asset.invoiceStoragePath } : null;
-  $('assetPanelTitle').textContent = asset ? 'Edit Asset' : 'Add Asset';
-  $('assetPanelCode').textContent = asset ? asset.assetCode : (supa ? '(auto-assigned on save)' : 'AST-' + String(localAssetCounter+1).padStart(6,'0'));
+  window._editingAssetInvoice = invSrc ? { hasInvoice: invSrc.hasInvoice, invoiceFileName: invSrc.invoiceFileName, invoiceStoragePath: invSrc.invoiceStoragePath } : null;
+  $('assetPanelTitle').textContent = editing ? 'Edit Asset' : (cloning ? 'Add Asset (cloned)' : 'Add Asset');
+  $('assetPanelCode').textContent = editing ? asset.assetCode : (supa ? '(auto-assigned on save)' : 'AST-' + String(localAssetCounter+1).padStart(6,'0'));
 
   const fields = ['companyId','brand','model','serialNo','employeeId','assignedUserName','dateAssigned',
     'department','authorisedBy','location','purchaseDate','purchaseAmount','vendor','qty','invoiceNumber','invoiceDate',
@@ -4484,18 +4497,20 @@ function openAssetPanel(asset){
   fields.forEach(f=>{
     const el = $('af_'+f);
     if(!el) return;
+    if(cloning && CLONE_CLEAR.includes(f)){ el.value = ''; return; }
     el.value = asset ? (asset[f] ?? '') : (f==='qty' ? 1 : '');
   });
   setCategoryFieldValue(asset ? asset.category : '');
 
-  // Non-editable scan detail carried through on save without a dedicated form field
+  // A clone is a different physical unit, so the original's scanned software
+  // list and its link back to a discovery scan do not carry over.
   window._assetExtraFields = {
-    installedSoftware: asset ? (asset.installedSoftware || []) : [],
-    discoveredFromId:  asset ? (asset.discoveredFromId  || null) : null
+    installedSoftware: editing ? (asset.installedSoftware || []) : [],
+    discoveredFromId:  editing ? (asset.discoveredFromId  || null) : null
   };
 
   resetAssetInvoiceUI();
-  if(asset && asset.hasInvoice) showAssetInvoiceAttached(asset.invoiceFileName || 'invoice file');
+  if(editing && asset.hasInvoice) showAssetInvoiceAttached(asset.invoiceFileName || 'invoice file');
 
   $('af_specsBody').style.display = 'none';
   $('af_specsArrow').textContent = '▾';
@@ -4504,6 +4519,12 @@ function openAssetPanel(asset){
 
   $('assetOverlay').classList.add('open');
   $('af_companyId').focus();
+}
+function cloneAsset(id){
+  const a = assets.find(x => x.id === id);
+  if(!a){ showToast('Asset not found', true); return; }
+  openAssetPanel(a, { clone:true });
+  showToast('Cloned from ' + (a.assetCode || 'asset') + ' \u2014 set the serial number and save');
 }
 function closeAssetPanel(){
   $('assetOverlay').classList.remove('open');
@@ -7721,6 +7742,7 @@ function openAssetView(asset){
   vb.classList.toggle('on', !!asset.verified);
   vb.onclick = async ()=>{ const fresh = await toggleAssetVerified(asset.id); if(fresh) openAssetView(fresh); };
   $('avEditBtn').onclick = ()=>{ closeAssetView(); openAssetPanel(asset); };
+  $('avCloneBtn').onclick = ()=>{ closeAssetView(); cloneAsset(asset.id); };
   $('avDeleteBtn').onclick = ()=>{ closeAssetView(); deleteAsset(asset.id); };
   $('avAddHistoryBtn').onclick = ()=> openHistoryEntryPanel(asset.id);
 
