@@ -1081,6 +1081,17 @@
     background:var(--line);color:var(--ink-soft);
   }
   .cat-tab.active .cat-count{color:var(--ink);}
+
+  /* ---------- Verified assets ----------
+     Green is paired with a tick and the word "Verified" everywhere it appears,
+     never colour on its own, so a colour-blind reader is never left guessing. */
+  tr.verified td{background:rgba(52,211,153,0.08);}
+  tr.verified:hover td{background:rgba(52,211,153,0.14);}
+  tr.verified td:first-child{box-shadow:inset 3px 0 0 var(--success);}
+  .verified-tick{color:var(--success);font-weight:800;margin-left:5px;}
+  .verify-btn.on{
+    background:var(--success-soft);color:var(--success);border-color:var(--success);
+  }
 </style>
 </head>
 <body>
@@ -2639,6 +2650,7 @@
       <button class="btn btn-danger" id="avDeleteBtn">Delete</button>
       <button class="btn" id="avRecoverBtn" style="display:none;">🔄 Recover from User</button>
       <div style="flex:1;"></div>
+      <button class="btn" id="avVerifyBtn">✓ Mark verified</button>
       <button class="btn" id="avCloseBtn">Close</button>
       <button class="btn btn-primary" id="avEditBtn">Edit</button>
     </div>
@@ -3306,7 +3318,8 @@ function assetToDb(a){
     monitor: txt(a.monitor), os_name: txt(a.osName), os_arch: txt(a.osArch), os_version: txt(a.osVersion),
     os_build: txt(a.osBuild), ip_address: txt(a.ipAddress), mac_address: txt(a.macAddress),
     installed_software: a.installedSoftware && a.installedSoftware.length ? a.installedSoftware : null,
-    discovered_from_id: txt(a.discoveredFromId)
+    discovered_from_id: txt(a.discoveredFromId),
+    verified: !!a.verified, verified_by: txt(a.verifiedBy), verified_at: a.verifiedAt || null
   };
 }
 function assetFromDb(r){
@@ -3329,7 +3342,8 @@ function assetFromDb(r){
     monitor:r.monitor||'', osName:r.os_name||'', osArch:r.os_arch||'', osVersion:r.os_version||'',
     osBuild:r.os_build||'', ipAddress:r.ip_address||'', macAddress:r.mac_address||'',
     installedSoftware:r.installed_software||[], discoveredFromId:r.discovered_from_id||'',
-    createdAt:r.created_at||''
+    createdAt:r.created_at||'',
+    verified:!!r.verified, verifiedBy:r.verified_by||'', verifiedAt:r.verified_at||''
   };
 }
 
@@ -4288,10 +4302,10 @@ function renderAssets(){
   } else {
     body.innerHTML = pageItems.map((a,i)=>{
       const st = warrantyStatus(a.warrantyEnd);
-      return '<tr class="row-click" data-row="'+a.id+'">'+
+      return '<tr class="row-click'+(a.verified?' verified':'')+'" data-row="'+a.id+'">'+
         '<td><input type="checkbox" class="row-select" data-select="'+a.id+'" '+(selectedAssetIds.has(a.id)?'checked':'')+'></td>'+
         '<td class="mono">'+(startIdx+i+1)+'</td>'+
-        '<td><span class="asset-tag">'+escapeHtml(a.assetCode)+'</span></td>'+
+        '<td><span class="asset-tag">'+escapeHtml(a.assetCode)+'</span>'+(a.verified?' <span class="verified-tick" title="Checked and verified">✓</span>':'')+'</td>'+
         '<td class="invoice-cell">'+(a.hasInvoice ? '<button class="invoice-icon-btn" data-dl="'+a.id+'" title="Download invoice">⬇</button>' : '<span class="invoice-none">—</span>')+'</td>'+
         '<td>'+escapeHtml(a.companyName || '—')+'</td>'+
         '<td>'+escapeHtml(a.category)+'</td>'+
@@ -4299,7 +4313,11 @@ function renderAssets(){
         '<td>'+escapeHtml(a.assignedDisplayName || '—')+'</td>'+
         '<td><span class="status-pill '+st.cls+'">'+st.label+'</span></td>'+
         '<td>'+(a.assetHealth ? '<span class="health-pill '+healthClass(a.assetHealth)+'">'+escapeHtml(a.assetHealth)+'</span>' : '<span class="invoice-none">—</span>')+'</td>'+
-        '<td><div class="row-actions"><button class="btn btn-sm" data-edit="'+a.id+'">Edit</button><button class="btn btn-sm btn-danger" data-del="'+a.id+'">Del</button></div></td>'+
+        '<td><div class="row-actions">'+
+          '<button class="btn btn-sm verify-btn'+(a.verified?' on':'')+'" data-verify="'+a.id+'" title="'+(a.verified?'Verified - click to undo':'Mark as checked and verified')+'">'+(a.verified?'✓ Verified':'✓ Verify')+'</button>'+
+          '<button class="btn btn-sm" data-edit="'+a.id+'">Edit</button>'+
+          '<button class="btn btn-sm btn-danger" data-del="'+a.id+'">Del</button>'+
+        '</div></td>'+
       '</tr>';
     }).join('');
   }
@@ -4316,6 +4334,9 @@ function renderAssets(){
   });
   body.querySelectorAll('[data-del]').forEach(btn=>{
     btn.addEventListener('click', ()=> deleteAsset(btn.dataset.del));
+  });
+  body.querySelectorAll('[data-verify]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleAssetVerified(btn.dataset.verify); });
   });
   body.querySelectorAll('[data-dl]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ const a = assets.find(x=>x.id===btn.dataset.dl); if(a) downloadFile('invoices', a.invoiceStoragePath, a.id, a.invoiceFileName); });
@@ -7414,7 +7435,9 @@ async function saveAsset(){
     osVersion: $('af_osVersion').value.trim(), osBuild: $('af_osBuild').value.trim(),
     ipAddress: $('af_ipAddress').value.trim(), macAddress: $('af_macAddress').value.trim(),
     installedSoftware: (window._assetExtraFields && window._assetExtraFields.installedSoftware) || [],
-    discoveredFromId: (window._assetExtraFields && window._assetExtraFields.discoveredFromId) || null
+    discoveredFromId: (window._assetExtraFields && window._assetExtraFields.discoveredFromId) || null,
+    // Editing the asset clears any verification - green must mean "checked as it is now".
+    verified: false, verifiedBy: '', verifiedAt: ''
   };
 
   try{
@@ -7545,6 +7568,28 @@ function fmtEntryDate(ts){
                                      hour:'2-digit', minute:'2-digit' });
 }
 
+// Writes only the three verification columns, so marking verified cannot
+// disturb anything else on the row - the opposite of a full form save, which
+// is exactly what clears verification. Records who and when.
+async function toggleAssetVerified(id){
+  const a = assets.find(x => x.id === id);
+  if(!a) return null;
+  const now = !a.verified;
+  const patch = now
+    ? { verified: true,  verified_by: (window._currentUserEmail || 'IT'), verified_at: new Date().toISOString() }
+    : { verified: false, verified_by: null, verified_at: null };
+  try{
+    if(supa){ const { error } = await supa.from('assets').update(patch).eq('id', id); if(error) throw error; }
+    a.verified   = patch.verified;
+    a.verifiedBy = patch.verified_by || '';
+    a.verifiedAt = patch.verified_at || '';
+    renderAssets();
+    renderDashboard();
+    showToast(now ? 'Marked verified' : 'Verification removed');
+    return a;
+  }catch(e){ showToast('Could not update — ' + (e.message || 'error'), true); return null; }
+}
+
 function openAssetView(asset){
   $('avTitle').textContent = asset.category || 'Asset Details';
   $('avCode').textContent = asset.assetCode;
@@ -7560,6 +7605,12 @@ function openAssetView(asset){
       '<div class="view-item"><span class="vl">Warranty</span><span class="vv"><span class="status-pill '+st.cls+'">'+st.label+'</span></span></div>' +
       '<div class="view-item"><span class="vl">Asset Health</span><span class="vv">'+(asset.assetHealth ? '<span class="health-pill '+healthClass(asset.assetHealth)+'">'+escapeHtml(asset.assetHealth)+'</span>' : '—')+'</span></div>' +
       viewItem('Entered on', fmtEntryDate(asset.createdAt), true) +
+      '<div class="view-item"><span class="vl">Verified</span><span class="vv">' +
+        (asset.verified
+          ? '<span class="status-pill wr-active">✓ Verified</span>'
+          : '<span class="status-pill wr-expired">Not verified</span>') + '</span></div>' +
+      viewItem('Verified by', asset.verified ? (asset.verifiedBy || '—') : '') +
+      viewItem('Verified on', asset.verified ? fmtEntryDate(asset.verifiedAt) : '', true) +
     '</div></div>' +
     '<div class="view-section"><h4>Identification</h4><div class="view-grid">' +
       viewItem('Company', asset.companyName) + viewItem('Category / Type', asset.category) +
@@ -7615,6 +7666,11 @@ function openAssetView(asset){
   const dlBtn = $('avBody').querySelector('[data-avdl]');
   if(dlBtn) dlBtn.addEventListener('click', ()=> downloadFile('invoices', asset.invoiceStoragePath, asset.id, asset.invoiceFileName));
 
+  const vb = $('avVerifyBtn');
+  vb.textContent = asset.verified ? '✓ Verified — undo' : '✓ Mark verified';
+  vb.classList.toggle('verify-btn', true);
+  vb.classList.toggle('on', !!asset.verified);
+  vb.onclick = async ()=>{ const fresh = await toggleAssetVerified(asset.id); if(fresh) openAssetView(fresh); };
   $('avEditBtn').onclick = ()=>{ closeAssetView(); openAssetPanel(asset); };
   $('avDeleteBtn').onclick = ()=>{ closeAssetView(); deleteAsset(asset.id); };
   $('avAddHistoryBtn').onclick = ()=> openHistoryEntryPanel(asset.id);
