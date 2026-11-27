@@ -3310,7 +3310,8 @@ function assetFromDb(r){
     coresSpeed:r.cores_speed||'', storage:r.storage||'', graphics:r.graphics||'', battery:r.battery||'',
     monitor:r.monitor||'', osName:r.os_name||'', osArch:r.os_arch||'', osVersion:r.os_version||'',
     osBuild:r.os_build||'', ipAddress:r.ip_address||'', macAddress:r.mac_address||'',
-    installedSoftware:r.installed_software||[], discoveredFromId:r.discovered_from_id||''
+    installedSoftware:r.installed_software||[], discoveredFromId:r.discovered_from_id||'',
+    createdAt:r.created_at||''
   };
 }
 
@@ -7484,6 +7485,16 @@ function renderDepreciationSection(asset){
   '</div>';
 }
 
+// The row's created_at is when the asset was entered into the portal - the
+// "upload / entry date". Shown as a readable local date; blank if somehow absent.
+function fmtEntryDate(ts){
+  if(!ts) return '';
+  const d = new Date(ts);
+  if(isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric',
+                                     hour:'2-digit', minute:'2-digit' });
+}
+
 function openAssetView(asset){
   $('avTitle').textContent = asset.category || 'Asset Details';
   $('avCode').textContent = asset.assetCode;
@@ -7498,6 +7509,7 @@ function openAssetView(asset){
     '<div class="view-section"><h4>Status</h4><div class="view-grid">' +
       '<div class="view-item"><span class="vl">Warranty</span><span class="vv"><span class="status-pill '+st.cls+'">'+st.label+'</span></span></div>' +
       '<div class="view-item"><span class="vl">Asset Health</span><span class="vv">'+(asset.assetHealth ? '<span class="health-pill '+healthClass(asset.assetHealth)+'">'+escapeHtml(asset.assetHealth)+'</span>' : '—')+'</span></div>' +
+      viewItem('Entered on', fmtEntryDate(asset.createdAt), true) +
     '</div></div>' +
     '<div class="view-section"><h4>Identification</h4><div class="view-grid">' +
       viewItem('Company', asset.companyName) + viewItem('Category / Type', asset.category) +
