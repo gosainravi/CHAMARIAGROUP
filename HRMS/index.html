@@ -844,7 +844,11 @@ function toast(msg, kind){
 
 function fmtDate(d){
   if(!d) return "—";
-  if(typeof d === "string") return d;
+  if(typeof d === "string"){
+    const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return d;
+    d = new Date(+m[1], +m[2]-1, +m[3]);
+  }
   if(d.toDate) d = d.toDate();
   return new Date(d).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 }
@@ -1325,7 +1329,7 @@ function meterList(items){
   return `<div class="meter-list">${items.map(it=>{
     const pct = it.total ? Math.min(100, Math.round(it.used/it.total*100)) : 0;
     return `<div>
-      <div class="meter-head"><span class="mt-name">${escapeHtml(it.name)}</span><span class="mt-val">${it.used} used of ${it.total}</span></div>
+      <div class="meter-head"><span class="mt-name">${escapeHtml(it.name)}</span><span class="mt-val">${it.label || `${it.used} used of ${it.total}`}</span></div>
       <div class="meter${it.accent?" "+it.accent:""}"><span style="width:${pct}%"></span></div>
     </div>`;
   }).join("")}</div>`;
@@ -3817,8 +3821,8 @@ async function renderPerformance(){
     const dist = [1,2,3,4,5].map(n=>({name:"★".repeat(n), value: shown.filter(r=>Math.round(Number(r.finalRating||r.managerRating))===n).length}));
     return `<div class="field" style="max-width:260px;"><select onchange="TAB_STATE_SET('perfCycle',this.value)">${cycles.map(c=>`<option${c===cyc?" selected":""}>${escapeHtml(c)}</option>`).join("")||"<option>No cycles yet</option>"}</select></div>
       <div class="grid grid-2" style="margin-bottom:20px;">${panel("Review progress", `<div class="panel-body">${meterList([
-        {name:"Self appraisal done", used: shown.filter(r=>r.status!=="self_pending").length, total: shown.length||1},
-        {name:"Manager review done", used: shown.filter(r=>r.status==="completed").length, total: shown.length||1}])}</div>`)}
+        {name:"Self appraisal done", used: shown.filter(r=>r.status!=="self_pending").length, total: shown.length||1, label:`${shown.filter(r=>r.status!=="self_pending").length} of ${shown.length} done`},
+        {name:"Manager review done", used: shown.filter(r=>r.status==="completed").length, total: shown.length||1, label:`${shown.filter(r=>r.status==="completed").length} of ${shown.length} done`}])}</div>`)}
       ${panel("Rating distribution (bell curve)", `<div class="panel-body">${barChart(dist)}</div>`)}</div>`
       + panel(`Reviews · ${escapeHtml(cyc)}`, tableHtml(["Employee","Manager","Self","Manager","Final","Status",""], shown.map(r=>`<tr><td>${escapeHtml(employeeName(r.employeeId))}</td><td>${r.approverId?escapeHtml(employeeName(r.approverId)):"—"}</td><td>${r.selfRating||"—"}</td><td>${r.managerRating||"—"}</td><td><b>${r.finalRating||"—"}</b></td><td>${pill(r.status)}</td>
       <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="openReview('${r.id}')">Open</button> <button class="btn btn-ghost btn-sm" onclick="__del('reviews','${r.id}')">Delete</button></td></tr>`), "Launch a review cycle to get started."));
@@ -3855,7 +3859,7 @@ window.openReview = async (id) => {
     closeModal(); guarded(()=>updateDoc(doc(db,"reviews",id), patch), "Appraisal saved");
   };
   openModal(`${escapeHtml(employeeName(r.employeeId))} · ${escapeHtml(r.cycle)}`, `
-    ${goals.length?`<div class="muted" style="font-size:12px;margin-bottom:6px;">Goals this period</div>${meterList(goals.map(g=>({name:g.title, used:Number(g.progress)||0, total:100})))}<hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">`:""}
+    ${goals.length?`<div class="muted" style="font-size:12px;margin-bottom:6px;">Goals this period</div>${meterList(goals.map(g=>({name:g.title, used:Number(g.progress)||0, total:100, label:`${Number(g.progress)||0}% done`})))}<hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">`:""}
     <div class="field"><label>Self rating</label>${ratingSel("rv-sr", r.selfRating, !selfEdit)}</div>
     <div class="field"><label>Self appraisal — achievements, challenges, development needs</label><textarea id="rv-sc" rows="4"${selfEdit?"":" disabled"}>${escapeHtml(r.selfComments||"")}</textarea></div>
     ${showMgr?`<div class="field"><label>Manager rating</label>${ratingSel("rv-mr", r.managerRating, !mgrEdit)}</div>
