@@ -3560,7 +3560,8 @@ const ASSET_CAT_MATCHERS = {
   laptop:  a => (a.category||'') === 'Laptop',
   desktop: a => (a.category||'') === 'Desktop',
   server:  a => /^servers?$/i.test(a.category||''),
-  mobile:  a => (a.category||'') === 'Mobile Phone'
+  mobile:  a => (a.category||'') === 'Mobile Phone',
+  software:a => (a.category||'') === 'Software'
 };
 const ASSET_CAT_TABS = [
   { id:'all',     label:'All',             match:() => true },
@@ -3568,6 +3569,7 @@ const ASSET_CAT_TABS = [
   { id:'desktop', label:'Desktop',         match:ASSET_CAT_MATCHERS.desktop },
   { id:'server',  label:'Server',          match:ASSET_CAT_MATCHERS.server },
   { id:'mobile',  label:'Mobile',          match:ASSET_CAT_MATCHERS.mobile },
+  { id:'software',label:'Software',        match:ASSET_CAT_MATCHERS.software },
   { id:'other',   label:'Other IT Assets',
     match:a => !Object.values(ASSET_CAT_MATCHERS).some(fn => fn(a)) }
 ];
