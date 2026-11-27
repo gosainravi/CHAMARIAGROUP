@@ -2494,6 +2494,7 @@
               <option value="Components">Components</option>
               <option value="Software">Software</option>
               <option value="Licenses">Licenses</option>
+              <option value="SaaS / Subscription">SaaS / Subscription software (O365, Trend Micro, GWS…)</option>
               <option value="AMC">AMC</option>
               <option value="UPS">UPS</option>
               <option value="Batteries">Batteries</option>
@@ -3561,7 +3562,8 @@ const ASSET_CAT_MATCHERS = {
   desktop: a => (a.category||'') === 'Desktop',
   server:  a => /^servers?$/i.test(a.category||''),
   mobile:  a => (a.category||'') === 'Mobile Phone',
-  software:a => (a.category||'') === 'Software'
+  software:a => (a.category||'') === 'Software',
+  saas:    a => (a.category||'') === 'SaaS / Subscription'
 };
 const ASSET_CAT_TABS = [
   { id:'all',     label:'All',             match:() => true },
@@ -3570,6 +3572,7 @@ const ASSET_CAT_TABS = [
   { id:'server',  label:'Server',          match:ASSET_CAT_MATCHERS.server },
   { id:'mobile',  label:'Mobile',          match:ASSET_CAT_MATCHERS.mobile },
   { id:'software',label:'Software',        match:ASSET_CAT_MATCHERS.software },
+  { id:'saas',    label:'Subscriptions',   match:ASSET_CAT_MATCHERS.saas },
   { id:'other',   label:'Other IT Assets',
     match:a => !Object.values(ASSET_CAT_MATCHERS).some(fn => fn(a)) }
 ];
@@ -3864,7 +3867,7 @@ const itServicesTable = makeTable('it_services', svcToDb, svcFromDb, 'it-service
 const CATEGORY_OPTIONS = [
   'Access Points','Servers','Virtual Hosts','Virtual Machines','Desktop','Laptop','Mobile Phone','Tablets',
   'Printers','Networking Equipment','Network Switches','Routers','Wifi Access Points','Projector','Scanner',
-  'Components','Software','Licenses','AMC','UPS','Batteries','Monitor','iPad','Domain','Email Solution'
+  'Components','Software','Licenses','SaaS / Subscription','AMC','UPS','Batteries','Monitor','iPad','Domain','Email Solution'
 ];
 
 function setCategoryFieldValue(cat){
