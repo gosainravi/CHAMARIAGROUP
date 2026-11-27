@@ -2499,6 +2499,8 @@
               <option value="UPS">UPS</option>
               <option value="Batteries">Batteries</option>
               <option value="Monitor">Monitor</option>
+              <option value="TV">TV</option>
+              <option value="Conference Equipment">Conference Equipment</option>
               <option value="iPad">iPad</option>
               <option value="Domain">Domain</option>
               <option value="Email Solution">Email Solution</option>
@@ -3564,7 +3566,9 @@ const ASSET_CAT_MATCHERS = {
   server:  a => /^servers?$/i.test(a.category||''),
   mobile:  a => (a.category||'') === 'Mobile Phone',
   software:a => (a.category||'') === 'Software',
-  saas:    a => (a.category||'') === 'SaaS / Subscription'
+  saas:    a => (a.category||'') === 'SaaS / Subscription',
+  tv:      a => (a.category||'') === 'TV',
+  conf:    a => (a.category||'') === 'Conference Equipment'
 };
 const ASSET_CAT_TABS = [
   { id:'all',     label:'All',             match:() => true },
@@ -3574,6 +3578,8 @@ const ASSET_CAT_TABS = [
   { id:'mobile',  label:'Mobile',          match:ASSET_CAT_MATCHERS.mobile },
   { id:'software',label:'Software',        match:ASSET_CAT_MATCHERS.software },
   { id:'saas',    label:'Subscriptions',   match:ASSET_CAT_MATCHERS.saas },
+  { id:'tv',      label:'TV',              match:ASSET_CAT_MATCHERS.tv },
+  { id:'conf',    label:'Conference',      match:ASSET_CAT_MATCHERS.conf },
   { id:'other',   label:'Other IT Assets',
     match:a => !Object.values(ASSET_CAT_MATCHERS).some(fn => fn(a)) }
 ];
@@ -3868,7 +3874,7 @@ const itServicesTable = makeTable('it_services', svcToDb, svcFromDb, 'it-service
 const CATEGORY_OPTIONS = [
   'Access Points','Servers','Virtual Hosts','Virtual Machines','Desktop','Laptop','Mobile Phone','Tablets',
   'Printers','Networking Equipment','Network Switches','Routers','Wifi Access Points','Projector','Scanner',
-  'Components','Software','Licenses','SaaS / Subscription','AMC','UPS','Batteries','Monitor','iPad','Domain','Email Solution'
+  'Components','Software','Licenses','SaaS / Subscription','AMC','UPS','Batteries','Monitor','TV','Conference Equipment','iPad','Domain','Email Solution'
 ];
 
 function setCategoryFieldValue(cat){
