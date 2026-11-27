@@ -1008,6 +1008,9 @@ const ICONS = {
   "expenses-admin":'<rect x="3" y="7" width="18" height="12.5" rx="2.4"/><path d="M8.5 7V5.4a1.6 1.6 0 0 1 1.6-1.6h3.8a1.6 1.6 0 0 1 1.6 1.6V7M3 12.4h18"/>',
   "loans-admin":'<path d="M4 20.5h16M5.5 17V10.5M9.8 17V10.5M14.2 17V10.5M18.5 17V10.5M3.5 8.5 12 3.5l8.5 5z"/>',
   "my-payroll":'<rect x="3" y="6" width="18" height="13" rx="2.6"/><circle cx="12" cy="12.5" r="2.6"/><path d="M6.5 12.5h.01M17.5 12.5h.01"/>',
+  "my-letters":'<rect x="3" y="5.2" width="18" height="13.6" rx="2.4"/><path d="M3.6 7l7.4 5.4a2 2 0 0 0 2 0L20.4 7"/>',
+  "issued-letters":'<rect x="3" y="5.2" width="18" height="13.6" rx="2.4"/><path d="M3.6 7l7.4 5.4a2 2 0 0 0 2 0L20.4 7"/><path d="M16 14.5l1.6 1.6 3-3"/>',
+  "org-setup":'<circle cx="12" cy="12" r="3"/><path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2M5.9 5.9l1.6 1.6M16.5 16.5l1.6 1.6M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6"/>',
   _default:'<circle cx="12" cy="12" r="8.4"/>',
 };
 function icon(id, cls){
@@ -1048,6 +1051,7 @@ function renderNav(){
     { id:"loans", label:"Loans & Advances", show:true },
     { id:"my-payroll", label:"My Payslips", show:true },
     { id:"rewards", label:"Rewards", show:true },
+    { id:"my-letters", label:"My Letters", show:true },
     { id:"requests", label:"Other Requests", show:true },
   ];
   const approverItems = [
@@ -1055,6 +1059,7 @@ function renderNav(){
     { id:"offboarding", label:"Offboarding", show: S.me.role==="senior" || isHrOrAbove() },
   ];
   const adminItems = [
+    { id:"org-setup", label:"Org Setup", show: isHrOrAbove() },
     { id:"employees", label:"Employees", show: isHrOrAbove() },
     { id:"departments", label:"Departments", show: isHrOrAbove() },
     { id:"resignations-admin", label:"Resignations", show: isHrOrAbove() },
@@ -1074,6 +1079,7 @@ function renderNav(){
     { id:"assets-admin", label:"Asset Register", show: isHrOrAbove() },
     { id:"helpdesk-admin", label:"Helpdesk Tickets", show: isHrOrAbove() },
     { id:"hr-budget", label:"HR Budgeting", show: isHrOrAbove() },
+    { id:"issued-letters", label:"Issued Letters", show: isHrOrAbove() },
     { id:"companies", label:"Companies", show: isSuperAdmin() },
   ];
   const nav = document.getElementById("nav");
@@ -1166,6 +1172,9 @@ const VIEW_TITLES = {
   "my-payroll":"My Payslips",
   "hr-budget":"HR Budgeting",
   "rewards":"Rewards",
+  "my-letters":"My Letters",
+  "issued-letters":"Issued Letters",
+  "org-setup":"Org Setup",
 };
 
 const VIEW_CRUMBS = {
@@ -1217,6 +1226,9 @@ const VIEW_CRUMBS = {
   "my-payroll":"Monthly payslips",
   "hr-budget":"Headcount and cost vs budget",
   "rewards":"Points, awards and leaderboard",
+  "my-letters":"Official letters HR has issued to you",
+  "issued-letters":"Every letter issued to employees",
+  "org-setup":"All organisation settings in one place",
 };
 function firstName(){
   const n = (S.me && (S.me.name || S.me.email) || "").trim();
@@ -2992,6 +3004,7 @@ window.generateLetter = async function(){
     title = titles[type];
     bodyHtml = bodies[type];
   }
+  window.__letterCtx = { employeeId: uid, title, companyId: emp.companyId||"" };
   document.getElementById("letter-preview").innerHTML = `
     <div id="letter-doc" style="border:1px solid var(--line);border-radius:8px;padding:32px;background:var(--surface);color:#111;max-width:640px;">
       ${companyLetterheadHtml(company)}
@@ -3003,6 +3016,7 @@ window.generateLetter = async function(){
     </div>
     <p class="muted" style="font-size:12px;margin-top:8px;">Click inside the letter text above to edit, copy-paste, or rewrite before printing.</p>
     <button class="btn btn-primary" style="margin-top:8px;margin-right:8px;" onclick="printLetter()">Print / Save as PDF</button>
+    <button class="btn btn-ghost" style="margin-top:8px;margin-right:8px;" onclick="issueLetter()">Issue to employee</button>
     <button class="btn btn-ghost" style="margin-top:8px;" onclick="saveLetterAsTemplate()">Save as new template</button>
   `;
 };
@@ -4074,7 +4088,61 @@ window.giveAward = () => formModal("Award points", [
   toast("Points awarded","success"); navigateTo(S.view);
 });
 
+
+// ==================== MY LETTERS / ISSUED LETTERS ====================
+window.issueLetter = async function(){
+  const c = window.__letterCtx; const el = document.getElementById("letter-doc");
+  if(!c || !el){ toast("Generate a letter first","error"); return; }
+  if(!confirm(`Issue "${c.title}" to ${employeeName(c.employeeId)}? It will appear in their My Letters.`)) return;
+  try{
+    await addDoc(collection(db,"issuedLetters"), { employeeId:c.employeeId, title:c.title, companyId:c.companyId, html: el.outerHTML.replace(/contenteditable="true"/g,"").replace(/outline:1px dashed #ccc;/g,""), issuedBy:S.me.id, createdAt:serverTimestamp() });
+    toast("Letter issued","success");
+  }catch(e){ console.error(e); toast(/permission/i.test(e.message||"")?"Permission denied — Firestore rules need updating":"Could not issue letter","error"); }
+};
+async function renderMyLetters(){
+  const admin = isHrOrAbove() && S.navMode === "admin";
+  const snap = admin ? await getDocs(collection(db,"issuedLetters")) : await getDocs(query(collection(db,"issuedLetters"), where("employeeId","==",S.me.id)));
+  const rows = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||0)-((a.createdAt&&a.createdAt.seconds)||0));
+  window.__issued = Object.fromEntries(rows.map(r=>[r.id,r]));
+  return `<div class="panel"><div class="panel-head"><h3>${admin?"All issued letters":"Letters issued to me"}</h3></div><div class="table-wrap"><table>
+    <thead><tr><th>Date</th>${admin?"<th>Employee</th>":""}<th>Letter</th><th>Issued by</th><th></th></tr></thead>
+    <tbody>${rows.length?rows.map(r=>`<tr><td>${fmtDate(r.createdAt)}</td>${admin?`<td>${escapeHtml(employeeName(r.employeeId))}</td>`:""}<td><b>${escapeHtml(r.title||"Letter")}</b></td><td class="muted">${escapeHtml(employeeName(r.issuedBy))}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="viewIssuedLetter('${r.id}')">View / print</button>${admin?` <button class="btn btn-ghost btn-sm" onclick="__del('issuedLetters','${r.id}')">Withdraw</button>`:""}</td></tr>`).join("")
+      :`<tr><td colspan="${admin?5:4}" class="empty-state">${admin?"No letters issued yet. Use HR Letters, then Issue to employee.":"No letters have been issued to you yet."}</td></tr>`}</tbody></table></div></div>`;
+}
+window.viewIssuedLetter = function(id){
+  const r = (window.__issued||{})[id]; if(!r) return;
+  const w = window.open("", "_blank");
+  w.document.write(`<html><head><title>${escapeHtml(r.title||"Letter")}</title></head><body style="font-family:Arial,sans-serif;">${r.html}<script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+};
+
+// ==================== ORG SETUP HUB ====================
+async function renderOrgSetup(){
+  const tile = (id, title, sub, count) => `<div class="card" style="cursor:pointer;display:flex;gap:12px;align-items:flex-start;" onclick="navigateTo('${id}')">
+    <div class="stat-icon">${icon(id,"")}</div><div style="flex:1;min-width:0;"><div style="font-weight:700;">${title}</div><div class="muted" style="font-size:13px;">${sub}</div>${count!=null?`<div style="margin-top:6px;"><span class="pill pill-role">${count}</span></div>`:""}</div></div>`;
+  const sections = [
+    ["Organisation", [
+      isSuperAdmin() ? tile("companies","Companies","Group entities and letterheads", `${S.companiesCache.length} companies`) : "",
+      tile("departments","Departments & designations","Org structure masters", `${S.departmentsCache.length} departments`),
+      tile("employees","Employees","Master list, logins, reporting", `${S.employeesCache.length} employees`),
+    ]],
+    ["Time & leave", [
+      tile("shifts","Shifts","Shift timings and assignment", `${S.shiftsCache.length} shifts`),
+      tile("leave-policy","Leave policy","Leave types and quotas", `${S.leaveTypesCache.length} leave types`),
+      tile("holidays","Holiday calendar","Company-wise holidays", null),
+    ]],
+    ["Documents & culture", [
+      tile("hr-letters","HR letter templates","Offer, experience, custom", null),
+      tile("culture-charter","Culture charter","Vision, mission, values", null),
+      tile("hr-policy-booklet","HR policy booklet","Group HR policy", null),
+    ]],
+  ];
+  return sections.map(([h, tiles]) => `<div style="margin-bottom:22px;"><div class="nav-section" style="padding-left:0;margin-bottom:10px;">${h}</div><div class="grid grid-3">${tiles.filter(Boolean).join("")}</div></div>`).join("");
+}
+
 const RENDERERS = {
+  "my-letters": renderMyLetters, "issued-letters": renderMyLetters, "org-setup": renderOrgSetup,
   "pulse": renderPulse, "culture-charter": renderCultureCharter, "my-assets": renderAssets, "assets-admin": renderAssets,
   "helpdesk": renderHelpdesk, "helpdesk-admin": renderHelpdesk, "lms": renderLms, "lms-admin": renderLms,
   "recruitment": renderRecruitment, "goals": renderGoals, "performance": renderPerformance, "performance-admin": renderPerformance,
