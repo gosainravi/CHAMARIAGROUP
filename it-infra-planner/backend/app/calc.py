@@ -456,6 +456,8 @@ def boq(db: Session, m: Model, q: dict | None = None, pm: dict | None = None) ->
 
     def first(symbol, contains=""):
         cands = [i for i in items if i.category.symbol == symbol and i.is_active and contains in i.model]
+        # prefer a model with a real vendor quote, then the first catalogue entry
+        cands.sort(key=lambda i: (i.vendor_rate is None, i.id))
         return cands[0] if cands else None
 
     points_p1 = sum(1 for r in pm["rows"] if r["phase"] == "Phase 1")

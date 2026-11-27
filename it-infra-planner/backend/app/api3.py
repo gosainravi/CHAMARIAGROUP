@@ -28,14 +28,20 @@ def _project(db, pid) -> Project:
 # ---------------- room recognition ----------------
 @router.get("/layouts/{lid}/room-labels")
 def room_labels(lid: int, db: Session = Depends(get_db)):
+    from . import labels as L
     l = db.get(Layout, lid)
     if not l:
         raise HTTPException(404, "Layout not found")
-    if l.file_type != "pdf":
-        return {"labels": [], "note": "Room names are read from PDF drawings with a text layer. Type rooms by hand for images, DXF and scanned PDFs."}
-    m = re.search(r"page-(\d+)\.png$", l.image_path)
-    labels = pdf_room_labels(l.original_path, int(m.group(1)) - 1 if m else 0, l.width)
-    note = "" if labels else "No text found in this PDF (it may be a scan). Type rooms by hand."
+    meta = L.load_meta(l.image_path)
+    if meta is None:  # layouts uploaded before labels were stored: read now and cache
+        raw = []
+        if l.file_type == "pdf":
+            m = re.search(r"page-(\d+)\.png$", l.image_path)
+            raw = [{**x, "src": "pdf"} for x in pdf_room_labels(l.original_path, int(m.group(1)) - 1 if m else 0, l.width)]
+        L.build(Path(l.image_path), raw, None, l.width)
+        meta = L.load_meta(l.image_path)
+    labels = meta["labels"]
+    note = "" if labels else "No room names could be read from this drawing. Type rooms by hand."
     return {"labels": labels, "note": note}
 
 

@@ -79,7 +79,7 @@ export default function BoqPage() {
           </div>
         </div>
       )}
-      {!b ? <div className="muted">Calculating…</div> : b.lines.length === 0 ? <div className="card empty">Nothing to price yet. Place equipment on a layout first.</div> : (
+      {!b ? <div className="muted">Calculating…</div> : b.lines.length === 0 ? <div className="card empty">Nothing to price yet. Open a layout in the editor, click <b>Auto-place equipment</b>, accept and <b>Save</b>. The BOQ is then generated here; every cell is editable and <b>Export Excel</b> is at the top right.</div> : (
         <div className="card scroll">
           <table>
             <thead><tr>

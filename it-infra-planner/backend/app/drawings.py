@@ -21,18 +21,28 @@ def _fit(w: float, h: float, target: int = 4000) -> float:
 
 
 def render(src: Path, out_dir: Path) -> list[tuple[Path, int, int, str]]:
-    """Returns [(png_path, width, height, sheet_name)]."""
+    """Returns [(png_path, width, height, sheet_name, scale_m_per_px or None)]; room labels go to <png>.meta.json."""
     ext = src.suffix.lower()
     if ext not in ALLOWED:
         raise DrawingError(f"Unsupported file type {ext}. Use PDF, JPG, PNG, DXF or DWG.")
     out_dir.mkdir(parents=True, exist_ok=True)
+    from . import labels as L
     if ext in (".jpg", ".jpeg", ".png"):
-        return [_raster(src, out_dir)]
+        png, w, h, name = _raster(src, out_dir)
+        L.build(png, [], None, w)
+        return [(png, w, h, name, None)]
     if ext == ".pdf":
-        return _pdf(src, out_dir)
+        out = []
+        for i, (png, w, h, name) in enumerate(_pdf(src, out_dir)):
+            raw = [{**x, "src": "pdf"} for x in pdf_room_labels(str(src), i, w)]
+            L.build(png, raw, None, w)
+            out.append((png, w, h, name, None))
+        return out
     if ext == ".dwg":
         src = dwg_to_dxf(src, out_dir)
-    return [_dxf(src, out_dir)]
+    png, w, h, name, raw, scale = _dxf(src, out_dir)
+    L.build(png, raw, scale, w)
+    return [(png, w, h, name, scale)]
 
 
 def _raster(src: Path, out_dir: Path):
@@ -123,7 +133,43 @@ def _dxf(src: Path, out_dir: Path, max_px: int = 6000):
                 d.polygon(pts, outline=0)
     out = out_dir / "page-1.png"
     img.convert("RGB").save(out, optimize=True)
-    return out, W, H, "Model"
+
+    # exact text labels (TEXT / MTEXT, also inside blocks) in image pixels
+    raw = []
+
+    def walk(ents, depth):
+        for e in ents:
+            t = e.dxftype()
+            try:
+                if t == "TEXT":
+                    raw.append((e.dxf.text, e.dxf.insert))
+                elif t == "MTEXT":
+                    raw.append((e.plain_text(), e.dxf.insert))
+                elif t == "INSERT" and depth < 4:
+                    walk(e.virtual_entities(), depth + 1)
+            except Exception:  # noqa: BLE001 — broken blocks are skipped
+                continue
+
+    walk(doc.modelspace(), 0)
+    labels = []
+    for text, ins in raw:
+        first = next((ln for ln in str(text).split("\n") if ln.strip()), "")
+        full = " ".join(str(text).split())
+        x, y = px(ins)
+        if 0 <= x <= W and 0 <= y <= H:
+            labels.append({"text": full if len(full) <= 40 else first, "x": round(x, 1), "y": round(y, 1), "src": "dxf"})
+    units = {1: 0.0254, 2: 0.3048, 4: 0.001, 5: 0.01, 6: 1.0, 14: 0.1}
+    u = units.get(int(doc.header.get("$INSUNITS", 0) or 0))
+    if u is None and max(w_u, h_u) > 5000:
+        u = 0.001  # unitless architectural drawings are almost always millimetres
+    scale = (u / k) if u else None
+    if scale:  # drawings often declare the wrong unit (e.g. metres while drawn in mm): keep the result plausible
+        width_m = W * scale
+        if width_m > 3000:
+            scale /= 1000
+        elif width_m < 2:
+            scale *= 1000
+    return out, W, H, "Model", labels, scale
 
 
 def find_oda() -> str | None:

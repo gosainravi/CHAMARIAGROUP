@@ -350,9 +350,9 @@ async def upload_layout(fid: int, file: UploadFile = File(...), name: str = Form
         raise HTTPException(422, str(e))
     base = name.strip() or Path(file.filename).stem
     created = []
-    for png, w, h, sheet in pages:
+    for png, w, h, sheet, auto_scale in pages:
         l = Layout(name=base if len(pages) == 1 else f"{base} – {sheet}", file_type=ext.lstrip("."),
-                   original_name=file.filename, original_path=str(src), image_path=str(png), width=w, height=h,
+                   original_name=file.filename, original_path=str(src), image_path=str(png), width=w, height=h, scale_m_per_px=auto_scale,
                    layers={k: {"visible": True, "locked": False} for k in DEFAULT_LAYERS})
         f.layouts.append(l)
         created.append(l)

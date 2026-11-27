@@ -134,7 +134,7 @@ def test_boq_compare(client, setup):
 def test_suggest_grid_and_settings(client, setup):
     pid, lid = setup
     r = client.post(f"/api/layouts/{lid}/suggest", json={"mode": "grid"}).json()
-    assert r["engine"] == "rule"
+    assert r["engine"] == "grid"
     s = client.put(f"/api/projects/{pid}/settings", json={"spare_pct": 0, "contingency_pct": 5}).json()
     assert s["values"]["spare_pct"] == 0
     q = {x["key"]: x for x in client.get(f"/api/projects/{pid}/quantities").json()["quantities"]}

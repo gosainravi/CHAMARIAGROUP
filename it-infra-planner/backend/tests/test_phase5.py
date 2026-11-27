@@ -72,3 +72,20 @@ def test_quotes_compare_versions(client, proj):
     assert r["current"]["placements"] == 5 and len(r["versions"]) == 2
     codes = sorted(p["equip_code"] for p in client.get(f"/api/layouts/{lid}").json()["placements"])
     assert codes[0] == "B1-GF-CAM-001"
+
+
+def test_rules_from_room_names():
+    from types import SimpleNamespace
+    from app.rules import suggest_rules
+    lay = SimpleNamespace(width=6000, height=3000, scale_m_per_px=0.01)  # 60 m x 30 m
+    labels = [{"text": "SERVER ROOM", "x": 5000, "y": 500}, {"text": "CONFERANCE ROOM", "x": 1000, "y": 500},
+              {"text": "WORK STATION", "x": 3000, "y": 1500}, {"text": "WORK STATION 18 PERSON'S", "x": 3000, "y": 1560},
+              {"text": "MALE TOILET", "x": 100, "y": 100}, {"text": "PASSAGE", "x": 2000, "y": 2500},
+              {"text": "PASSAGE", "x": 2100, "y": 2500}]
+    s = suggest_rules(lay, labels)
+    by = lambda sym: [x for x in s if x["symbol"] == sym]
+    assert len(by("DP")) == 18 and len(by("PH")) >= 18          # one workstation block, 18 seats
+    assert [r["model_hint"] for r in by("RK")] == ["42U"]       # core rack in the server room
+    assert by("VC") and by("TV") and by("FW")
+    assert len([c for c in by("CAM") if c["room"] == "PASSAGE"]) == 1  # passage cameras 1 m apart are merged
+    assert not any(x["room"] == "MALE TOILET" for x in s)

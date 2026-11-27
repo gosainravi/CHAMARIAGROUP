@@ -454,8 +454,8 @@ export default function Editor({ layoutId }: { layoutId: number }) {
             <button className={heatmap ? "on" : ""} onClick={() => { if (!layout.scale_m_per_px) { setErr("Set the scale first — the heatmap needs real distances."); return; } setHeatmap(!heatmap); }}
               title="Predicted 5 GHz Wi-Fi signal from placed APs (open-space model, walls not included)">Heatmap</button>
             <button className={showRooms ? "on" : ""} onClick={() => setShowRooms(!showRooms)} title="Room names read from the drawing">Rooms{rooms.length ? ` (${rooms.length})` : ""}</button>
-            <button onClick={() => runSuggest("auto")} disabled={sugBusy} title="Suggest equipment positions (AI if configured, else Wi-Fi grid)">
-              {sugBusy ? "Thinking…" : "Suggest"}</button>
+            <button onClick={() => runSuggest("auto")} disabled={sugBusy} className="primary" title="Proposes racks, Wi-Fi, CCTV, LAN/voice points, phones, AV, printers and biometrics from the room names on the drawing. You review and accept.">
+              {sugBusy ? "Reading drawing…" : "Auto-place equipment"}</button>
             <button onClick={() => zoomBy(1.25)} title="Zoom in">＋</button>
             <button onClick={() => zoomBy(0.8)} title="Zoom out">－</button>
             <button onClick={fit} title="Fit drawing">Fit</button>

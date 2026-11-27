@@ -131,7 +131,7 @@ export default function Ports() {
                   })}
                 </tbody>
               </table>
-              {rows.length === 0 && <div className="empty">No network points. Place equipment and racks on a layout first.</div>}
+              {rows.length === 0 && <div className="empty">No network points yet. Open a layout in the editor, click <b>Auto-place equipment</b> (or place items by hand), accept and <b>Save</b> — the port matrix is then calculated here automatically. Every cell is editable and <b>Export Excel</b> is at the top right.</div>}
             </div>
           )}
         </>

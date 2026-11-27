@@ -127,15 +127,26 @@ def suggest(lid: int, body: SuggestIn, db: Session = Depends(get_db)):
         except Exception as e:  # noqa: BLE001
             raise HTTPException(502, f"AI suggestion failed: {e}")
     else:
-        raw = ai.suggest_grid(l, body.spacing_m)
-        note = "Rule-based Wi-Fi grid (no ANTHROPIC_API_KEY set — AI reading of the drawing is off)."
+        from .api3 import room_labels
+        from .rules import suggest_rules
+        labels = room_labels(lid, db)["labels"] if body.mode in ("auto", "rules") else []
+        raw = suggest_rules(l, labels) if labels else []
+        if raw:
+            rooms = len({s["room"] for s in raw if s["room"]})
+            note = (f"{len(raw)} items for {rooms} rooms, from the room names on the drawing. Review them, accept, "
+                    f"then move or delete as needed. Switches and patch panels are sized inside each rack on the Port Matrix tab.")
+        else:
+            raw = ai.suggest_grid(l, body.spacing_m)
+            note = "No room names could be read, so this is a Wi-Fi grid only. Type room names or place equipment by hand."
     out = []
     for s in raw:
         c = by_sym.get(s["symbol"])
-        item = next((i for i in c.items if i.is_active), None) if c else None
+        items = [i for i in c.items if i.is_active] if c else []
+        hint = s.get("model_hint") or ""
+        item = next((i for i in items if hint and hint in i.model), None) or (items[0] if items else None)
         if item:
             out.append({**s, "catalogue_item_id": item.id, "ports": c.ports_required})
-    return {"suggestions": out, "note": note, "engine": "ai" if use_ai else "rule"}
+    return {"suggestions": out, "note": note, "engine": "ai" if use_ai else ("rules" if labels and raw else "grid")}
 
 
 # ---------------- quantities ----------------

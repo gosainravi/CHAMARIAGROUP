@@ -12,21 +12,22 @@ function Wait-Port($port, $seconds, $what) {
     throw "$what did not start within $seconds s. See $logs"
 }
 
-Write-Host "IT Infra Planner — starting..." -ForegroundColor Cyan
+Write-Host "IT Infra Planner - starting..." -ForegroundColor Cyan
 
 # 1. Docker + database
-docker info *> $null
+cmd /c "docker info >nul 2>&1"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  Starting Docker Desktop (first start can take a minute)..."
     $dd = @("$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe", "C:\Program Files\Docker\Docker\Docker Desktop.exe") |
         Where-Object { Test-Path $_ } | Select-Object -First 1
     if (-not $dd) { throw "Docker Desktop is not installed." }
     Start-Process $dd
-    for ($i = 0; $i -lt 60; $i++) { docker info *> $null; if ($LASTEXITCODE -eq 0) { break }; Start-Sleep 3 }
+    for ($i = 0; $i -lt 60; $i++) { cmd /c "docker info >nul 2>&1"; if ($LASTEXITCODE -eq 0) { break }; Start-Sleep 3 }
     if ($LASTEXITCODE -ne 0) { throw "Docker did not start." }
 }
 Push-Location $root
-docker compose up -d *> "$logs\db.log"
+cmd /c "docker compose up -d > `"$logs\db.log`" 2>&1"
+if ($LASTEXITCODE -ne 0) { throw "Database container did not start. See $logs\db.log" }
 Pop-Location
 Write-Host "  Database running" -ForegroundColor Green
 
@@ -50,7 +51,7 @@ if (-not (Test-Port 3000)) {
     if (-not (Test-Path $build) -or ($newest -and $newest.LastWriteTime -gt (Get-Item $build).LastWriteTime)) {
         Write-Host "  Building the web app (once after updates, ~1 minute)..."
         Push-Location $fe
-        npm run build *> "$logs\build.log"
+        cmd /c "npm run build > `"$logs\build.log`" 2>&1"
         if ($LASTEXITCODE -ne 0) { Pop-Location; throw "Web build failed. See $logs\build.log" }
         Pop-Location
     }
