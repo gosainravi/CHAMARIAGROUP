@@ -3,7 +3,13 @@
 Layout → equipment placement → (Phase 3) port matrix → (Phase 4) BOQ & budget.
 Spec: [../docs/it-infra-planner-spec.md](../docs/it-infra-planner-spec.md)
 
-## Run locally
+## Everyday use on this PC
+
+Double-click **Start IT Infra Planner** (desktop shortcut, or `Start IT Infra Planner.bat` here). It starts Docker,
+the database, the API and the web app, rebuilds the web app only when the code changed, and opens
+http://localhost:3000. **Stop IT Infra Planner** shuts it down; projects stay in the database. Logs go to `logs/`.
+
+## Run locally (development)
 
 ```powershell
 # 1. Database (Docker Desktop must be running)

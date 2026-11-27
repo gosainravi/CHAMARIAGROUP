@@ -64,28 +64,66 @@ def _pdf(src: Path, out_dir: Path):
     return res
 
 
-def _dxf(src: Path, out_dir: Path):
-    import ezdxf
+def _dxf(src: Path, out_dir: Path, max_px: int = 6000):
+    """Render DXF model space to PNG.
+
+    ezdxf records the geometry (fast even for 100k+ elements); Pillow rasterises it. The PyMuPDF raster path
+    was far too slow on large architectural DXFs (minutes), so it is not used."""
     from ezdxf import recover
-    from ezdxf.addons.drawing import Frontend, RenderContext, layout, pymupdf as dpm, config
+    from ezdxf.addons.drawing import Frontend, RenderContext, config
+    from ezdxf.addons.drawing.recorder import Recorder, PointsRecord, SolidLinesRecord, PathRecord, FilledPathsRecord
+    from PIL import ImageDraw
 
     try:
         doc, _ = recover.readfile(str(src))
     except Exception as e:  # noqa: BLE001
         raise DrawingError(f"Could not read DXF: {e}") from e
-    msp = doc.modelspace()
-    backend = dpm.PyMuPdfBackend()
-    cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE,
-                               color_policy=config.ColorPolicy.BLACK)
-    Frontend(RenderContext(doc), backend, config=cfg).draw_layout(msp)
-    # width/height 0 = auto-size to the drawing extents, capped at A0
-    page = layout.Page(0, 0, layout.Units.mm, max_width=1189, max_height=841)
-    png = backend.get_pixmap_bytes(page, fmt="png", dpi=150, settings=layout.Settings(fit_page=True))
+    cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE, color_policy=config.ColorPolicy.BLACK,
+                               hatch_policy=config.HatchPolicy.SHOW_OUTLINE,
+                               proxy_graphic_policy=config.ProxyGraphicPolicy.IGNORE)
+    rec = Recorder()
+    Frontend(RenderContext(doc), rec, config=cfg).draw_layout(doc.modelspace())
+    player = rec.player()
+    if not player.records:
+        raise DrawingError("The DXF model space is empty.")
+    bb = player.bbox()
+    w_u, h_u = bb.extmax.x - bb.extmin.x, bb.extmax.y - bb.extmin.y
+    if w_u <= 0 or h_u <= 0:
+        raise DrawingError("The DXF has no drawable extent.")
+    pad = 40
+    k = (max_px - 2 * pad) / max(w_u, h_u)
+    W, H = int(w_u * k) + 2 * pad, int(h_u * k) + 2 * pad
+    img = Image.new("L", (W, H), 255)
+    d = ImageDraw.Draw(img)
+    x0, y1 = bb.extmin.x, bb.extmax.y
+    flat = 1 / k  # flatten curves to ~1 output pixel
+
+    def px(v):
+        return ((v.x - x0) * k + pad, (y1 - v.y) * k + pad)
+
+    for r, _props in player.recordings():
+        if isinstance(r, SolidLinesRecord):
+            pts = [px(v) for v in r.lines.vertices()]
+            for i in range(0, len(pts) - 1, 2):
+                d.line([pts[i], pts[i + 1]], fill=0)
+        elif isinstance(r, PathRecord):
+            pts = [px(v) for v in r.path.flattening(flat)]
+            if len(pts) > 1:
+                d.line(pts, fill=0)
+        elif isinstance(r, FilledPathsRecord):
+            for pth in r.paths:
+                pts = [px(v) for v in pth.flattening(flat)]
+                if len(pts) > 1:
+                    d.line(pts + [pts[0]], fill=60)
+        elif isinstance(r, PointsRecord):
+            pts = [px(v) for v in r.points.vertices()]
+            if len(pts) == 1:
+                d.point(pts[0], fill=0)
+            elif len(pts) > 1:
+                d.polygon(pts, outline=0)
     out = out_dir / "page-1.png"
-    out.write_bytes(png)
-    with Image.open(out) as im:
-        w, h = im.size
-    return out, w, h, "Model"
+    img.convert("RGB").save(out, optimize=True)
+    return out, W, H, "Model"
 
 
 def find_oda() -> str | None:

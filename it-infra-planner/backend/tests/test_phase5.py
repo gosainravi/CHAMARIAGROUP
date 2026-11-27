@@ -44,8 +44,8 @@ def test_quotes_compare_versions(client, proj):
     rk = cat["RK"]["items"][0]["id"]
     client.put(f"/api/layouts/{lid}/content", json={"placements": [
         {"catalogue_item_id": rk, "x": 10, "y": 10, "room": "Store"}] + [{"catalogue_item_id": cam, "x": 50, "y": 50, "room": "Gate"}] * 4})
-    q1 = client.post(f"/api/catalogue/items/{cam}/quotes", json={"vendor": "Gyan", "rate": 3500}).json()
-    client.post(f"/api/catalogue/items/{cam}/quotes", json={"vendor": "Fastech", "rate": 3900})
+    q1 = client.post(f"/api/catalogue/items/{cam}/quotes", json={"vendor": "Gyan", "rate": 3000, "quote_ref": "pytest"}).json()
+    client.post(f"/api/catalogue/items/{cam}/quotes", json={"vendor": "Fastech", "rate": 3900, "quote_ref": "pytest"})
     c = client.get(f"/api/projects/{proj['id']}/vendor-compare").json()
     row = next(r for r in c["rows"] if r["catalogue_item_id"] == cam)
     assert row["best_vendor"] == "Gyan" and c["totals"]["Gyan"] < c["totals"]["Fastech"]
@@ -55,12 +55,13 @@ def test_quotes_compare_versions(client, proj):
         a = client.post(f"/api/projects/{proj['id']}/vendor-compare/apply", json={"vendor": "cheapest"}).json()
         assert a["updated_items"] >= 1
         item = next(i for k in client.get("/api/catalogue").json() for i in k["items"] if i["id"] == cam)
-        assert item["vendor_rate"] == 3500
+        assert item["vendor_rate"] == 3000
     finally:
         orig = next(i for k in old for i in k["items"] if i["id"] == cam)
         client.patch(f"/api/catalogue/items/{cam}", json={"vendor_rate": orig["vendor_rate"]})
         for qq in client.get(f"/api/catalogue/items/{cam}/quotes").json():
-            client.delete(f"/api/quotes/{qq['id']}")
+            if qq["quote_ref"] == "pytest":
+                client.delete(f"/api/quotes/{qq['id']}")
     # versions
     v = client.post(f"/api/projects/{proj['id']}/versions", json={"label": "Baseline"}).json()
     assert v["versions"][0]["summary"]["placements"] == 5

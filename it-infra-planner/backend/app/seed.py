@@ -1,6 +1,8 @@
 """Equipment catalogue seed. Indicative rates are ex-GST (INR), taken from the Chhata reference
 workbooks where available (Budget sheet / boq -pujaso); others are placeholders to be replaced
 with vendor quotes."""
+from pathlib import Path
+
 from sqlalchemy.orm import Session
 from .models import CatalogueCategory, CatalogueItem
 
@@ -159,4 +161,48 @@ def seed_extras(db: Session) -> None:
         if code not in have:
             db.add(CatalogueItem(category_id=svc.id, manufacturer="Installer", model=code, description=desc,
                                  uom=uom, indicative_rate=rate, gst_pct=18, code=code))
+    db.commit()
+
+
+# Vendor quotes are business data: they live in data/vendor_quotes.local.json on this PC (git-ignored) and are loaded
+# on startup if present. Format: {"quote_ref", "quotes": [{"match": ["code", x] | ["model", SYMBOL, text],
+# "rates": {vendor: rate}}], "extra_models": [...], "install_rates": [{"match": [...], "rate": n}]}.
+QUOTES_FILE = Path(__file__).resolve().parent.parent / "data" / "vendor_quotes.local.json"
+
+
+def _find(db: Session, match):
+    if match[0] == "code":
+        return db.query(CatalogueItem).filter_by(code=match[1]).first()
+    return (db.query(CatalogueItem).join(CatalogueCategory).filter(CatalogueCategory.symbol == match[1])
+            .filter(CatalogueItem.model.contains(match[2])).first())
+
+
+def seed_quotes(db: Session) -> None:
+    import json
+    from .models import VendorQuote
+    if not QUOTES_FILE.exists():
+        return
+    cfg = json.loads(QUOTES_FILE.read_text(encoding="utf-8"))
+    for m in cfg.get("extra_models", []):
+        cat = db.query(CatalogueCategory).filter_by(symbol=m["symbol"]).first()
+        if cat and not db.query(CatalogueItem).filter_by(category_id=cat.id, model=m["model"]).first():
+            db.add(CatalogueItem(category_id=cat.id, manufacturer=m["manufacturer"], model=m["model"],
+                                 description=m["description"], specs=m.get("specs", ""), indicative_rate=m["rate"],
+                                 install_rate=m.get("install_rate", 1000)))
+    db.flush()
+    ref = cfg.get("quote_ref", "local")
+    if db.query(VendorQuote).filter_by(quote_ref=ref).first():
+        return
+    for q in cfg.get("quotes", []):
+        item = _find(db, q["match"])
+        if not item:
+            continue
+        for vendor, rate in q["rates"].items():
+            db.add(VendorQuote(catalogue_item_id=item.id, vendor=vendor, rate=rate, quote_ref=ref))
+        if item.vendor_rate is None:
+            item.vendor_rate = min(q["rates"].values())  # cheapest real quote becomes the vendor rate
+    for r in cfg.get("install_rates", []):
+        item = _find(db, r["match"])
+        if item:
+            item.install_rate = r["rate"]
     db.commit()

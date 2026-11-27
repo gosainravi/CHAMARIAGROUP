@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -14,7 +15,7 @@ from .db import Base, engine, get_db, SessionLocal
 from .models import (Project, Building, Floor, Layout, CatalogueCategory, CatalogueItem,
                      Placement, Annotation, IdCounter)
 from .drawings import render, DrawingError, ALLOWED
-from .seed import seed_catalogue, seed_extras
+from .seed import seed_catalogue, seed_extras, seed_quotes
 from .api2 import router as api2_router
 from .api3 import router as api3_router
 from sqlalchemy import text
@@ -47,6 +48,7 @@ def startup():
     with SessionLocal() as db:
         seed_catalogue(db)
         seed_extras(db)
+        seed_quotes(db)
 
 
 # ---------------- schemas ----------------
@@ -342,7 +344,7 @@ async def upload_layout(fid: int, file: UploadFile = File(...), name: str = Form
                 raise HTTPException(413, "File larger than 80 MB")
             out.write(chunk)
     try:
-        pages = render(src, folder)
+        pages = await run_in_threadpool(render, src, folder)
     except DrawingError as e:
         shutil.rmtree(folder, ignore_errors=True)
         raise HTTPException(422, str(e))
